@@ -1,0 +1,15 @@
+{
+  "LoginPage": {
+    "title": "Login",
+    "subtitle": "Sign in to your account",
+    "usernameLabel": "Username",
+    "passwordLabel": "Password",
+    "login": "Sign in",
+    "loggingIn": "Signing in...",
+    "registerLink": "Don't have an account? Sign up"
+  },
+  "HomePage": {
+    "title": "Welcome to our application",
+    "dashboardLink": "Go to dashboard"
+  }
+}

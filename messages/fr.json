@@ -1,0 +1,19 @@
+{
+  "HomePage": {
+    "title": "Bienvenue sur notre application",
+    "dashboardLink": "Aller au tableau de bord"
+  },
+  
+  "LoginPage": {
+    "title": "Connexion",
+    "subtitle": "Connectez-vous à votre compte",
+    "usernameLabel": "Nom d'utilisateur",
+    "passwordLabel": "Mot de passe",
+    "login": "Se connecter",
+    "loggingIn": "Connexion en cours...",
+    "registerLink": "Pas encore de compte ? S'inscrire"
+  }
+ 
+
+
+}
