@@ -14,9 +14,91 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-  name String
-  password String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        Int         @id @default(autoincrement())
+  username  String      @unique
+  password  String
+  language  String
+  theme     String
+  role      String      @default("USER")
+  slideshows Slideshow[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Media {
+  id                Int       @id @default(autoincrement())
+  originalFileName  String
+  fileName          String
+  path              String
+  format            String
+  type              String
+  size              Int
+  uploadedAt        DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  thumbnail         Media?    @relation("MediaToThumbnail", fields: [thumbnailId], references: [id])
+  thumbnailId       Int?
+  thumbnails        Media[]   @relation("MediaToThumbnail")
+  slides            Slide[]
+}
+
+model Data {
+  id        Int         @id @default(autoincrement())
+  name      String
+  value     String
+  type      String
+  edit      Boolean     @default(true)
+  slides    SlideData[]
+}
+
+model Slideshow {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdBy   Int
+  user        User      @relation(fields: [createdBy], references: [id])
+  slides      Slide[]
+  modes       Mode[]
+}
+
+model Slide {
+  id          Int         @id @default(autoincrement())
+  slideshowId Int
+  position    Int
+  duration    Int
+  mediaId     Int
+  x           Int
+  y           Int
+  width       Int
+  height      Int
+  slideshow   Slideshow   @relation(fields: [slideshowId], references: [id])
+  media       Media       @relation(fields: [mediaId], references: [id])
+  data        SlideData[]
+}
+
+model SlideData {
+  id        Int       @id @default(autoincrement())
+  slideId   Int
+  dataId    Int
+  slide     Slide     @relation(fields: [slideId], references: [id])
+  data      Data      @relation(fields: [dataId], references: [id])
+
+  @@unique([slideId, dataId])
+}
+
+model Mode {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slideshowId Int
+  settings    Json?
+  slideshow   Slideshow @relation(fields: [slideshowId], references: [id])
+}
+
+model AppSettings {
+  id              Int       @id @default(autoincrement())
+  standby         Boolean
+  standbyStartTime DateTime
+  standbyEndTime   DateTime
+  restartAt        DateTime
+  updatedAt        DateTime  @updatedAt
+  brightness       Int
 }

@@ -1,10 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useAuthStore } from '../store/auth-store';
-import { LoginCredentials } from '../types/auth';
+import { useLogin } from '../hooks/useLogin';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Form, FormField, FormLabel, FormMessage } from '@/shared/components/ui/form';
@@ -12,29 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 
 export function LoginForm() {
   const t = useTranslations('LoginPage');
-  const router = useRouter();
-  const { login, isLoading, error } = useAuthStore();
-  
-  const [credentials, setCredentials] = useState<LoginCredentials>({
-    username: '',
-    password: '',
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCredentials((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await login(credentials);
-      router.push('/dashboard');
-      router.refresh();
-    } catch (err) {
-      // Erreur déjà gérée dans le store
-    }
-  };
+  const { credentials, isLoading, error, handleChange, handleSubmit } = useLogin();
 
   return (
     <Card className="w-full max-w-md mx-auto">

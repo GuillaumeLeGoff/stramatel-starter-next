@@ -1,9 +1,15 @@
-import createMiddleware from "next-intl/middleware";
-import { routing } from "./i18n/routing";
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
 
-export default createMiddleware(routing);
+// Créer le middleware i18n
+const i18nMiddleware = createMiddleware(routing);
 
+export default i18nMiddleware;
+
+// Configurer les routes sur lesquelles le middleware doit s'exécuter
 export const config = {
-  // Pattern qui définit les routes concernées par le middleware
-  matcher: ["/((?!api|trpc|_next|_vercel|_admin|_access|.*\\..*).*)"],
-};
+  // Match all pathnames except for
+  // - … if they start with `/api`, `/_next` or `/_vercel`
+  // - … the ones containing a dot (e.g. `favicon.ico`)
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)']
+}; 

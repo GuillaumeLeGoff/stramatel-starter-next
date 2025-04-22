@@ -1,13 +1,23 @@
-import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+'use client';
+
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 export default function HomePage() {
-  const t = useTranslations("HomePage");
+  const {  isInitialized } = useAuth();
 
-  return (
-    <main>
-      <h1>{t("title")}</h1>
-      <Link href="/dashboard">{t("dashboardLink")}</Link>
-    </main>
-  );
-}
+
+
+
+ 
+
+  // Afficher un écran de chargement pendant l'initialisation
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return null;
+} 

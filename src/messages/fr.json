@@ -1,0 +1,17 @@
+{
+  "Login": {
+    "title": "Connexion",
+    "username": "Nom d'utilisateur",
+    "password": "Mot de passe",
+    "login": "Se connecter",
+    "loggingIn": "Connexion en cours...",
+    "credentials": "Identifiants par défaut :"
+  },
+  "Dashboard": {
+    "welcome": "Bienvenue, {username}",
+    "stats": "Statistiques",
+    "role": "Rôle",
+    "language": "Langue",
+    "theme": "Thème"
+  }
+} 

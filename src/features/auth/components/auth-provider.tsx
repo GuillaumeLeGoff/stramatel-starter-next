@@ -1,17 +1,24 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
-import { useAuthStore } from '../store/auth-store';
+import { ReactNode, useEffect, useRef } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { log } from 'console';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { checkAuth } = useAuthStore();
+  const { checkAuth } = useAuth();
+  const initialCheckDone = useRef(false);
 
   useEffect(() => {
-    checkAuth();
+    console.log("checkAuth");
+    console.log("initialCheckDone", initialCheckDone.current);
+    if (!initialCheckDone.current) {
+      checkAuth();
+      initialCheckDone.current = true;
+    }
   }, [checkAuth]);
 
   return <>{children}</>;
