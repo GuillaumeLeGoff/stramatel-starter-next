@@ -1,14 +1,22 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
-  const {  isInitialized } = useAuth();
+  const { isInitialized, isAuthenticated } = useAuth();
+  const router = useRouter();
 
-
-
-
- 
+  useEffect(() => {
+    if (isInitialized) {
+      if (isAuthenticated) {
+        router.push("/dashboard");
+      } else {
+        router.push("/login");
+      }
+    }
+  }, [isInitialized, isAuthenticated, router]);
 
   // Afficher un écran de chargement pendant l'initialisation
   if (!isInitialized) {
@@ -20,4 +28,4 @@ export default function HomePage() {
   }
 
   return null;
-} 
+}
