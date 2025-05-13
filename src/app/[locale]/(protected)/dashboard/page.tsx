@@ -7,18 +7,17 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { PageHeader } from "@/shared/components/ui/page-header";
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Tableau de bord</h1>
-        <div className="text-sm text-neutral-500">
-          Bienvenue, {user?.username}
-        </div>
-      </div>
+      <PageHeader
+        title="Tableau de bord"
+        rightContent={`Bienvenue, ${user?.username}`}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Cartes statistiques */}

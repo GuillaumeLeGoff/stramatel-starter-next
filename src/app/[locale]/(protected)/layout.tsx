@@ -8,7 +8,7 @@ import {
   SidebarBody,
   SidebarLink,
 } from "@/shared/components/ui/sidebar";
-import { Gauge, Settings, LogOut } from "lucide-react";
+import { Gauge, Settings, LogOut, Image } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,11 @@ export default function ProtectedLayout({
       label: "Tableau de bord",
       href: "/dashboard",
       icon: <Gauge className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />,
+    },
+    {
+      label: "Diaporama",
+      href: "/diaporama",
+      icon: <Image className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />,
     },
     {
       label: "Paramètres",
