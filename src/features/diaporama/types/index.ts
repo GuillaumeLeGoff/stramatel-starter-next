@@ -1,5 +1,19 @@
 // Types for diaporama feature
 
+// Type pour les données Konva
+export interface KonvaData {
+  attrs?: Record<string, unknown>;
+  className?: string;
+  children?: Array<{
+    attrs?: Record<string, unknown>;
+    className?: string;
+    children?: Array<{
+      attrs?: Record<string, unknown>;
+      className?: string;
+    }>;
+  }>;
+}
+
 // Types alignés avec le schéma Prisma
 export interface DiaporamaSlide {
   id: number;
@@ -13,6 +27,7 @@ export interface DiaporamaSlide {
   height: number;
   media?: Media;
   data?: SlideData[];
+  konvaData?: KonvaData;
 }
 
 export interface Media {

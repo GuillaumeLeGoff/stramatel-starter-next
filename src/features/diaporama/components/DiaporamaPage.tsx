@@ -16,6 +16,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
@@ -30,6 +31,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/shared/components/ui/dialog";
+import { useRouter, useParams } from "next/navigation";
 
 export function DiaporamaPage() {
   const [open, setOpen] = useState(false);
@@ -53,6 +55,10 @@ export function DiaporamaPage() {
     handleChange,
     handleSubmit: originalHandleSubmit,
   } = useCreateDiaporama();
+
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params.locale as string) || "fr";
 
   // Wrapper pour handleSubmit qui ferme le dialog après création réussie
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,61 +106,74 @@ export function DiaporamaPage() {
         </div>
       )}
 
+      {/* Actions supérieures */}
+      <div className="flex justify-between items-center">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>Créer un diaporama</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[550px]">
+            <DialogHeader>
+              <DialogTitle>Créer un nouveau diaporama</DialogTitle>
+              <DialogDescription>
+                Saisissez les informations du diaporama que vous souhaitez
+                créer.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <label htmlFor="name" className="text-sm font-medium">
+                    Nom du diaporama
+                  </label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    placeholder="Nom du diaporama"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="description" className="text-sm font-medium">
+                    Description
+                  </label>
+                  <Input
+                    id="description"
+                    name="description"
+                    value={formData.description || ""}
+                    onChange={handleChange}
+                    placeholder="Description (optionnel)"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? "Création en cours..." : "Créer"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bouton pour accéder au test Konva */}
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/${locale}/diaporama/konva-test`)}
+        >
+          Tester l&apos;éditeur Konva
+        </Button>
+      </div>
+
       {/* Tableau des diaporamas */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>Liste des diaporamas</CardTitle>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>Créer un diaporama</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[550px]">
-              <DialogHeader>
-                <DialogTitle>Créer un nouveau diaporama</DialogTitle>
-                <DialogDescription>
-                  Saisissez les informations du diaporama que vous souhaitez
-                  créer.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <label htmlFor="name" className="text-sm font-medium">
-                      Nom du diaporama
-                    </label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                      placeholder="Nom du diaporama"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label
-                      htmlFor="description"
-                      className="text-sm font-medium"
-                    >
-                      Description
-                    </label>
-                    <Input
-                      id="description"
-                      name="description"
-                      value={formData.description || ""}
-                      onChange={handleChange}
-                      placeholder="Description (optionnel)"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isCreating}>
-                    {isCreating ? "Création en cours..." : "Créer"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <CardDescription>
+            Créez et gérez vos diaporamas pour l&apos;affichage sur les tableaux
+            d&apos;affichage.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingDiaporamas ? (
@@ -162,7 +181,7 @@ export function DiaporamaPage() {
           ) : !diaporamas || diaporamas.length === 0 ? (
             <div className="text-center p-4">Aucun diaporama disponible</div>
           ) : (
-            <ScrollArea className="h-[calc(100vh-250px)] rounded-md relative">
+            <ScrollArea className="h-[calc(100vh-220px)] rounded-md relative">
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-20 shadow-sm after:absolute after:w-full after:h-[1px] after:bottom-0 after:left-0 after:bg-border">
                   <TableRow>
@@ -181,7 +200,13 @@ export function DiaporamaPage() {
                 </TableHeader>
                 <TableBody>
                   {diaporamas.map((diaporama) => (
-                    <TableRow key={diaporama.id}>
+                    <TableRow
+                      key={diaporama.id}
+                      onClick={() =>
+                        router.push(`/${locale}/diaporama/${diaporama.id}`)
+                      }
+                      className="cursor-pointer hover:bg-muted/50"
+                    >
                       <TableCell className="font-medium">
                         {diaporama.name}
                       </TableCell>
@@ -198,7 +223,10 @@ export function DiaporamaPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => openDeleteDialog(diaporama.id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Empêche le clic de se propager à la ligne
+                              openDeleteDialog(diaporama.id);
+                            }}
                           >
                             Supprimer
                           </Button>

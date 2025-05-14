@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 // GET /api/slides/[id]
 export async function GET(
@@ -7,17 +7,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Attendre les paramètres avant de les utiliser
+    const { id } = await params;
+
     const slide = await prisma.slide.findUnique({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       include: {
         media: true,
-        data: {
-          include: {
-            data: true,
-          },
-        },
         slideshow: {
           select: {
             id: true,
@@ -28,16 +26,14 @@ export async function GET(
     });
 
     if (!slide) {
-      return NextResponse.json(
-        { error: 'Slide non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Slide non trouvée" }, { status: 404 });
     }
 
     return NextResponse.json(slide);
   } catch (error) {
+    console.error("Erreur lors de la récupération de la slide:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération du slide' },
+      { error: "Erreur lors de la récupération de la slide" },
       { status: 500 }
     );
   }
@@ -49,52 +45,31 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Attendre les paramètres avant de les utiliser
+    const { id } = await params;
+
     const body = await request.json();
-    const {
-      position,
-      duration,
-      mediaId,
-      x,
-      y,
-      width,
-      height,
-      dataIds,
-    } = body;
+    const { duration, position, mediaId, width, height, konvaData } = body;
 
-    // Supprimer les anciennes associations de données
-    await prisma.slideData.deleteMany({
-      where: {
-        slideId: parseInt(params.id),
-      },
-    });
-
+    // Mettre à jour la slide
     const slide = await prisma.slide.update({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       data: {
-        position,
-        duration,
-        mediaId,
-        x,
-        y,
-        width,
-        height,
-        data: {
-          create: dataIds.map((dataId: number) => ({
-            data: {
-              connect: {
-                id: dataId,
-              },
-            },
-          })),
-        },
+        ...(duration !== undefined && { duration }),
+        ...(position !== undefined && { position }),
+        ...(mediaId !== undefined && { mediaId }),
+        ...(width !== undefined && { width }),
+        ...(height !== undefined && { height }),
+        ...(konvaData && { konvaData }),
       },
       include: {
         media: true,
-        data: {
-          include: {
-            data: true,
+        slideshow: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -102,8 +77,9 @@ export async function PUT(
 
     return NextResponse.json(slide);
   } catch (error) {
+    console.error("Erreur lors de la mise à jour de la slide:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour du slide' },
+      { error: "Erreur lors de la mise à jour de la slide" },
       { status: 500 }
     );
   }
@@ -115,28 +91,24 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Supprimer d'abord les associations de données
-    await prisma.slideData.deleteMany({
-      where: {
-        slideId: parseInt(params.id),
-      },
-    });
+    // Attendre les paramètres avant de les utiliser
+    const { id } = await params;
 
-    // Puis supprimer le slide
     await prisma.slide.delete({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
     });
 
     return NextResponse.json(
-      { message: 'Slide supprimé avec succès' },
+      { message: "Slide supprimée avec succès" },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Erreur lors de la suppression de la slide:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la suppression du slide' },
+      { error: "Erreur lors de la suppression de la slide" },
       { status: 500 }
     );
   }
-} 
+}

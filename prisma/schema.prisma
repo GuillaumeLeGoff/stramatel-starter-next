@@ -42,15 +42,6 @@ model Media {
   slides           Slide[]
 }
 
-model Data {
-  id     Int         @id @default(autoincrement())
-  name   String
-  value  String
-  type   String
-  edit   Boolean     @default(true)
-  slides SlideData[]
-}
-
 model Slideshow {
   id          Int     @id @default(autoincrement())
   name        String
@@ -59,31 +50,20 @@ model Slideshow {
   user        User    @relation(fields: [createdBy], references: [id])
   slides      Slide[]
   modes       Mode[]
+  konvaState  Json?
 }
 
 model Slide {
-  id          Int         @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   slideshowId Int
   position    Int
-  duration    Int
-  mediaId     Int
-  x           Int
-  y           Int
-  width       Int
-  height      Int
-  slideshow   Slideshow   @relation(fields: [slideshowId], references: [id])
-  media       Media       @relation(fields: [mediaId], references: [id])
-  data        SlideData[]
-}
-
-model SlideData {
-  id      Int   @id @default(autoincrement())
-  slideId Int
-  dataId  Int
-  slide   Slide @relation(fields: [slideId], references: [id])
-  data    Data  @relation(fields: [dataId], references: [id])
-
-  @@unique([slideId, dataId])
+  duration    Int       @default(5)
+  width       Int       @default(1920)
+  height      Int       @default(1080)
+  konvaData   Json?
+  mediaId     Int?
+  media       Media?    @relation(fields: [mediaId], references: [id])
+  slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
 }
 
 model Mode {
@@ -91,7 +71,7 @@ model Mode {
   name        String
   slideshowId Int
   settings    Json?
-  slideshow   Slideshow @relation(fields: [slideshowId], references: [id])
+  slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
 }
 
 model AppSettings {

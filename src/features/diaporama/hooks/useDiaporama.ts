@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useDiaporamaStore } from "../store/diaporamaStore";
-import { DiaporamaFormData } from "../types";
+import { DiaporamaFormData, KonvaData } from "../types";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 
 export function useDiaporama() {
@@ -169,6 +169,63 @@ export function useDiaporama() {
     [setLoading, setError, updateDiaporama]
   );
 
+  // Met à jour une slide
+  const updateSlide = useCallback(
+    async (
+      slideId: number,
+      slideData: Partial<{
+        duration?: number;
+        position?: number;
+        mediaId?: number | null;
+        width?: number;
+        height?: number;
+        konvaData?: KonvaData;
+      }>
+    ) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/slides/${slideId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(slideData),
+        });
+
+        if (!response.ok) {
+          throw new Error("Erreur lors de la mise à jour de la slide");
+        }
+
+        const updatedSlide = await response.json();
+
+        // Mettre à jour le diaporama courant avec la slide mise à jour
+        if (currentDiaporama) {
+          const updatedSlides = currentDiaporama.slides.map((slide) =>
+            slide.id === updatedSlide.id ? updatedSlide : slide
+          );
+
+          setCurrentDiaporama({
+            ...currentDiaporama,
+            slides: updatedSlides,
+          });
+        }
+
+        return updatedSlide;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Erreur inconnue";
+        setError(errorMessage);
+        console.error("Erreur lors de la mise à jour de la slide:", error);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setLoading, setError, currentDiaporama, setCurrentDiaporama]
+  );
+
   // Supprime un diaporama
   const deleteDiaporamaById = useCallback(
     async (id: number) => {
@@ -199,6 +256,53 @@ export function useDiaporama() {
     [setLoading, setError, deleteDiaporama]
   );
 
+  // Crée une nouvelle slide dans un diaporama
+  const createSlide = useCallback(
+    async (slideData: {
+      diaporamaId: number;
+      position: number;
+      duration: number;
+    }) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/slides`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(slideData),
+        });
+
+        if (!response.ok) {
+          throw new Error("Erreur lors de la création de la slide");
+        }
+
+        const newSlide = await response.json();
+
+        // Mettre à jour le diaporama courant avec la nouvelle slide
+        if (currentDiaporama && newSlide.diaporamaId === currentDiaporama.id) {
+          setCurrentDiaporama({
+            ...currentDiaporama,
+            slides: [...currentDiaporama.slides, newSlide],
+          });
+        }
+
+        return newSlide;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Erreur inconnue";
+        setError(errorMessage);
+        console.error("Erreur lors de la création de la slide:", error);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setLoading, setError, currentDiaporama, setCurrentDiaporama]
+  );
+
   return {
     diaporamas,
     currentDiaporama,
@@ -210,5 +314,7 @@ export function useDiaporama() {
     updateDiaporamaById,
     deleteDiaporamaById,
     clearCurrentDiaporama,
+    updateSlide,
+    createSlide,
   };
 }

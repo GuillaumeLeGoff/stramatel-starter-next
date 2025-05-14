@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 // GET /api/slideshows/[id]
 export async function GET(
@@ -7,9 +7,12 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Attendre les paramètres avant de les utiliser
+    const { id } = await params;
+
     const slideshow = await prisma.slideshow.findUnique({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       include: {
         user: {
@@ -21,11 +24,9 @@ export async function GET(
         slides: {
           include: {
             media: true,
-            data: {
-              include: {
-                data: true,
-              },
-            },
+          },
+          orderBy: {
+            position: "asc",
           },
         },
         modes: true,
@@ -34,15 +35,16 @@ export async function GET(
 
     if (!slideshow) {
       return NextResponse.json(
-        { error: 'Slideshow non trouvé' },
+        { error: "Slideshow non trouvé" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(slideshow);
   } catch (error) {
+    console.error("Erreur lors de la récupération du slideshow:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération du slideshow' },
+      { error: "Erreur lors de la récupération du slideshow" },
       { status: 500 }
     );
   }
@@ -54,16 +56,20 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Attendre les paramètres avant de les utiliser
+    const { id } = await params;
+
     const body = await request.json();
-    const { name, description } = body;
+    const { name, description, konvaState } = body;
 
     const slideshow = await prisma.slideshow.update({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       data: {
         name,
         description,
+        ...(konvaState && { konvaState }),
       },
       include: {
         user: {
@@ -77,8 +83,9 @@ export async function PUT(
 
     return NextResponse.json(slideshow);
   } catch (error) {
+    console.error("Erreur lors de la mise à jour du slideshow:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la mise à jour du slideshow' },
+      { error: "Erreur lors de la mise à jour du slideshow" },
       { status: 500 }
     );
   }
@@ -90,20 +97,24 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Attendre les paramètres avant de les utiliser
+    const { id } = await params;
+
     await prisma.slideshow.delete({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
     });
 
     return NextResponse.json(
-      { message: 'Slideshow supprimé avec succès' },
+      { message: "Slideshow supprimé avec succès" },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Erreur lors de la suppression du slideshow:", error);
     return NextResponse.json(
-      { error: 'Erreur lors de la suppression du slideshow' },
+      { error: "Erreur lors de la suppression du slideshow" },
       { status: 500 }
     );
   }
-} 
+}
