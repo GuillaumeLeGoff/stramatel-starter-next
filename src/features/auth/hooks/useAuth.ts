@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../store/authStore";
 import { LoginCredentials, AuthResponse } from "../types/@auth";
@@ -9,20 +9,22 @@ export function useAuth() {
     user,
     isLoading,
     error,
+    isInitialized,
     setUser,
     setLoading,
     setError,
     setToken,
     getToken,
+    setInitialized,
     logout: storeLogout,
   } = useAuthStore();
 
-  // Gérer l'état d'initialisation localement
-  const [isInitialized, setIsInitialized] = useState(false);
-
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (!isInitialized) {
+      console.log("checkAuth");
+      checkAuth();
+    }
+  }, [isInitialized]);
 
   // Fonction pour vérifier si l'utilisateur est connecté
   const checkAuth = useCallback(async () => {
@@ -30,8 +32,14 @@ export function useAuth() {
     console.log("token", token);
     if (!token) {
       setUser(null);
-      setIsInitialized(true);
+      setInitialized(true);
       router.push("/login");
+      return;
+    }
+
+    // Si l'utilisateur est déjà chargé, ne pas vérifier à nouveau
+    if (user) {
+      setInitialized(true);
       return;
     }
 
@@ -65,9 +73,9 @@ export function useAuth() {
       router.push("/login");
     } finally {
       setLoading(false);
-      setIsInitialized(true);
+      setInitialized(true);
     }
-  }, [getToken, setLoading, setUser, storeLogout, router]);
+  }, [getToken, setLoading, setUser, storeLogout, router, user, setInitialized]);
 
   // Fonction de connexion
   const login = async (credentials: LoginCredentials) => {
@@ -91,6 +99,7 @@ export function useAuth() {
       const data: AuthResponse = await response.json();
       setUser(data.user);
       setToken(data.token);
+      setInitialized(true);
       router.push("/dashboard");
 
       return data.user;
@@ -107,6 +116,7 @@ export function useAuth() {
   // Fonction de déconnexion
   const logout = () => {
     storeLogout();
+    setInitialized(false);
     router.push("/login");
   };
 

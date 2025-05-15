@@ -12,6 +12,7 @@ export interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
+  isInitialized?: boolean;
 }
 
 export interface LoginCredentials {
