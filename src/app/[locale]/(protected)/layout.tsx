@@ -31,7 +31,7 @@ export default function ProtectedLayout({
     },
     {
       label: "Diaporama",
-      href: "/diaporama",
+      href: "/slideshow",
       icon: <Image className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />,
     },
     {
