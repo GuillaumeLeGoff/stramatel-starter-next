@@ -6,7 +6,8 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/shared/c
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect } from "react";
 import { KonvaStageRenderer } from "./KonvaStageRenderer";
-import { SlidePreview } from "./SlidePreview";
+import { SlidePreview } from "./";
+import { PlusIcon } from "lucide-react";
 
 // Style pour masquer les barres de défilement
 const scrollbarHideStyle = {
@@ -43,7 +44,7 @@ export function EditorPage() {
           <p className="text-muted-foreground">Aucun slideshow sélectionné</p>
         </div>
       )}
-      
+
       {currentSlideshow && (
         <div className="flex flex-col h-full px-4 pb-4">
           <ResizablePanelGroup
@@ -58,7 +59,13 @@ export function EditorPage() {
                     className="h-full overflow-auto"
                     style={scrollbarHideStyle}
                   >
-                    <h3 className="text-sm font-medium mb-4">Slides</h3>
+                    <div className="flex items-center justify-between ">
+                      <h3 className="text-sm font-medium">Slides</h3>
+                      <Button variant="ghost" size="icon"  >
+                        <PlusIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+
                     <div className="space-y-3">
                       {currentSlideshow.slides.map((slide, index) => (
                         <SlidePreview
@@ -80,7 +87,10 @@ export function EditorPage() {
             {/* Éditeur principal */}
             <ResizablePanel defaultSize={60}>
               <ResizablePanelGroup direction="vertical">
-                <ResizablePanel defaultSize={5} className="flex justify-end items-center border-b border">
+                <ResizablePanel
+                  defaultSize={5}
+                  className="flex justify-end items-center border-b border"
+                >
                   <Button
                     variant="ghost"
                     size="icon"
@@ -100,8 +110,6 @@ export function EditorPage() {
                   >
                     <ZoomIn className="h-4 w-4" />
                   </Button>
-                 
-                 
                 </ResizablePanel>
                 <ResizablePanel defaultSize={90}>
                   <div className="flex flex-col h-full">
@@ -112,7 +120,6 @@ export function EditorPage() {
                     >
                       <div className="h-full flex flex-col rounded-none border-0 shadow-none">
                         {/* Contrôles de zoom */}
-                      
 
                         <div className="flex-1 flex justify-center items-center">
                           {konvaData && (
@@ -175,9 +182,10 @@ export function EditorPage() {
                     </div>
                   </div>
                 </ResizablePanel>
-                <ResizablePanel defaultSize={5} className="flex justify-end items-center border-t border">
-                 
-                </ResizablePanel>
+                <ResizablePanel
+                  defaultSize={5}
+                  className="flex justify-end items-center border-t border"
+                ></ResizablePanel>
               </ResizablePanelGroup>
             </ResizablePanel>
 

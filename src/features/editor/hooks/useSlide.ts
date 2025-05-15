@@ -36,8 +36,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     // Calculer l'échelle initiale
     calculateScale();
     
-    // Recalculer si la fenêtre est redimensionnée
-    window.addEventListener('resize', calculateScale);
+
     return () => {
       window.removeEventListener('resize', calculateScale);
     };
@@ -83,9 +82,14 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     } as KonvaStage;
   }, [stageData]);
 
+
+  const addSlide = () => {
+   
+  }
   return {
     previewScale,
     viewportStageData: createViewportStageData(),
-    calculateScale
+    calculateScale,
+    addSlide
   };
 }

@@ -1,7 +1,7 @@
 // Export des composants
 export * from "./components/EditorPage";
 export * from "./components/KonvaStageRenderer";
-export * from "./components/SlidePreview";
+export * from "./components/SlideComponent";
 
 // Export des hooks
 export * from "./hooks";
