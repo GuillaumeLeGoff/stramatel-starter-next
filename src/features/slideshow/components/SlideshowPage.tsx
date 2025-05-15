@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { PageHeader } from "@/shared/components/ui/page-header";
 import {
   Table,
@@ -19,7 +19,7 @@ import {
 } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { useSlideshow, useCreateSlideshow } from "../hooks";
+import { useSlideshow } from "@/features/slideshow/hooks";
 import {
   Dialog,
   DialogContent,
@@ -29,69 +29,26 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/shared/components/ui/dialog";
-import { useRouter, useParams } from "next/navigation";
 
 export function SlideshowPage() {
-  const [open, setOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [slideshowToDelete, setSlideshowToDelete] = useState<number | null>(
-    null
-  );
-
   const {
+    open,
+    setOpen,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
     slideshows,
-    isLoading: isLoadingSlideshows,
-    error: slideshowError,
-    fetchSlideshows,
-    deleteSlideshowById,
-  } = useSlideshow();
-
-  const {
+    isLoadingSlideshows,
+    slideshowError,
+    createError,
     formData,
-    isLoading: isCreating,
-    error: createError,
+    isCreating,
     handleChange,
-    handleSubmit: originalHandleSubmit,
-  } = useCreateSlideshow();
-
-  const router = useRouter();
-  const params = useParams();
-  const locale = (params.locale as string) || "fr";
-
-  // Wrapper pour handleSubmit qui ferme le dialog après création réussie
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const result = await originalHandleSubmit(e);
-      if (result) {
-        // Fermer le dialog seulement si la création a réussi
-        setOpen(false);
-      }
-    } catch (error) {
-      // En cas d'erreur, le dialog reste ouvert
-      console.error("Erreur lors de la création:", error);
-    }
-  };
-
-  // Charger les slideshows au chargement de la page
-  useEffect(() => {
-    fetchSlideshows();
-  }, [fetchSlideshows]);
-
-  // Gestion de la suppression d'un slideshow
-  const handleDelete = async () => {
-    if (slideshowToDelete !== null) {
-      await deleteSlideshowById(slideshowToDelete);
-      setDeleteDialogOpen(false);
-      setSlideshowToDelete(null);
-    }
-  };
-
-  // Ouvrir le dialog de confirmation de suppression
-  const openDeleteDialog = (id: number) => {
-    setSlideshowToDelete(id);
-    setDeleteDialogOpen(true);
-  };
+    handleSubmit,
+    handleDelete,
+    openDeleteDialog,
+    formatSlideshowDuration,
+    navigateToEditor
+  } = useSlideshow();
 
   return (
     <div className="space-y-6">
@@ -185,22 +142,11 @@ export function SlideshowPage() {
                 </TableHeader>
                 <TableBody>
                   {slideshows.map((slideshow) => {
-                    // Calculer la durée totale du slideshow
-                    const totalDuration = slideshow.slides.reduce(
-                      (acc, slide) => acc + slide.duration,
-                      0
-                    );
-                    // Formater la durée en minutes et secondes
-                    const minutes = Math.floor(totalDuration / 60);
-                    const seconds = totalDuration % 60;
-
+                    const { formattedDuration } = formatSlideshowDuration(slideshow.slides);
+                    
                     return (
                       <TableRow
-                        onClick={() =>
-                          router.push(
-                            `/${locale}/slideshow/${slideshow.id}/editor`
-                          )
-                        }
+                        onClick={() => navigateToEditor(slideshow.id)}
                         key={slideshow.id}
                       >
                         <TableCell className="font-medium">
@@ -209,18 +155,17 @@ export function SlideshowPage() {
                         <TableCell className="line-clamp-2">
                           {slideshow.description || "Aucune description"}
                         </TableCell>
-                        <TableCell>
-                          {minutes > 0
-                            ? `${minutes}m ${seconds}s`
-                            : `${seconds}s`}
-                        </TableCell>
+                        <TableCell>{formattedDuration}</TableCell>
                         <TableCell>{slideshow.slides.length}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => openDeleteDialog(slideshow.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteDialog(slideshow.id);
+                              }}
                             >
                               Supprimer
                             </Button>

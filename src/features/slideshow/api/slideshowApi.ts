@@ -1,4 +1,4 @@
-import { SlideshowFormData, KonvaData } from "../types";
+import { SlideshowFormData, KonvaData } from "@/features/slideshow/types";
 
 /**
  * Récupère tous les slideshows
@@ -83,7 +83,7 @@ export async function deleteSlideshow(id: number) {
 }
 
 /**
- * Met à jour une slide
+ * Met à jour une slide existante
  */
 export async function updateSlide(
   slideId: number,
@@ -115,18 +115,25 @@ export async function updateSlide(
  * Crée une nouvelle slide
  */
 export async function createSlide(
+  slideshowId: number,
   slideData: {
-    slideshowId: number;
     position: number;
     duration: number;
+    mediaId?: number;
+    width?: number;
+    height?: number;
+    konvaData?: KonvaData;
   }
 ) {
-  const response = await fetch(`/api/slides`, {
+  const response = await fetch("/api/slides", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(slideData),
+    body: JSON.stringify({
+      ...slideData,
+      slideshowId,
+    }),
   });
   
   if (!response.ok) {
@@ -135,3 +142,6 @@ export async function createSlide(
   
   return await response.json();
 }
+
+
+

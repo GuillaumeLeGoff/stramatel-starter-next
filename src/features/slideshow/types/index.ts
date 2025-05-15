@@ -1,17 +1,34 @@
 // Types for slideshow feature
 
-// Type pour les données Konva
+// Type pour les médias
+export interface Media {
+  id: number;
+  originalFileName: string;
+  fileName: string;
+  path: string;
+  format: string;
+  type: string;
+  size: number;
+  thumbnailId?: number;
+  thumbnail?: Media;
+  thumbnails?: Media[];
+}
+
+// Type pour les données
+export interface Data {
+  id: number;
+  name: string;
+  type: string;
+  value: string;
+}
+
+// Type pour les données Konva (canvas)
 export interface KonvaData {
-  attrs?: Record<string, unknown>;
-  className?: string;
-  children?: Array<{
-    attrs?: Record<string, unknown>;
-    className?: string;
-    children?: Array<{
-      attrs?: Record<string, unknown>;
-      className?: string;
-    }>;
-  }>;
+  objects?: any[];
+  background?: string;
+  width?: number;
+  height?: number;
+  [key: string]: any;
 }
 
 // Types alignés avec le schéma Prisma
@@ -25,21 +42,9 @@ export interface SlideshowSlide {
   y: number;
   width: number;
   height: number;
+  konvaData?: KonvaData;
   media?: Media;
   data?: SlideData[];
-  konvaData?: KonvaData;
-}
-
-export interface Media {
-  id: number;
-  originalFileName: string;
-  fileName: string;
-  path: string;
-  format: string;
-  type: string;
-  size: number;
-  uploadedAt: string;
-  updatedAt: string;
 }
 
 export interface SlideData {
@@ -47,14 +52,6 @@ export interface SlideData {
   slideId: number;
   dataId: number;
   data?: Data;
-}
-
-export interface Data {
-  id: number;
-  name: string;
-  value: string;
-  type: string;
-  edit: boolean;
 }
 
 export interface SlideshowMode {
