@@ -1,6 +1,13 @@
-// Index file for Editor feature
-export { EditorPage } from "./components/EditorPage";
-export * from "./store";
-export * from "./contexts";
-export * from "./components";
-export * from "./types"; 
+// Export des composants
+export * from "./components/EditorPage";
+export * from "./components/KonvaStageRenderer";
+export * from "./components/SlidePreview";
+
+// Export des hooks
+export * from "./hooks";
+
+// Export des types
+export * from "./types";
+
+// Export du store
+export * from "./store"; 

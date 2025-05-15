@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSlideshowStore } from "@/features/slideshow/store/slideshowStore";
-import { SlideshowFormData, SlideshowSlide } from "@/features/slideshow/types";
+import { SlideshowConfig, SlideshowFormData, SlideshowSlide } from "@/features/slideshow/types";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import * as slideshowApi from "@/features/slideshow/api/slideshowApi";
 import { useParams, useRouter } from "next/navigation";
@@ -17,6 +17,9 @@ export function useSlideshow() {
     deleteSlideshow,
     setLoading,
     setError,
+    setCurrentSlideshow,
+    isEditorOpen,
+    setEditorOpen,
   } = useSlideshowStore();
 
   const { user } = useAuth();
@@ -29,6 +32,9 @@ export function useSlideshow() {
     name: "",
     description: "",
   });
+  
+  // Référence pour suivre si les données ont déjà été chargées
+  const dataFetchedRef = useRef(false);
 
   // Navigation
   const router = useRouter();
@@ -37,19 +43,31 @@ export function useSlideshow() {
 
   // Charge les slideshows au chargement
   useEffect(() => {
-    fetchSlideshows();
+    if (!dataFetchedRef.current) {
+      console.log("Chargement initial des slideshows");
+      fetchSlideshows();
+      dataFetchedRef.current = true;
+    }
   }, []);
 
   // Charge tous les slideshows
   const fetchSlideshows = useCallback(async () => {
     try {
+      // Éviter les appels multiples si déjà en cours de chargement
+      if (isLoading) {
+        console.log("Chargement déjà en cours, appel ignoré");
+        return;
+      }
+      
       setLoading(true);
       setError(null);
 
+      console.log("Récupération des slideshows...");
       const data = await slideshowApi.fetchAllSlideshows();
       
       // S'assurer que data est un tableau
       if (Array.isArray(data)) {
+        console.log(`${data.length} slideshows récupérés`);
         setSlideshows(data);
       } else {
         console.error("Les données reçues ne sont pas un tableau:", data);
@@ -66,8 +84,9 @@ export function useSlideshow() {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setSlideshows]);
+  }, [setLoading, setError, setSlideshows, isLoading]);
 
+  
   // Crée un nouveau slideshow
   const createSlideshow = useCallback(
     async (formData: SlideshowFormData) => {
@@ -96,6 +115,22 @@ export function useSlideshow() {
     },
     [user, setLoading, setError, addSlideshow]
   );
+
+  // Naviguer vers l'éditeur de slideshow
+  const navigateToEditor = useCallback((slideshowId: number) => {
+    router.push(`/${locale}/slideshow/${slideshowId}/editor`);
+  }, [router, locale]);
+  
+  // Fonction pour définir le slideshow courant et ouvrir l'éditeur
+  const handleSetSlideshow = useCallback((slideshow: SlideshowConfig) => {
+    setCurrentSlideshow(slideshow);
+    setEditorOpen(true);
+  }, [setCurrentSlideshow, setEditorOpen]);
+
+  // Fonction pour fermer l'éditeur
+  const handleCloseEditor = useCallback(() => {
+    setEditorOpen(false);
+  }, [setEditorOpen]);
 
   // Supprime un slideshow
   const deleteSlideshowById = useCallback(
@@ -181,17 +216,13 @@ export function useSlideshow() {
     };
   };
 
-  // Naviguer vers l'éditeur de slideshow
-  const navigateToEditor = (slideshowId: number) => {
-    router.push(`/${locale}/slideshow/${slideshowId}/editor`);
-  };
-
   return {
     // États du store
     slideshows,
     currentSlideshow,
     isLoading: isLoading,
     error: error,
+    isEditorOpen,
     
     // États de l'interface
     open,
@@ -215,6 +246,9 @@ export function useSlideshow() {
     handleSubmit,
     handleDelete,
     openDeleteDialog,
+    handleSetSlideshow,
+    handleCloseEditor,
+    setEditorOpen,
     
     // Utilitaires
     formatSlideshowDuration,

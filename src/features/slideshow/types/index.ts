@@ -79,6 +79,7 @@ export interface SlideshowState {
   currentSlideshow: SlideshowConfig | null;
   isLoading: boolean;
   error: string | null;
+  isEditorOpen: boolean;
 }
 
 export interface SlideshowFormData {

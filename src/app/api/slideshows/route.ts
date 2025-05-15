@@ -44,8 +44,8 @@ export async function POST(request: Request) {
     const initialKonvaState = {
       version: 1,
       stageConfig: {
-        width: 1920,
-        height: 1080,
+        width: 800,
+        height: 600,
         draggable: false,
       },
     };
@@ -62,14 +62,14 @@ export async function POST(request: Request) {
             {
               position: 1,
               duration: 5, // 5 secondes par défaut
-              width: 1920,
-              height: 1080,
+              width: 800,
+              height: 600,
               konvaData: {
-                width: 1920,
-                height: 1080,
+                width: 800,
+                height: 600,
                 attrs: {
-                  width: 1920,
-                  height: 1080,
+                  width: 800,
+                  height: 600,
                 },
                 className: "Stage",
                 children: [

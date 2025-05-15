@@ -11,6 +11,7 @@ interface SlideshowActions {
   updateSlideshow: (slideshow: SlideshowConfig) => void;
   deleteSlideshow: (id: number) => void;
   resetState: () => void;
+  setEditorOpen: (open: boolean) => void;
 }
 
 const initialState: SlideshowState = {
@@ -18,6 +19,7 @@ const initialState: SlideshowState = {
   currentSlideshow: null,
   isLoading: false,
   error: null,
+  isEditorOpen: false,
 };
 
 export const useSlideshowStore = create<SlideshowState & SlideshowActions>(
@@ -64,5 +66,7 @@ export const useSlideshowStore = create<SlideshowState & SlideshowActions>(
       })),
 
     resetState: () => set(initialState),
+    
+    setEditorOpen: (isEditorOpen: boolean) => set({ isEditorOpen }),
   })
 );
