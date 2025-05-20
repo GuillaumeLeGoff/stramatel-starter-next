@@ -12,7 +12,7 @@ export function useEditor() {
     setLoading,
     setError,
   } = slideStore();
-  const { currentSlideshow } = useSlideshow();
+  const { currentSlideshow, updateCurrentSlideshow } = useSlideshow();
   const [scale, setScale] = useState(1);
   const [containerSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -141,6 +141,232 @@ export function useEditor() {
     [minZoom, MAX_ZOOM]
   );
 
+  // Ajouter une forme au slide actuel
+  const addShape = useCallback(
+    (shapeType: string) => {
+      if (!currentSlideshow || !currentSlideshow.slides || !currentKonvaData)
+        return;
+
+      const currentSlideObj = currentSlideshow.slides[currentSlide];
+      if (!currentSlideObj) return;
+
+      // Créer un clone profond du konvaData actuel
+      const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData));
+
+      // Générer un ID unique pour la forme
+      const shapeId = `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+      // Déterminer les dimensions et la position de la nouvelle forme
+      const centerX = updatedKonvaData.attrs.width / 2;
+      const centerY = updatedKonvaData.attrs.height / 2;
+
+      let newShape;
+
+      switch (shapeType) {
+        case "rectangle":
+          newShape = {
+            attrs: {
+              x: centerX - 100,
+              y: centerY - 50,
+              width: 200,
+              height: 100,
+              fill: "#3B82F6",
+              stroke: "#2563EB",
+              strokeWidth: 2,
+              id: shapeId,
+              name: "Rectangle",
+              draggable: true,
+            },
+            className: "Rect",
+          };
+          break;
+
+        case "circle":
+          newShape = {
+            attrs: {
+              x: centerX,
+              y: centerY,
+              radius: 50,
+              fill: "#10B981",
+              stroke: "#059669",
+              strokeWidth: 2,
+              id: shapeId,
+              name: "Cercle",
+              draggable: true,
+            },
+            className: "Circle",
+          };
+          break;
+
+        case "text":
+          newShape = {
+            attrs: {
+              x: centerX - 100,
+              y: centerY - 25,
+              width: 200,
+              height: 50,
+              text: "Nouveau texte",
+              fontSize: 20,
+              fontFamily: "Arial",
+              fill: "#000000",
+              align: "center",
+              id: shapeId,
+              name: "Texte",
+              draggable: true,
+            },
+            className: "Text",
+          };
+          break;
+
+        case "line":
+          newShape = {
+            attrs: {
+              points: [centerX - 100, centerY, centerX + 100, centerY],
+              stroke: "#000000",
+              strokeWidth: 4,
+              id: shapeId,
+              name: "Ligne",
+              draggable: true,
+            },
+            className: "Line",
+          };
+          break;
+
+        case "arrow":
+          newShape = {
+            attrs: {
+              points: [centerX - 100, centerY, centerX + 100, centerY],
+              stroke: "#000000",
+              strokeWidth: 4,
+              pointerLength: 10,
+              pointerWidth: 10,
+              id: shapeId,
+              name: "Flèche",
+              draggable: true,
+            },
+            className: "Arrow",
+          };
+          break;
+
+        case "image":
+          newShape = {
+            attrs: {
+              x: centerX - 100,
+              y: centerY - 75,
+              width: 200,
+              height: 150,
+              id: shapeId,
+              name: "Image",
+              draggable: true,
+            },
+            className: "Image",
+          };
+          break;
+
+        case "chart":
+          // Pour un graphique, on peut créer un groupe avec plusieurs formes
+          newShape = {
+            attrs: {
+              x: centerX - 150,
+              y: centerY - 100,
+              width: 300,
+              height: 200,
+              id: shapeId,
+              name: "Graphique",
+              draggable: true,
+            },
+            className: "Group",
+            children: [
+              {
+                attrs: {
+                  width: 300,
+                  height: 200,
+                  fill: "#F9FAFB",
+                  stroke: "#E5E7EB",
+                  strokeWidth: 1,
+                },
+                className: "Rect",
+              },
+              {
+                attrs: {
+                  points: [10, 190, 10, 10, 290, 10],
+                  stroke: "#9CA3AF",
+                  strokeWidth: 2,
+                },
+                className: "Line",
+              },
+              // Graphique exemple
+              {
+                attrs: {
+                  points: [30, 150, 90, 100, 150, 130, 210, 50, 270, 90],
+                  stroke: "#3B82F6",
+                  strokeWidth: 3,
+                  tension: 0.3,
+                  lineCap: "round",
+                  lineJoin: "round",
+                },
+                className: "Line",
+              },
+            ],
+          };
+          break;
+
+        default:
+          return; // Sortir si le type n'est pas géré
+      }
+
+      // Ajouter la nouvelle forme à la première couche
+      if (updatedKonvaData.children && updatedKonvaData.children.length > 0) {
+        updatedKonvaData.children[0].children.push(newShape);
+      } else {
+        // Si pour une raison quelconque il n'y a pas de couche, en créer une
+        updatedKonvaData.children = [
+          {
+            attrs: {},
+            className: "Layer",
+            children: [newShape],
+          },
+        ];
+      }
+
+      // Mettre à jour le slideshow avec les nouvelles données Konva
+      if (updateCurrentSlideshow) {
+        updateCurrentSlideshow((prev) => {
+          const updatedSlides = [...(prev.slides || [])];
+          if (updatedSlides[currentSlide]) {
+            updatedSlides[currentSlide].konvaData = updatedKonvaData;
+          }
+          return {
+            ...prev,
+            slides: updatedSlides,
+          };
+        });
+      }
+
+      console.log(`Forme ${shapeType} ajoutée avec l'ID ${shapeId}`);
+    },
+    [currentSlideshow, currentSlide, currentKonvaData, updateCurrentSlideshow]
+  );
+
+  // Sauvegarder les données Konva du slide courant
+  const saveCurrentSlideKonvaData = useCallback(
+    (updatedKonvaData: KonvaStage) => {
+      if (!currentSlideshow || !updateCurrentSlideshow) return;
+
+      updateCurrentSlideshow((prev) => {
+        const updatedSlides = [...(prev.slides || [])];
+        if (updatedSlides[currentSlide]) {
+          updatedSlides[currentSlide].konvaData = updatedKonvaData;
+        }
+        return {
+          ...prev,
+          slides: updatedSlides,
+        };
+      });
+    },
+    [currentSlideshow, currentSlide, updateCurrentSlideshow]
+  );
+
   return {
     currentSlide,
     isLoading,
@@ -151,11 +377,13 @@ export function useEditor() {
     setLoading,
     setError,
     getCurrentSlideKonvaData,
+    saveCurrentSlideKonvaData,
     zoomIn,
     zoomOut,
     resetZoom,
     setZoom,
     fitToContainer,
     minZoom,
+    addShape,
   };
 }

@@ -7,11 +7,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -23,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { GripVertical } from "lucide-react";
+import { useSlide } from "../hooks/useSlide";
 
 interface SortableItemProps {
   slide: SlideshowSlide;
@@ -75,49 +74,29 @@ interface SortableSlideListProps {
   slides: SlideshowSlide[];
   currentSlide: number;
   onChangeSlide: (index: number) => void;
-  onOrderChange: (slides: SlideshowSlide[]) => void;
 }
 
 export function SortableSlideList({
   slides,
   currentSlide,
   onChangeSlide,
-  onOrderChange,
 }: SortableSlideListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = slides.findIndex(
-        (slide) => slide.id.toString() === active.id
-      );
-      const newIndex = slides.findIndex(
-        (slide) => slide.id.toString() === over.id
-      );
-
-      // Réorganiser les slides
-      const newSlides = arrayMove(slides, oldIndex, newIndex);
-
-      // Mettre à jour les positions et sauvegarder
-      onOrderChange(newSlides);
-
-      // Si la slide actuelle a été déplacée, mettre à jour l'index
-      if (oldIndex === currentSlide) {
-        onChangeSlide(newIndex);
-      }
-    }
-  };
+  // Utiliser le hook useSlide pour accéder à handleDragEnd
+  const { handleDragEnd } = useSlide({
+    stageData: null,
+    containerRef: { current: null },
+  });
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
+      onDragEnd={(event) => handleDragEnd(event, slides, onChangeSlide)}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
     >
       <SortableContext

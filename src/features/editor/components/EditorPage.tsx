@@ -12,14 +12,30 @@ import { useEffect } from "react";
 import { KonvaStageRenderer } from "./KonvaStageRenderer";
 import { SortableSlideList } from "./";
 import { PlusIcon } from "lucide-react";
+import { KonvaShapeSelector } from "./KonvaShapeSelector";
 
-// Style pour masquer les barres de défilement
-const scrollbarHideStyle = {
-  scrollbarWidth: "none" as const,
-  msOverflowStyle: "none" as const,
-  "&::-webkit-scrollbar": {
-    display: "none",
-  },
+// Ajouter une classe CSS globale pour masquer les barres de défilement
+const hideScrollbarClass = "hide-scrollbar";
+
+// Créer un style global pour masquer les barres de défilement
+const createGlobalScrollbarStyle = () => {
+  if (
+    typeof document !== "undefined" &&
+    !document.getElementById("hide-scrollbar-style")
+  ) {
+    const style = document.createElement("style");
+    style.id = "hide-scrollbar-style";
+    style.innerHTML = `
+      .${hideScrollbarClass}::-webkit-scrollbar {
+        display: none;
+      }
+      .${hideScrollbarClass} {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 };
 
 export function EditorPage() {
@@ -32,14 +48,17 @@ export function EditorPage() {
     zoomIn,
     zoomOut,
     containerRef,
+    addShape,
   } = useEditor();
-  const { addSlide, updateSlidesOrder } = useSlide({
+  const { addSlide } = useSlide({
     stageData: getCurrentSlideKonvaData(),
     containerRef,
   });
 
   useEffect(() => {
     console.log("currentSlideshow", currentSlideshow);
+    // Ajouter le style global pour masquer les barres de défilement
+    createGlobalScrollbarStyle();
   }, [currentSlideshow]);
 
   const konvaData = getCurrentSlideKonvaData();
@@ -84,17 +103,13 @@ export function EditorPage() {
                   </div>
 
                   {/* Contenu scrollable */}
-                  <div
-                    className="flex-1 overflow-auto"
-                    style={scrollbarHideStyle}
-                  >
+                  <div className={`flex-1 overflow-auto ${hideScrollbarClass}`}>
                     {currentSlideshow.slides &&
                     currentSlideshow.slides.length > 0 ? (
                       <SortableSlideList
                         slides={currentSlideshow.slides}
                         currentSlide={currentSlide}
                         onChangeSlide={changeSlide}
-                        onOrderChange={updateSlidesOrder}
                       />
                     ) : (
                       <div className="text-center text-muted-foreground py-4">
@@ -215,10 +230,14 @@ export function EditorPage() {
 
             <ResizableHandle />
 
-            {/* Zone pour des outils ou options futures */}
+            {/* Panneau des outils et des formes */}
             <ResizablePanel defaultSize={20} minSize={15}>
               <Card className="h-full rounded-none border-0 shadow-none">
-                <CardContent className="p-4"></CardContent>
+                <CardContent className="p-4 h-full">
+                  <div className={`h-full overflow-auto ${hideScrollbarClass}`}>
+                    <KonvaShapeSelector onAddShape={addShape} />
+                  </div>
+                </CardContent>
               </Card>
             </ResizablePanel>
           </ResizablePanelGroup>

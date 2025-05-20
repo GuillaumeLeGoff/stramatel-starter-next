@@ -8,6 +8,8 @@ import { KonvaStage, Slide } from "../types";
 import { slideStore } from "../store/slideStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
+import { arrayMove } from "@dnd-kit/sortable";
+import { DragEndEvent } from "@dnd-kit/core";
 
 interface UseSlideProps {
   stageData: KonvaStage | null;
@@ -16,7 +18,7 @@ interface UseSlideProps {
 
 export function useSlide({ stageData, containerRef }: UseSlideProps) {
   const [previewScale, setPreviewScale] = useState(0.2);
-  const { setCurrentSlide } = slideStore();
+  const { setCurrentSlide, currentSlide } = slideStore();
   const { updateCurrentSlideshow, currentSlideshow } = useSlideshow();
 
   // Calculer l'échelle appropriée en fonction des dimensions du conteneur
@@ -194,6 +196,40 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     }
   };
 
+  /**
+   * Gère la fin d'un drag-and-drop et réorganise les slides
+   */
+  const handleDragEnd = useCallback(
+    (
+      event: DragEndEvent,
+      slides: SlideshowSlide[],
+      onChangeSlide?: (index: number) => void
+    ) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id) {
+        const oldIndex = slides.findIndex(
+          (slide) => slide.id.toString() === active.id
+        );
+        const newIndex = slides.findIndex(
+          (slide) => slide.id.toString() === over.id
+        );
+
+        // Réorganiser les slides
+        const newSlides = arrayMove(slides, oldIndex, newIndex);
+
+        // Mettre à jour les positions et sauvegarder
+        updateSlidesOrder(newSlides);
+
+        // Si la slide actuelle a été déplacée, mettre à jour l'index
+        if (oldIndex === currentSlide && onChangeSlide) {
+          onChangeSlide(newIndex);
+        }
+      }
+    },
+    [currentSlide, updateSlidesOrder]
+  );
+
   return {
     previewScale,
     viewportStageData: createViewportStageData(),
@@ -202,5 +238,6 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     addSlide,
     deleteSlide,
     updateSlidesOrder,
+    handleDragEnd,
   };
 }
