@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { KonvaStageRenderer } from "./KonvaStageRenderer";
 import { KonvaStage, SlidePreviewProps } from "../types";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useSlide } from "../hooks/useSlide";
+import { Button } from "@/shared/components/ui/button";
+import { Trash2, Clock } from "lucide-react";
 
 export function SlidePreview({
   slide,
@@ -11,10 +13,11 @@ export function SlidePreview({
   onClick,
 }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  
+  const [isHovered, setIsHovered] = useState(false);
+
   // Convertir le konvaData du slide en KonvaStage
   let stageData: KonvaStage | null = null;
-  
+
   if (slide.konvaData) {
     stageData = slide.konvaData as unknown as KonvaStage;
   } else {
@@ -50,11 +53,26 @@ export function SlidePreview({
       ],
     };
   }
-  
-  const { previewScale, viewportStageData } = useSlide({
+
+  const { previewScale, viewportStageData, deleteSlide } = useSlide({
     stageData,
-    containerRef
+    containerRef,
   });
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêcher le déclenchement de onClick sur la Card
+    if (slide && slide.id) {
+      try {
+        await deleteSlide(slide.id);
+        // Si besoin d'afficher une notification de succès
+        // toast.success("Slide supprimée avec succès");
+      } catch (error) {
+        console.error("Erreur lors de la suppression de la slide", error);
+        // Si besoin d'afficher une notification d'erreur
+        // toast.error("Erreur lors de la suppression de la slide");
+      }
+    }
+  };
 
   useEffect(() => {
     if (stageData) {
@@ -64,13 +82,39 @@ export function SlidePreview({
 
   if (!stageData || !viewportStageData) return null;
 
+  // Formatage de la durée (en secondes)
+  const formatDuration = (duration?: number) => {
+    if (!duration) return "0s";
+    return `${duration}s`;
+  };
+
   return (
     <Card
-      className={`cursor-pointer transition-all ${
+      className={`cursor-pointer transition-all relative ${
         isActive ? "border-2 border-primary" : ""
       }`}
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Bouton de suppression */}
+      {isHovered && (
+        <Button
+          variant="destructive"
+          size="icon"
+          className="absolute top-1 right-1 h-7 w-7 z-10"
+          onClick={handleDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      )}
+
+      {/* Durée de la slide */}
+      <div className="absolute z-10 bottom-1 right-1 flex items-center justify-center bg-black/70 px-2 py-1 rounded text-white text-xs font-medium">
+        <Clock className="h-3 w-3 mr-1" />
+        {formatDuration(slide.duration)}
+      </div>
+
       <CardContent className="p-0">
         <div
           ref={containerRef}
@@ -111,4 +155,4 @@ export function SlidePreview({
       </CardContent>
     </Card>
   );
-} 
+}

@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSlideshowStore } from "@/features/slideshow/store/slideshowStore";
-import { SlideshowConfig, SlideshowFormData, SlideshowSlide } from "@/features/slideshow/types";
+import {
+  SlideshowConfig,
+  SlideshowFormData,
+  SlideshowSlide,
+} from "@/features/slideshow/types";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import * as slideshowApi from "@/features/slideshow/api/slideshowApi";
 import { useParams, useRouter } from "next/navigation";
+import { fetchSlideshowById } from "@/features/slideshow/api/slideshowApi";
 
 export function useSlideshow() {
   // États du store
@@ -25,14 +30,16 @@ export function useSlideshow() {
   const { user } = useAuth();
 
   // États pour l'interface utilisateur
-  const [open, setOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [slideshowToDelete, setSlideshowToDelete] = useState<number | null>(null);
+  const [slideshowToDelete, setSlideshowToDelete] = useState<number | null>(
+    null
+  );
   const [formData, setFormData] = useState<SlideshowFormData>({
     name: "",
     description: "",
   });
-  
+
   // Référence pour suivre si les données ont déjà été chargées
   const dataFetchedRef = useRef(false);
 
@@ -58,13 +65,13 @@ export function useSlideshow() {
         console.log("Chargement déjà en cours, appel ignoré");
         return;
       }
-      
+
       setLoading(true);
       setError(null);
 
       console.log("Récupération des slideshows...");
       const data = await slideshowApi.fetchAllSlideshows();
-      
+
       // S'assurer que data est un tableau
       if (Array.isArray(data)) {
         console.log(`${data.length} slideshows récupérés`);
@@ -86,7 +93,6 @@ export function useSlideshow() {
     }
   }, [setLoading, setError, setSlideshows, isLoading]);
 
-  
   // Crée un nouveau slideshow
   const createSlideshow = useCallback(
     async (formData: SlideshowFormData) => {
@@ -100,7 +106,7 @@ export function useSlideshow() {
         setError(null);
 
         const data = await slideshowApi.createSlideshow(formData, user.id);
-        
+
         addSlideshow(data);
         return data;
       } catch (error) {
@@ -117,15 +123,23 @@ export function useSlideshow() {
   );
 
   // Naviguer vers l'éditeur de slideshow
-  const navigateToEditor = useCallback((slideshowId: number) => {
-    router.push(`/${locale}/slideshow/${slideshowId}/editor`);
-  }, [router, locale]);
-  
+  const navigateToEditor = useCallback(
+    (slideshowId: number) => {
+      router.push(`/${locale}/slideshow/${slideshowId}/editor`);
+    },
+    [router, locale]
+  );
+
   // Fonction pour définir le slideshow courant et ouvrir l'éditeur
-  const handleSetSlideshow = useCallback((slideshow: SlideshowConfig) => {
-    setCurrentSlideshow(slideshow);
-    setEditorOpen(true);
-  }, [setCurrentSlideshow, setEditorOpen]);
+  const handleSetSlideshow = useCallback(
+    (slideshow: SlideshowConfig) => {
+      fetchSlideshowById(slideshow.id).then((data) => {
+        setCurrentSlideshow(data);
+        setEditorOpen(true);
+      });
+    },
+    [setCurrentSlideshow, setEditorOpen]
+  );
 
   // Fonction pour fermer l'éditeur
   const handleCloseEditor = useCallback(() => {
@@ -140,7 +154,7 @@ export function useSlideshow() {
         setError(null);
 
         await slideshowApi.deleteSlideshow(id);
-        
+
         deleteSlideshow(id);
         return true;
       } catch (error) {
@@ -156,8 +170,19 @@ export function useSlideshow() {
     [setLoading, setError, deleteSlideshow]
   );
 
+  // Met à jour le slideshow courant
+  const updateCurrentSlideshow = useCallback(
+    (updater: (slideshow: SlideshowConfig) => SlideshowConfig) => {
+      if (!currentSlideshow) return;
+
+      const updatedSlideshow = updater(currentSlideshow);
+      setCurrentSlideshow(updatedSlideshow);
+    },
+    [currentSlideshow, setCurrentSlideshow]
+  );
+
   // FONCTIONS LIÉES À L'INTERFACE UTILISATEUR
-  
+
   // Gestion du formulaire
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -174,7 +199,7 @@ export function useSlideshow() {
           name: "",
           description: "",
         });
-        setOpen(false);
+        setCreateDialogOpen(false);
         return result;
       }
       return null;
@@ -200,7 +225,7 @@ export function useSlideshow() {
   };
 
   // UTILITAIRES
-  
+
   // Calculer la durée totale et le format du slideshow
   const formatSlideshowDuration = (slides: SlideshowSlide[]) => {
     const totalDuration = slides.reduce(
@@ -209,10 +234,11 @@ export function useSlideshow() {
     );
     const minutes = Math.floor(totalDuration / 60);
     const seconds = totalDuration % 60;
-    
+
     return {
       totalDuration,
-      formattedDuration: minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`
+      formattedDuration:
+        minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`,
     };
   };
 
@@ -223,10 +249,11 @@ export function useSlideshow() {
     isLoading: isLoading,
     error: error,
     isEditorOpen,
-    
+    setCurrentSlideshow,
+
     // États de l'interface
-    open,
-    setOpen,
+    createDialogOpen,
+    setCreateDialogOpen,
     deleteDialogOpen,
     setDeleteDialogOpen,
     slideshowToDelete,
@@ -235,12 +262,12 @@ export function useSlideshow() {
     slideshowError: error,
     createError: error,
     isCreating: isLoading,
-    
+
     // Fonctions du store
     fetchSlideshows,
     createSlideshow,
     deleteSlideshowById,
-    
+
     // Fonctions de l'interface
     handleChange,
     handleSubmit,
@@ -249,10 +276,13 @@ export function useSlideshow() {
     handleSetSlideshow,
     handleCloseEditor,
     setEditorOpen,
-    
+
     // Utilitaires
     formatSlideshowDuration,
     navigateToEditor,
-    locale
+    locale,
+
+    // Nouvelle fonction
+    updateCurrentSlideshow,
   };
 }

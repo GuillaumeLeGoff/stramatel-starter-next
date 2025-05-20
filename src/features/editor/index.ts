@@ -10,4 +10,4 @@ export * from "./hooks";
 export * from "./types";
 
 // Export du store
-export * from "./store"; 
+export * from "./store/slideStore";

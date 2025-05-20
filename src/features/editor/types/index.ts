@@ -33,7 +33,11 @@ export interface KonvaStageAttrs {
 }
 
 export interface KonvaNode {
-  attrs: KonvaShapeAttrs | KonvaTextNodeAttrs | KonvaLayerAttrs | KonvaStageAttrs;
+  attrs:
+    | KonvaShapeAttrs
+    | KonvaTextNodeAttrs
+    | KonvaLayerAttrs
+    | KonvaStageAttrs;
   className: string;
   children?: KonvaNode[];
 }
@@ -58,7 +62,7 @@ export interface KonvaShape extends KonvaNode {
   children?: KonvaShape[];
 }
 
-export interface EditorState {
+export interface SlideStore {
   currentSlide: number;
   isLoading: boolean;
   error: string | null;

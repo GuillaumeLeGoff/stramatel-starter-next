@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 // GET /api/slides
 export async function GET() {
@@ -7,11 +7,6 @@ export async function GET() {
     const slides = await prisma.slide.findMany({
       include: {
         media: true,
-        data: {
-          include: {
-            data: true,
-          },
-        },
         slideshow: {
           select: {
             id: true,
@@ -24,7 +19,7 @@ export async function GET() {
     return NextResponse.json(slides);
   } catch (error) {
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération des slides' },
+      { error: "Erreur lors de la récupération des slides" },
       { status: 500 }
     );
   }
@@ -34,17 +29,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      slideshowId,
-      position,
-      duration,
-      mediaId,
-      x,
-      y,
-      width,
-      height,
-      dataIds,
-    } = body;
+    const { slideshowId, position, duration, mediaId, dataIds } = body;
 
     const slide = await prisma.slide.create({
       data: {
@@ -52,25 +37,24 @@ export async function POST(request: Request) {
         position,
         duration,
         mediaId,
-        x,
-        y,
-        width,
-        height,
-        data: {
-          create: dataIds.map((dataId: number) => ({
-            data: {
-              connect: {
-                id: dataId,
+        ...(Array.isArray(dataIds) && dataIds.length > 0
+          ? {
+              data: {
+                create: dataIds.map((dataId: number) => ({
+                  data: {
+                    connect: { id: dataId },
+                  },
+                })),
               },
-            },
-          })),
-        },
+            }
+          : {}),
       },
       include: {
         media: true,
-        data: {
-          include: {
-            data: true,
+        slideshow: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -78,9 +62,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json(slide, { status: 201 });
   } catch (error) {
+    console.log(error);
     return NextResponse.json(
-      { error: 'Erreur lors de la création du slide' },
+      { error: "Erreur lors de la création du slide" },
       { status: 500 }
     );
   }
-} 
+}

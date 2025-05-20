@@ -66,11 +66,14 @@ export interface SlideshowConfig {
   name: string;
   description?: string;
   createdBy: number;
-  slides: SlideshowSlide[];
+  slides?: SlideshowSlide[];
   modes: SlideshowMode[];
   user?: {
     id: number;
     username: string;
+  };
+  _count?: {
+    slides: number;
   };
 }
 

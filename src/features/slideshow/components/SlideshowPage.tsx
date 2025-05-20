@@ -34,10 +34,10 @@ import { EditorPage } from "@/features/editor/components/EditorPage";
 
 export function SlideshowPage() {
   const {
-    open,
-    setOpen,
     deleteDialogOpen,
     setDeleteDialogOpen,
+    createDialogOpen,
+    setCreateDialogOpen,
     slideshows,
     isLoadingSlideshows,
     slideshowError,
@@ -48,7 +48,6 @@ export function SlideshowPage() {
     handleSubmit,
     handleDelete,
     openDeleteDialog,
-    formatSlideshowDuration,
     handleSetSlideshow,
     isEditorOpen,
     handleCloseEditor,
@@ -71,7 +70,7 @@ export function SlideshowPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Liste des slideshows</CardTitle>
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusIcon className="w-4 h-4" /> Créer
@@ -152,9 +151,9 @@ export function SlideshowPage() {
                   </TableHeader>
                   <TableBody>
                     {slideshows.map((slideshow) => {
-                      const { formattedDuration } = formatSlideshowDuration(
-                        slideshow.slides
-                      );
+                      const estimatedDuration = slideshow._count?.slides
+                        ? `${slideshow._count.slides * 5}s`
+                        : "0s";
 
                       return (
                         <TableRow
@@ -169,8 +168,8 @@ export function SlideshowPage() {
                           <TableCell className="line-clamp-2">
                             {slideshow.description || "Aucune description"}
                           </TableCell>
-                          <TableCell>{formattedDuration}</TableCell>
-                          <TableCell>{slideshow.slides.length}</TableCell>
+                          <TableCell>{estimatedDuration}</TableCell>
+                          <TableCell>{slideshow._count?.slides || 0}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end space-x-2">
                               <Button

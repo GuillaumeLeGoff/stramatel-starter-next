@@ -4,7 +4,7 @@ import { getMessages } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { Toaster } from "@/shared/components/ui/sonner";
 
-import "../globals.css";
+import "../../shared/styles/globals.css";
 export default async function LocaleLayout({
   children,
   params,

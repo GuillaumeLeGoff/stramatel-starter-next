@@ -1,24 +1,20 @@
 import { create } from "zustand";
-import { EditorState } from "../types";
+import { SlideStore } from "../types";
 
-interface EditorActions {
+interface SlideActions {
   setCurrentSlide: (slideIndex: number) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   resetState: () => void;
 }
 
-const initialState: EditorState = {
+export const slideStore = create<SlideStore & SlideActions>((set) => ({
   currentSlide: 0,
   isLoading: false,
   error: null,
-};
-
-export const useEditorStore = create<EditorState & EditorActions>((set) => ({
-  ...initialState,
 
   setCurrentSlide: (slideIndex: number) => set({ currentSlide: slideIndex }),
   setLoading: (isLoading: boolean) => set({ isLoading }),
   setError: (error: string | null) => set({ error }),
-  resetState: () => set(initialState),
+  resetState: () => set({ currentSlide: 0, isLoading: false, error: null }),
 }));

@@ -49,7 +49,7 @@ export async function PUT(
     const { id } = await params;
 
     const body = await request.json();
-    const { duration, position, mediaId, width, height, konvaData } = body;
+    const { duration, position, mediaId, konvaData } = body;
 
     // Mettre à jour la slide
     const slide = await prisma.slide.update({
@@ -60,8 +60,6 @@ export async function PUT(
         ...(duration !== undefined && { duration }),
         ...(position !== undefined && { position }),
         ...(mediaId !== undefined && { mediaId }),
-        ...(width !== undefined && { width }),
-        ...(height !== undefined && { height }),
         ...(konvaData && { konvaData }),
       },
       include: {

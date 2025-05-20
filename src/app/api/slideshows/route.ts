@@ -12,12 +12,9 @@ export async function GET() {
             username: true,
           },
         },
-        slides: {
-          include: {
-            media: true,
-          },
-          orderBy: {
-            position: "asc",
+        _count: {
+          select: {
+            slides: true,
           },
         },
         modes: true,

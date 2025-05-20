@@ -50,7 +50,6 @@ model Slideshow {
   user        User    @relation(fields: [createdBy], references: [id])
   slides      Slide[]
   modes       Mode[]
-  konvaState  Json?
 }
 
 model Slide {
@@ -58,8 +57,6 @@ model Slide {
   slideshowId Int
   position    Int
   duration    Int       @default(5)
-  width       Int       @default(1920)
-  height      Int       @default(1080)
   konvaData   Json?
   mediaId     Int?
   media       Media?    @relation(fields: [mediaId], references: [id])
@@ -82,4 +79,6 @@ model AppSettings {
   restartAt        DateTime
   updatedAt        DateTime @updatedAt
   brightness       Int
+  width            Int      @default(1920)
+  height           Int      @default(1080)
 }
