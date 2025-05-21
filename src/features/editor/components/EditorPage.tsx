@@ -1,4 +1,4 @@
-import { useEditor, useSlide } from "@/features/editor/hooks";
+import { useEditor, useSlide, useZoom } from "@/features/editor/hooks";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -7,12 +7,13 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
-import { ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect } from "react";
 import { KonvaStageRenderer } from "./KonvaStageRenderer";
 import { SortableSlideList } from "./";
 import { PlusIcon } from "lucide-react";
 import { KonvaShapeSelector } from "./KonvaShapeSelector";
+import { FooterEditorComponents } from "./FooterEditorComponents";
+import { HeaderEditorComponents } from "./HeaderEditorComponents";
 
 // Ajouter une classe CSS globale pour masquer les barres de défilement
 const hideScrollbarClass = "hide-scrollbar";
@@ -44,14 +45,15 @@ export function EditorPage() {
     currentSlide,
     getCurrentSlideKonvaData,
     changeSlide,
-    scale,
-    zoomIn,
-    zoomOut,
     containerRef,
     addShape,
   } = useEditor();
+  
+  const konvaData = getCurrentSlideKonvaData();
+  const { scale, zoomIn, zoomOut } = useZoom(konvaData);
+  
   const { addSlide } = useSlide({
-    stageData: getCurrentSlideKonvaData(),
+    stageData: konvaData,
     containerRef,
   });
 
@@ -61,7 +63,19 @@ export function EditorPage() {
     createGlobalScrollbarStyle();
   }, [currentSlideshow]);
 
-  const konvaData = getCurrentSlideKonvaData();
+  // Composant local pour intégrer le FooterEditorComponents
+  const FooterEditorComponent = () => {
+    return (
+      <div className="flex w-full justify-between px-2">
+        <div></div> {/* Div vide pour alignement */}
+        <FooterEditorComponents 
+          scale={scale}
+          zoomIn={zoomIn}
+          zoomOut={zoomOut}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -130,25 +144,7 @@ export function EditorPage() {
                   defaultSize={5}
                   className="flex justify-end items-center border-b border"
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={zoomOut}
-                    title="Dézoomer"
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <div className="px-2 py-1 bg-muted text-xs font-medium rounded flex items-center">
-                    {Math.round(scale * 100)}%
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={zoomIn}
-                    title="Zoomer"
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
+                  <HeaderEditorComponents />
                 </ResizablePanel>
                 <ResizablePanel defaultSize={90}>
                   <div className="flex flex-col h-full">
@@ -224,7 +220,9 @@ export function EditorPage() {
                 <ResizablePanel
                   defaultSize={5}
                   className="flex justify-end items-center border-t border"
-                ></ResizablePanel>
+                >
+                  <FooterEditorComponent />
+                </ResizablePanel>
               </ResizablePanelGroup>
             </ResizablePanel>
 

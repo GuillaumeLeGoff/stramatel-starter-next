@@ -1,27 +1,26 @@
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { slideStore } from "../store/slideStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
-import { KonvaStage } from "../types";
+import { useCallback, useMemo, useRef } from "react";
 import { updateSlide } from "../api/slideApi";
+import { slideStore } from "../store/slideStore";
+import { KonvaStage } from "../types";
 
 export function useEditor() {
   const {
     currentSlide,
     setCurrentSlide,
     isLoading,
-    error,
     setLoading,
+    error,
     setError,
+    selectedShapes,
+    setSelectedShapes,
   } = slideStore();
+
   const { currentSlideshow, updateCurrentSlideshow } = useSlideshow();
-  const [scale, setScale] = useState(1);
-  const [containerSize] = useState({ width: 0, height: 0 });
+
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Zoom minimum et maximum
-  const ABSOLUTE_MIN_ZOOM = 0.3; // Fixé à 30%
-  const MAX_ZOOM = 2;
-  const ZOOM_STEP = 0.1;
+
 
   // Récupérer les données Konva du slide courant
   const getCurrentSlideKonvaData = useCallback((): KonvaStage | null => {
@@ -68,65 +67,18 @@ export function useEditor() {
     [getCurrentSlideKonvaData]
   );
 
-  // Calculer le zoom minimum en fonction des dimensions du conteneur et du canvas (mémorisé)
-  const minZoom = useMemo(() => {
-    if (!currentKonvaData || !containerSize.width || !containerSize.height)
-      return ABSOLUTE_MIN_ZOOM;
-
-    // Calculer le ratio pour que le canvas s'adapte à la largeur ou à la hauteur du conteneur
-    const widthRatio = containerSize.width / currentKonvaData.attrs.width;
-    const heightRatio = containerSize.height / currentKonvaData.attrs.height;
-
-    // Utiliser le plus petit ratio pour que le canvas s'adapte entièrement,
-    // mais ne jamais descendre en-dessous de la limite absolue (30%)
-    return Math.max(Math.min(widthRatio, heightRatio), ABSOLUTE_MIN_ZOOM);
-  }, [containerSize, currentKonvaData, ABSOLUTE_MIN_ZOOM]);
-
   // Changer de slide
   const changeSlide = useCallback(
     (slideIndex: number) => {
       if (!currentSlideshow || !currentSlideshow.slides) return;
 
       if (slideIndex >= 0 && slideIndex < currentSlideshow.slides.length) {
+        // Réinitialiser les formes sélectionnées lors d'un changement de slide
+        setSelectedShapes([]);
         setCurrentSlide(slideIndex);
       }
     },
-    [currentSlideshow, setCurrentSlide]
-  );
-
-  // Ajuster le zoom si nécessaire lorsque le conteneur ou le slide change
-  useEffect(() => {
-    if (scale < minZoom) {
-      setScale(minZoom);
-    }
-  }, [containerSize, currentSlide, minZoom, scale]);
-
-  // Zoomer
-  const zoomIn = useCallback(() => {
-    setScale((prevScale) => Math.min(prevScale + ZOOM_STEP, MAX_ZOOM));
-  }, [MAX_ZOOM, ZOOM_STEP]);
-
-  // Dézoomer
-  const zoomOut = useCallback(() => {
-    setScale((prevScale) => Math.max(prevScale - ZOOM_STEP, minZoom));
-  }, [minZoom, ZOOM_STEP]);
-
-  // Réinitialiser le zoom au zoom minimum (fit)
-  const resetZoom = useCallback(() => {
-    setScale(minZoom);
-  }, [minZoom]);
-
-  // Adapter au conteneur (fit)
-  const fitToContainer = useCallback(() => {
-    setScale(minZoom);
-  }, [minZoom]);
-
-  // Définir un niveau de zoom spécifique
-  const setZoom = useCallback(
-    (newScale: number) => {
-      setScale(Math.min(Math.max(newScale, minZoom), MAX_ZOOM));
-    },
-    [minZoom, MAX_ZOOM]
+    [currentSlideshow, setCurrentSlide, setSelectedShapes]
   );
 
   // Ajouter une forme au slide actuel
@@ -368,7 +320,6 @@ export function useEditor() {
         const slideId = currentSlideshow.slides?.[currentSlide]?.id;
         if (slideId) {
           await updateSlide(slideId, { konvaData: updatedKonvaData });
-          console.log("Données Konva sauvegardées dans l'API");
         }
       } catch (error) {
         console.error("Erreur lors de la sauvegarde des données Konva:", error);
@@ -377,23 +328,81 @@ export function useEditor() {
     [currentSlideshow, currentSlide, updateCurrentSlideshow]
   );
 
+  // Mettre à jour une forme sélectionnée
+  const updateSelectedShape = useCallback(
+    async (updatedAttrs: Record<string, unknown>) => {
+      if (!selectedShapes || selectedShapes.length === 0 || !currentKonvaData) return;
+      
+      // Créer un clone profond du konvaData actuel
+      const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData));
+      
+      // Récupérer tous les IDs des formes sélectionnées
+      const selectedIds = selectedShapes.map(shape => shape.attrs.id);
+      
+      // Fonction récursive pour trouver et mettre à jour les formes sélectionnées
+      const updateShapes = (nodes: Array<Record<string, unknown>>): boolean => {
+        let found = false;
+        
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          
+          // Vérifier si c'est une des formes que nous cherchons (par ID)
+          if (node.attrs && selectedIds.includes((node.attrs as Record<string, unknown>).id)) {
+            // Mettre à jour les attributs
+            nodes[i].attrs = {
+              ...node.attrs,
+              ...updatedAttrs,
+            };
+            found = true;
+          }
+          
+          // Vérifier les enfants si ce nœud en a
+          if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+            const foundInChildren: boolean = updateShapes(node.children as Array<Record<string, unknown>>);
+            found = found || foundInChildren;
+          }
+        }
+        
+        return found;
+      };
+      
+      // Mettre à jour les formes dans l'arbre
+      if (updatedKonvaData.children) {
+        updateShapes(updatedKonvaData.children as Array<Record<string, unknown>>);
+      }
+      
+      // Enregistrer les modifications
+      await saveCurrentSlideKonvaData(updatedKonvaData);
+      
+      // Mettre à jour l'état local des formes sélectionnées
+      const updatedSelectedShapes = selectedShapes.map(shape => ({
+        ...shape,
+        attrs: {
+          ...shape.attrs,
+          ...updatedAttrs,
+        },
+      }));
+      
+      setSelectedShapes(updatedSelectedShapes);
+      
+      console.log("Formes mises à jour avec les attributs:", updatedAttrs);
+    },
+    [selectedShapes, currentKonvaData, saveCurrentSlideKonvaData]
+  );
+
   return {
     currentSlide,
     isLoading,
     error,
-    scale,
     containerRef,
     changeSlide,
     setLoading,
     setError,
     getCurrentSlideKonvaData,
     saveCurrentSlideKonvaData,
-    zoomIn,
-    zoomOut,
-    resetZoom,
-    setZoom,
-    fitToContainer,
-    minZoom,
     addShape,
+    selectedShapes,
+    setSelectedShapes,
+    updateSelectedShape,
   };
 }

@@ -8,6 +8,9 @@ export interface KonvaTextNodeAttrs {
   fontFamily?: string;
   fill?: string;
   align?: string;
+  id?: string;
+  fontStyle?: string;
+  draggable?: boolean;
 }
 
 export interface KonvaShapeAttrs {
@@ -66,6 +69,7 @@ export interface SlideStore {
   currentSlide: number;
   isLoading: boolean;
   error: string | null;
+  selectedShapes: KonvaShape[];
 }
 
 export interface Slide {

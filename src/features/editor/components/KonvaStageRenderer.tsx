@@ -34,8 +34,7 @@ interface ExtendedKonvaShape extends KonvaShape {
 export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageRendererProps) {
   const { saveCurrentSlideKonvaData } = useEditor();
   const { currentSlideshow } = useSlideshow();
-  const { currentSlide } = slideStore();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { currentSlide, selectedShapes, setSelectedShapes } = slideStore();
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const shapeRefs = useRef<Record<string, Konva.Node>>({});
   const [selectionRect, setSelectionRect] = useState({
@@ -49,7 +48,6 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
   const selectionRectRef = useRef<Konva.Rect | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const [selectMode, setSelectMode] = useState(false);
-  // Définir le mode de sélection: true = inclus strictement, false = touche simplement
   const [selectionModeStrict, setSelectionModeStrict] = useState(true);
   
   // Raccourci clavier pour changer le mode de sélection
@@ -236,15 +234,18 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
         delete shapeRefs.current[nodeId];
       }
     },
-    [selectedIds]
+    []
   );
   
   // Mettre à jour le transformer lorsque les références ou la sélection changent
   const updateTransformer = useCallback(() => {
     if (!transformerRef.current) return;
     
+    // Utiliser selectedShapes pour récupérer les IDs
+    const selectedIds = selectedShapes.map(shape => shape.attrs.id);
+    
     const selectedNodes = selectedIds
-      .map(id => shapeRefs.current[id])
+      .map(id => shapeRefs.current[id as string])
       .filter(Boolean);
     
     if (selectedNodes.length > 0) {
@@ -254,31 +255,41 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
       transformerRef.current.nodes([]);
       transformerRef.current.getLayer()?.batchDraw();
     }
-  }, [selectedIds]);
+  }, [selectedShapes]);
 
   // Gérer la sélection d'une forme
   const handleSelect = useCallback((shapeId: string | null, isMultiSelect: boolean = false) => {
     if (!shapeId) {
-      console.log("déselectionner tout");
-      setSelectedIds([]);
+      setSelectedShapes([]);
     } else if (isMultiSelect) {
       // Si multi-sélection, ajouter ou retirer de la sélection
-      setSelectedIds(prev => {
-        return prev.includes(shapeId)
-          ? prev.filter(id => id !== shapeId)
-          : [...prev, shapeId];
-      });
+      const isAlreadySelected = selectedShapes.some(shape => shape.attrs.id === shapeId);
+      
+      if (isAlreadySelected) {
+        // Retirer de la sélection
+        setSelectedShapes(selectedShapes.filter(shape => shape.attrs.id !== shapeId));
+      } else {
+        // Ajouter à la sélection
+        const shapeToAdd = getAllShapes().find(shape => shape.attrs.id === shapeId);
+        if (shapeToAdd) {
+          setSelectedShapes([...selectedShapes, shapeToAdd as KonvaShape]);
+        }
+      }
     } else {
       // Sélection simple
       console.log("sélectionner le nœud", shapeId);
-      setSelectedIds([shapeId]);
+      const selectedNode = getAllShapes().find(shape => shape.attrs.id === shapeId);
+      if (selectedNode) {
+        setSelectedShapes([selectedNode as KonvaShape]);
+      }
     }
-  }, []);
+  }, [selectedShapes, getAllShapes, setSelectedShapes]);
+  
 
   // Mettre à jour le transformer lorsque la sélection change
   useEffect(() => {
     updateTransformer();
-  }, [selectedIds, updateTransformer]);
+  }, [selectedShapes, updateTransformer]);
   
   // NOUVEAU SYSTÈME DE SÉLECTION PAR ZONE
   // Gérer le début de la sélection
@@ -316,9 +327,9 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
     // Effacer la sélection existante sauf si Shift est enfoncé
     if (!e.evt.shiftKey) {
       console.log("déselectionner tout");
-      setSelectedIds([]);
+      setSelectedShapes([]);
     }
-  }, []);
+  }, [setSelectedShapes]);
 
   // Mettre à jour le rectangle de sélection pendant le déplacement
   const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -371,7 +382,7 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
     
     // Trouver toutes les formes qui intersectent le rectangle
     const shapes = getAllShapes();
-    const selectedShapes = shapes.filter(shape => {
+    const shapesInSelection = shapes.filter(shape => {
       if (!shape.attrs || !shape.attrs.id) return false;
       
       const node = shapeRefs.current[shape.attrs.id];
@@ -388,26 +399,18 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
       }
     });
     
-    // Récupérer les IDs des formes sélectionnées
-    const newSelectedIds = selectedShapes
-      .map(shape => shape.attrs.id!)
-      .filter(Boolean);
-    
     // Mettre à jour la sélection
     if (e.evt.shiftKey) {
       // Ajouter à la sélection existante si Shift est enfoncé
-      setSelectedIds(prev => {
-        const combined = [...prev];
-        newSelectedIds.forEach(id => {
-          if (!combined.includes(id)) {
-            combined.push(id);
-          }
-        });
-        return combined;
-      });
+      const currentSelectedIds = selectedShapes.map(shape => shape.attrs.id);
+      const newShapes = shapesInSelection.filter(
+        shape => !currentSelectedIds.includes(shape.attrs.id)
+      );
+      
+      setSelectedShapes([...selectedShapes, ...newShapes as KonvaShape[]]);
     } else {
       // Remplacer la sélection existante
-      setSelectedIds(newSelectedIds);
+      setSelectedShapes(shapesInSelection as KonvaShape[]);
     }
     
     // Masquer le rectangle de sélection
@@ -415,7 +418,7 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
       ...prev,
       visible: false
     }));
-  }, [selectMode, selectionRect, getAllShapes, isNodeInsideRect, selectionModeStrict]);
+  }, [selectMode, selectionRect, getAllShapes, isNodeInsideRect, selectionModeStrict, selectedShapes, setSelectedShapes]);
   
   // Empêcher le clic sur le stage de désélectionner lorsqu'on vient de terminer une sélection
   const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -428,9 +431,9 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
     // Vérifier si le clic est sur le stage lui-même
     const clickedOnEmpty = e.target === e.target.getStage();
     if (clickedOnEmpty && !e.evt.shiftKey) {
-      setSelectedIds([]);
+      setSelectedShapes([]);
     }
-  }, [selectMode]);
+  }, [selectMode, setSelectedShapes]);
 
   if (!stageData) return null;
 
@@ -440,7 +443,8 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
 
     // Fonction pour gérer les événements de transformation et déplacement de plusieurs formes
     const handleMultiTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
-      if (selectedIds.length <= 1) return;
+      // Utiliser selectedShapes pour vérifier s'il y a plusieurs formes sélectionnées
+      if (selectedShapes.length <= 1) return;
       
       e.evt.preventDefault?.();
       e.cancelBubble = true;
@@ -448,9 +452,12 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
       // Créer un objet pour stocker toutes les mises à jour
       const updatedNodes: Record<string, Record<string, unknown>> = {};
       
+      // Récupérer les IDs des formes sélectionnées
+      const selectedIds = selectedShapes.map(shape => shape.attrs.id);
+      
       // Mettre à jour chaque nœud sélectionné
       selectedIds.forEach(id => {
-        const node = shapeRefs.current[id];
+        const node = shapeRefs.current[id as string];
         if (!node) return;
         
         const newAttrs: Record<string, unknown> = {
@@ -469,13 +476,12 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
           newAttrs.height = node.height();
         }
         
-        updatedNodes[id] = newAttrs;
+        updatedNodes[id as string] = newAttrs;
       });
       
       // Sauvegarder toutes les modifications en une seule fois
       saveMultipleChanges(updatedNodes);
-      console.log(`Transformation multiple terminée pour ${selectedIds.length} formes`);
-      
+
       // Garantir que la sélection est préservée
       // Utiliser setTimeout pour éviter que d'autres événements interfèrent
       setTimeout(() => {
@@ -490,7 +496,7 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
       e.cancelBubble = true;
       
       // Si plusieurs formes sont sélectionnées, utiliser la fonction multi
-      if (selectedIds.length > 1) {
+      if (selectedShapes.length > 1) {
         handleMultiTransformEnd(e);
         return;
       }
@@ -534,16 +540,22 @@ export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageR
       const node = e.target;
       const nodeId = node.id();
       
-      // Si plusieurs formes sont sélectionnées et que le nœud déplacé fait partie de la sélection
-      if (selectedIds.length > 1 && selectedIds.includes(nodeId)) {
+      // Vérifier si plusieurs formes sont sélectionnées et si le nœud déplacé fait partie de la sélection
+      const selectedIds = selectedShapes.map(shape => shape.attrs.id);
+      if (selectedShapes.length > 1 && selectedIds.includes(nodeId)) {
         handleMultiTransformEnd(e);
         return;
       }
       
-      // Si l'élément déplacé n'était pas déjà sélectionné, le sélectionner uniquement (remplacer la sélection)
+      // Si l'élément déplacé n'était pas déjà sélectionné, le sélectionner uniquement
       if (!selectedIds.includes(nodeId)) {
         console.log("sélectionner le nœud", nodeId);
-        setSelectedIds([nodeId]);
+        
+        // Trouver la forme dans la liste de toutes les formes
+        const shape = getAllShapes().find(s => s.attrs.id === nodeId);
+        if (shape) {
+          setSelectedShapes([shape as KonvaShape]);
+        }
       }
       
       const newAttrs = {
