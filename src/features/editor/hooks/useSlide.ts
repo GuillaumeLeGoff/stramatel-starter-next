@@ -96,7 +96,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
   /**
    * Crée une nouvelle slide via l'API et l'ajoute au slideshow actuel
    */
-  const createSlideAndAddToShow = async (slideData: Partial<Slide>) => {
+  const addSlide = async (slideData: Partial<Slide>) => {
     try {
       // 1. Créer la slide dans la base de données via l'API
       const newSlide = await createSlide(slideData);
@@ -154,35 +154,39 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     }
   };
 
+
   /**
    * Met à jour l'ordre des slides après un déplacement par drag and drop
    */
-  const updateSlidesOrder = useCallback(async (slides: SlideshowSlide[]) => {
-    if (!currentSlideshow || !updateCurrentSlideshow) return;
+  const updateSlidesOrder = useCallback(
+    async (slides: SlideshowSlide[]) => {
+      if (!currentSlideshow || !updateCurrentSlideshow) return;
 
-    try {
-      // Mettre à jour le slideshow actuel avec les nouvelles positions
-      updateCurrentSlideshow((prev) => ({
-        ...prev,
-        slides: slides,
-      }));
-      // Créer un tableau de promesses pour mettre à jour toutes les slides en parallèle
-      const updatePromises = slides.map((slide, index) =>
-        updateSlide(slide.id, { position: index })
-      );
+      try {
+        // Mettre à jour le slideshow actuel avec les nouvelles positions
+        updateCurrentSlideshow((prev) => ({
+          ...prev,
+          slides: slides,
+        }));
+        // Créer un tableau de promesses pour mettre à jour toutes les slides en parallèle
+        const updatePromises = slides.map((slide, index) =>
+          updateSlide(slide.id, { position: index })
+        );
 
-      // Attendre que toutes les mises à jour soient terminées
-      await Promise.all(updatePromises);
+        // Attendre que toutes les mises à jour soient terminées
+        await Promise.all(updatePromises);
 
-      return true;
-    } catch (error) {
-      console.error(
-        "Erreur lors de la mise à jour de l'ordre des slides",
-        error
-      );
-      return false;
-    }
-  }, [currentSlideshow, updateCurrentSlideshow]);
+        return true;
+      } catch (error) {
+        console.error(
+          "Erreur lors de la mise à jour de l'ordre des slides",
+          error
+        );
+        return false;
+      }
+    },
+    [currentSlideshow, updateCurrentSlideshow]
+  );
 
   /**
    * Gère la fin d'un drag-and-drop et réorganise les slides
@@ -221,8 +225,8 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
   return {
     previewScale,
     viewportStageData: createViewportStageData(),
-    createSlideAndAddToShow,
     deleteSlide,
+    addSlide,
     updateSlidesOrder,
     handleDragEnd,
   };

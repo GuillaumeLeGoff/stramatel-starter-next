@@ -151,9 +151,7 @@ export function SlideshowPage() {
                   </TableHeader>
                   <TableBody>
                     {slideshows.map((slideshow) => {
-                      const estimatedDuration = slideshow._count?.slides
-                        ? `${slideshow._count.slides * 5}s`
-                        : "0s";
+                    
 
                       return (
                         <TableRow
@@ -168,7 +166,7 @@ export function SlideshowPage() {
                           <TableCell className="line-clamp-2">
                             {slideshow.description || "Aucune description"}
                           </TableCell>
-                          <TableCell>{estimatedDuration}</TableCell>
+                          <TableCell>{slideshow.totalDuration}</TableCell>
                           <TableCell>{slideshow._count?.slides || 0}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end space-x-2">

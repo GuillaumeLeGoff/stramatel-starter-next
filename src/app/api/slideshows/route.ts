@@ -18,10 +18,25 @@ export async function GET() {
           },
         },
         modes: true,
+        slides: {
+          select: {
+            duration: true,
+          }
+        },
       },
     });
 
-    return NextResponse.json(slideshows);
+    // Calculer le temps total pour chaque diaporama
+    const slideshowsWithTotalDuration = slideshows.map(slideshow => {
+      const totalDuration = slideshow.slides.reduce((total, slide) => total + slide.duration, 0);
+      return {
+        ...slideshow,
+        totalDuration,
+        slides: undefined // Supprimer les slides pour ne pas les renvoyer
+      };
+    });
+
+    return NextResponse.json(slideshowsWithTotalDuration);
   } catch (error) {
     console.error("Erreur lors de la récupération des slideshows:", error);
     return NextResponse.json(

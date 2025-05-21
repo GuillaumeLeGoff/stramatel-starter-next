@@ -148,7 +148,10 @@ export function SlidePreview({
                 backgroundColor: "white",
               }}
             >
-              <KonvaStageRenderer stageData={viewportStageData} />
+              <KonvaStageRenderer
+                stageData={viewportStageData}
+                isPreview={true}
+              />
             </div>
           </div>
         </div>

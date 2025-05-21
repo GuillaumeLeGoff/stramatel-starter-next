@@ -75,6 +75,7 @@ export interface SlideshowConfig {
   _count?: {
     slides: number;
   };
+  totalDuration: number;
 }
 
 export interface SlideshowState {

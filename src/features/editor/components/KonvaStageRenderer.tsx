@@ -19,6 +19,7 @@ import { slideStore } from "../store/slideStore";
 
 interface KonvaStageRendererProps {
   stageData: KonvaStage;
+  isPreview?: boolean;
 }
 
 // Extension des types existants pour inclure id
@@ -30,7 +31,7 @@ interface ExtendedKonvaShape extends KonvaShape {
   };
 }
 
-export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
+export function KonvaStageRenderer({ stageData, isPreview = false }: KonvaStageRendererProps) {
   const { saveCurrentSlideKonvaData } = useEditor();
   const { currentSlideshow } = useSlideshow();
   const { currentSlide } = slideStore();
@@ -44,7 +45,66 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
     x2: 0,
     y2: 0,
   });
-  const isSelecting = useRef(false);
+  const stageRef = useRef<Konva.Stage | null>(null);
+  const selectionRectRef = useRef<Konva.Rect | null>(null);
+  const startPos = useRef({ x: 0, y: 0 });
+  const [selectMode, setSelectMode] = useState(false);
+  // Définir le mode de sélection: true = inclus strictement, false = touche simplement
+  const [selectionModeStrict, setSelectionModeStrict] = useState(true);
+  
+  // Raccourci clavier pour changer le mode de sélection
+  useEffect(() => {
+    // Ne pas ajouter d'écouteurs d'événements en mode prévisualisation
+    if (isPreview) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'm') {
+        e.preventDefault();
+        setSelectionModeStrict(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPreview]);
+  
+  // Cette fonction va collecter toutes les formes dans le stage
+  const getAllShapes = useCallback(() => {
+    if (!stageData) return [];
+    
+    const shapes: ExtendedKonvaShape[] = [];
+    
+    const collectShapes = (nodes: ExtendedKonvaShape[]) => {
+      for (const node of nodes) {
+        if (node.className !== 'Layer' && node.className !== 'Stage') {
+          shapes.push(node);
+        }
+        
+        if (node.children && node.children.length > 0) {
+          collectShapes(node.children as ExtendedKonvaShape[]);
+        }
+      }
+    };
+    
+    if (stageData.children) {
+      collectShapes(stageData.children as ExtendedKonvaShape[]);
+    }
+    
+    return shapes;
+  }, [stageData]);
+  
+  // Fonction pour vérifier si un nœud est complètement à l'intérieur d'un rectangle
+  const isNodeInsideRect = useCallback((node: Konva.Node, rect: { x: number, y: number, width: number, height: number }) => {
+    const nodeRect = node.getClientRect();
+    
+    // Vérifier si le nœud est complètement à l'intérieur du rectangle
+    return (
+      nodeRect.x >= rect.x &&
+      nodeRect.y >= rect.y &&
+      nodeRect.x + nodeRect.width <= rect.x + rect.width &&
+      nodeRect.y + nodeRect.height <= rect.y + rect.height
+    );
+  }, []);
   
   // Fonction pour enregistrer les modifications de plusieurs nœuds
   const saveMultipleChanges = useCallback(
@@ -199,6 +259,7 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
   // Gérer la sélection d'une forme
   const handleSelect = useCallback((shapeId: string | null, isMultiSelect: boolean = false) => {
     if (!shapeId) {
+      console.log("déselectionner tout");
       setSelectedIds([]);
     } else if (isMultiSelect) {
       // Si multi-sélection, ajouter ou retirer de la sélection
@@ -209,6 +270,7 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
       });
     } else {
       // Sélection simple
+      console.log("sélectionner le nœud", shapeId);
       setSelectedIds([shapeId]);
     }
   }, []);
@@ -217,18 +279,32 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
   useEffect(() => {
     updateTransformer();
   }, [selectedIds, updateTransformer]);
-
-  // Gérer le début du rectangle de sélection
+  
+  // NOUVEAU SYSTÈME DE SÉLECTION PAR ZONE
+  // Gérer le début de la sélection
   const handleMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    // Ne rien faire si on clique sur une forme
+    // Vérifier si le clic a été fait sur le stage et non sur une forme
     if (e.target !== e.target.getStage()) {
       return;
     }
     
-    isSelecting.current = true;
-    const pos = e.target.getStage()?.getPointerPosition();
+    e.evt.preventDefault();
+    
+    // Récupérer la position de la souris
+    const stage = e.target.getStage();
+    if (!stage) return;
+    
+    stageRef.current = stage;
+    const pos = stage.getPointerPosition();
     if (!pos) return;
     
+    // Stocker la position de départ
+    startPos.current = { x: pos.x, y: pos.y };
+    
+    // Activer le mode sélection
+    setSelectMode(true);
+    
+    // Initialiser le rectangle de sélection
     setSelectionRect({
       visible: true,
       x1: pos.x,
@@ -237,17 +313,25 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
       y2: pos.y
     });
     
-    // Désélectionner tout si SHIFT n'est pas enfoncé
+    // Effacer la sélection existante sauf si Shift est enfoncé
     if (!e.evt.shiftKey) {
+      console.log("déselectionner tout");
       setSelectedIds([]);
     }
   }, []);
 
-  // Gérer le déplacement pendant le dessin du rectangle de sélection
+  // Mettre à jour le rectangle de sélection pendant le déplacement
   const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isSelecting.current) return;
+    // Ne rien faire si on n'est pas en mode sélection
+    if (!selectMode) return;
     
-    const pos = e.target.getStage()?.getPointerPosition();
+    e.evt.preventDefault();
+    
+    // Mettre à jour la position finale du rectangle
+    const stage = e.target.getStage();
+    if (!stage) return;
+    
+    const pos = stage.getPointerPosition();
     if (!pos) return;
     
     setSelectionRect(prev => ({
@@ -255,73 +339,63 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
       x2: pos.x,
       y2: pos.y
     }));
-  }, []);
-
-  // Gérer la fin du rectangle de sélection
+  }, [selectMode]);
+  
+  // Finaliser la sélection
   const handleMouseUp = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isSelecting.current) return;
+    // Ne rien faire si on n'est pas en mode sélection
+    if (!selectMode) return;
     
-    isSelecting.current = false;
+    e.evt.preventDefault();
+    e.cancelBubble = true;
     
-    // Cache la sélection après un court délai pour éviter les conflits avec les clics
-    setTimeout(() => {
+    // Désactiver le mode sélection
+    setSelectMode(false);
+    
+    // Calculer les dimensions finales du rectangle
+    const box = {
+      x: Math.min(selectionRect.x1, selectionRect.x2),
+      y: Math.min(selectionRect.y1, selectionRect.y2),
+      width: Math.abs(selectionRect.x2 - selectionRect.x1),
+      height: Math.abs(selectionRect.y2 - selectionRect.y1)
+    };
+    
+    // Si le rectangle est trop petit, l'ignorer (c'était un clic)
+    if (box.width < 5 || box.height < 5) {
       setSelectionRect(prev => ({
         ...prev,
         visible: false
       }));
-    });
-    
-    // Si le rectangle est trop petit, considérer comme un clic et non une sélection
-    const width = Math.abs(selectionRect.x2 - selectionRect.x1);
-    const height = Math.abs(selectionRect.y2 - selectionRect.y1);
-    if (width < 5 || height < 5) return;
-    
-    // Créer le rectangle de sélection
-    const selBox = {
-      x: Math.min(selectionRect.x1, selectionRect.x2),
-      y: Math.min(selectionRect.y1, selectionRect.y2),
-      width,
-      height
-    };
-    
-    // Trouver toutes les formes dans l'arbre Konva
-    const shapes: ExtendedKonvaShape[] = [];
-    
-    // Fonction récursive pour collecter toutes les formes
-    const collectShapes = (nodes: ExtendedKonvaShape[]) => {
-      for (const node of nodes) {
-        if (node.className !== 'Layer' && node.className !== 'Stage') {
-          shapes.push(node);
-        }
-        
-        if (node.children && node.children.length > 0) {
-          collectShapes(node.children as ExtendedKonvaShape[]);
-        }
-      }
-    };
-    
-    if (stageData.children) {
-      collectShapes(stageData.children as ExtendedKonvaShape[]);
+      return;
     }
     
-    // Vérifier quelles formes sont dans la zone de sélection
-    const selected = shapes.filter(shape => {
+    // Trouver toutes les formes qui intersectent le rectangle
+    const shapes = getAllShapes();
+    const selectedShapes = shapes.filter(shape => {
       if (!shape.attrs || !shape.attrs.id) return false;
       
       const node = shapeRefs.current[shape.attrs.id];
       if (!node) return false;
       
-      // Utiliser getClientRect pour tenir compte des transformations
-      const nodeRect = node.getClientRect();
-      
-      return Konva.Util.haveIntersection(selBox, nodeRect);
+      // Sélectionner selon le mode (strict = complètement inclus, non strict = intersecte simplement)
+      if (selectionModeStrict) {
+        // Mode strict: la forme doit être complètement à l'intérieur du rectangle
+        return isNodeInsideRect(node, box);
+      } else {
+        // Mode non strict: la forme peut simplement toucher le rectangle
+        const nodeRect = node.getClientRect();
+        return Konva.Util.haveIntersection(box, nodeRect);
+      }
     });
     
-    // Mettre à jour la sélection
-    const newSelectedIds = selected.map(s => s.attrs.id!).filter(Boolean);
+    // Récupérer les IDs des formes sélectionnées
+    const newSelectedIds = selectedShapes
+      .map(shape => shape.attrs.id!)
+      .filter(Boolean);
     
-    // Si SHIFT est enfoncé, ajouter à la sélection existante
+    // Mettre à jour la sélection
     if (e.evt.shiftKey) {
+      // Ajouter à la sélection existante si Shift est enfoncé
       setSelectedIds(prev => {
         const combined = [...prev];
         newSelectedIds.forEach(id => {
@@ -332,30 +406,31 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
         return combined;
       });
     } else {
-      // Sinon, remplacer la sélection
+      // Remplacer la sélection existante
       setSelectedIds(newSelectedIds);
     }
     
-  }, [selectionRect, stageData]);
-
-  // Gérer le clic sur le stage pour désélectionner
-  const handleStageClick = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      // Si on est en train de dessiner un rectangle de sélection, ne rien faire
-      if (selectionRect.visible && 
-          Math.abs(selectionRect.x2 - selectionRect.x1) > 5 && 
-          Math.abs(selectionRect.y2 - selectionRect.y1) > 5) {
-        return;
-      }
-      
-      // Vérifier si le clic est sur le stage lui-même et pas sur une forme
-      const clickedOnEmpty = e.target === e.currentTarget;
-      if (clickedOnEmpty && !e.evt.shiftKey) {
-        setSelectedIds([]);
-      }
-    },
-    [selectionRect]
-  );
+    // Masquer le rectangle de sélection
+    setSelectionRect(prev => ({
+      ...prev,
+      visible: false
+    }));
+  }, [selectMode, selectionRect, getAllShapes, isNodeInsideRect, selectionModeStrict]);
+  
+  // Empêcher le clic sur le stage de désélectionner lorsqu'on vient de terminer une sélection
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    // Ne rien faire pendant le mode sélection
+    if (selectMode) {
+      e.cancelBubble = true;
+      return;
+    }
+    
+    // Vérifier si le clic est sur le stage lui-même
+    const clickedOnEmpty = e.target === e.target.getStage();
+    if (clickedOnEmpty && !e.evt.shiftKey) {
+      setSelectedIds([]);
+    }
+  }, [selectMode]);
 
   if (!stageData) return null;
 
@@ -366,6 +441,9 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
     // Fonction pour gérer les événements de transformation et déplacement de plusieurs formes
     const handleMultiTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
       if (selectedIds.length <= 1) return;
+      
+      e.evt.preventDefault?.();
+      e.cancelBubble = true;
       
       // Créer un objet pour stocker toutes les mises à jour
       const updatedNodes: Record<string, Record<string, unknown>> = {};
@@ -397,10 +475,20 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
       // Sauvegarder toutes les modifications en une seule fois
       saveMultipleChanges(updatedNodes);
       console.log(`Transformation multiple terminée pour ${selectedIds.length} formes`);
+      
+      // Garantir que la sélection est préservée
+      // Utiliser setTimeout pour éviter que d'autres événements interfèrent
+      setTimeout(() => {
+        updateTransformer();
+      }, 10);
     };
 
     // Fonction pour gérer les événements de transformation et déplacement d'une forme
     const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
+      // Empêcher la propagation pour éviter la désélection
+      e.evt.preventDefault?.();
+      e.cancelBubble = true;
+      
       // Si plusieurs formes sont sélectionnées, utiliser la fonction multi
       if (selectedIds.length > 1) {
         handleMultiTransformEnd(e);
@@ -431,48 +519,40 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
         // ...
       }
 
-      // Stocker l'ID pour garder la sélection
-      const nodeId = node.id();
-
       // Enregistrer les modifications
       saveChanges(newAttrs, shapeId);
       console.log(`Transformation enregistrée pour ${className}:${shapeId}`);
-      
-      // S'assurer que le nœud reste sélectionné
-      setTimeout(() => {
-        if (nodeId && !selectedIds.includes(nodeId)) {
-          setSelectedIds(prev => [...prev, nodeId]);
-        }
-      }, 0);
     };
 
     // Fonction pour gérer le déplacement
     const handleDragEnd = (e: Konva.KonvaEventObject<Event>) => {
-      // Si plusieurs formes sont sélectionnées, utiliser la fonction multi
-      if (selectedIds.length > 1) {
+      // Empêcher la propagation pour éviter la désélection
+      e.evt.preventDefault?.();
+      e.cancelBubble = true;
+      
+      // Récupérer l'ID du nœud déplacé
+      const node = e.target;
+      const nodeId = node.id();
+      
+      // Si plusieurs formes sont sélectionnées et que le nœud déplacé fait partie de la sélection
+      if (selectedIds.length > 1 && selectedIds.includes(nodeId)) {
         handleMultiTransformEnd(e);
         return;
       }
       
-      const node = e.target;
+      // Si l'élément déplacé n'était pas déjà sélectionné, le sélectionner uniquement (remplacer la sélection)
+      if (!selectedIds.includes(nodeId)) {
+        console.log("sélectionner le nœud", nodeId);
+        setSelectedIds([nodeId]);
+      }
+      
       const newAttrs = {
         x: node.x(),
         y: node.y(),
       };
 
-      // Stocker l'ID pour garder la sélection
-      const nodeId = node.id();
-
       // Enregistrer les modifications
       saveChanges(newAttrs, shapeId);
-      console.log(`Déplacement enregistré pour ${className}:${shapeId}`);
-      
-      // S'assurer que le nœud reste sélectionné
-      setTimeout(() => {
-        if (nodeId && !selectedIds.includes(nodeId)) {
-          setSelectedIds(prev => [...prev, nodeId]);
-        }
-      }, 0);
     };
 
     // Propriétés communes à tous les composants
@@ -480,16 +560,16 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
       ...attrs,
       id: shapeId,
       ref: (node: Konva.Node | null) => registerNodeRef(shapeId, node),
-      onTransformEnd: handleTransformEnd,
-      onDragEnd: handleDragEnd,
-      onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
+      onTransformEnd: isPreview ? undefined : handleTransformEnd,
+      onDragEnd: isPreview ? undefined : handleDragEnd,
+      onClick: isPreview ? undefined : (e: Konva.KonvaEventObject<MouseEvent>) => {
         e.cancelBubble = true; // Empêcher la propagation au stage
         
         // Vérifier si la touche Shift, Ctrl ou Meta est pressée pour la multi-sélection
         const isMultiSelect = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
         handleSelect(shapeId, isMultiSelect);
       },
-      draggable: attrs.draggable !== false,
+      draggable: isPreview ? false : attrs.draggable !== false,
     };
 
     let shapeElement;
@@ -545,32 +625,57 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
     return shapeElement;
   };
 
-  const renderLayer = (layerData: ExtendedKonvaShape) => {
-    return (
-      <Layer key={layerData.attrs?.id || `layer_${Math.random()}`}>
-        {layerData.children &&
-          layerData.children.map((shape: KonvaShape) =>
-            renderShape(shape as ExtendedKonvaShape)
-          )}
+  if (!stageData) return null;
 
-        {/* Ajouter un transformer unique par couche */}
-        <Transformer
-          ref={transformerRef}
-          boundBoxFunc={(oldBox, newBox) => {
-            // Limiter la taille minimale
-            if (newBox.width < 5 || newBox.height < 5) {
-              return oldBox;
-            }
-            return newBox;
-          }}
-          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
-          rotateEnabled={true}
-          keepRatio={false}
-        />
+  // Collecter toutes les formes de toutes les couches pour les rendre dans une seule couche
+  const allShapes: React.ReactNode[] = [];
+  
+  // Parcourir toutes les couches et récupérer leurs formes
+  stageData.children.forEach((layer: KonvaShape) => {
+    if (layer.children) {
+      layer.children.forEach((shape: KonvaShape) => {
+        allShapes.push(renderShape(shape as ExtendedKonvaShape));
+      });
+    }
+  });
+
+  // Rendre un stage avec une seule couche contenant toutes les formes
+  return (
+    <Stage
+      width={stageData.attrs.width}
+      height={stageData.attrs.height}
+      onClick={isPreview ? undefined : handleStageClick}
+      onMouseDown={isPreview ? undefined : handleMouseDown}
+      onMouseMove={isPreview ? undefined : handleMouseMove}
+      onMouseUp={isPreview ? undefined : handleMouseUp}
+    >
+      <Layer>
+        {allShapes}
         
-        {/* Rectangle de sélection */}
-        {selectionRect.visible && (
+        {/* Transformer pour la sélection - seulement affiché en mode édition */}
+        {!isPreview && (
+          <Transformer
+            ref={transformerRef}
+            boundBoxFunc={(oldBox, newBox) => {
+              // Limiter la taille minimale
+              if (newBox.width < 5 || newBox.height < 5) {
+                return oldBox;
+              }
+              return newBox;
+            }}
+            enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+            rotateEnabled={true}
+            keepRatio={false}
+          />
+        )}
+        
+        {/* Rectangle de sélection - seulement affiché en mode édition */}
+        {!isPreview && selectionRect.visible && (
           <Rect
+            ref={(node) => {
+              selectionRectRef.current = node;
+              return undefined;
+            }}
             fill="rgba(0, 0, 255, 0.2)"
             stroke="rgba(0, 0, 255, 0.8)"
             strokeWidth={1}
@@ -581,21 +686,6 @@ export function KonvaStageRenderer({ stageData }: KonvaStageRendererProps) {
           />
         )}
       </Layer>
-    );
-  };
-
-  return (
-    <Stage
-      width={stageData.attrs.width}
-      height={stageData.attrs.height}
-      onClick={handleStageClick}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    >
-      {stageData.children.map((layer) =>
-        renderLayer(layer as ExtendedKonvaShape)
-      )}
     </Stage>
   );
 }
