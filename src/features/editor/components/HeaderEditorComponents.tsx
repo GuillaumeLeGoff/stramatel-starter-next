@@ -2,7 +2,7 @@ import { useEditor } from "@/features/editor/hooks";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { KonvaShapeAttrs } from "../types";
+import { KonvaShapeAttrs, KonvaNode } from "../types";
 import { PaintBucket, PencilLine, Trash2 } from "lucide-react";
 
 export function HeaderEditorComponents() {
@@ -104,7 +104,7 @@ export function HeaderEditorComponents() {
     const selectedIds = selectedShapes.map(shape => shape.attrs.id);
 
     // Fonction récursive pour supprimer les formes
-    const removeShapesFromNodes = (nodes: any[]): boolean => {
+    const removeShapesFromNodes = (nodes: KonvaNode[]): boolean => {
       let removed = false;
 
       // Pour chaque couche (Layer)
@@ -115,8 +115,8 @@ export function HeaderEditorComponents() {
         if (node.children && Array.isArray(node.children)) {
           // Filtrer les enfants directs
           const originalLength = node.children.length;
-          node.children = node.children.filter((child: any) => 
-            !(child.attrs && child.attrs.id && selectedIds.includes(child.attrs.id))
+          node.children = node.children.filter((child: KonvaNode) => 
+            !(child.attrs && child.attrs.id && selectedIds.includes(child.attrs.id as string))
           );
 
           // Vérifier si des enfants ont été supprimés à ce niveau
@@ -146,6 +146,25 @@ export function HeaderEditorComponents() {
     // Vider la sélection actuelle
     setSelectedShapes([]);
   }, [selectedShapes, getCurrentSlideKonvaData, saveCurrentSlideKonvaData, setSelectedShapes]);
+
+  // Ajouter un écouteur d'événement pour la touche "Suppr" (Delete)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Si la touche Delete est pressée et qu'il y a des formes sélectionnées
+      if (e.key === "Delete" && selectedShapes && selectedShapes.length > 0) {
+        e.preventDefault(); // Empêcher le comportement par défaut
+        handleClearSelection();
+      }
+    };
+
+    // Ajouter l'écouteur d'événement
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Nettoyer l'écouteur lors du démontage du composant
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedShapes, handleClearSelection]);
 
   return (
     <div className="flex items-center space-x-4 px-4">
@@ -236,7 +255,7 @@ export function HeaderEditorComponents() {
             <button
               onClick={handleClearSelection}
               className="p-1 rounded hover:bg-gray-100"
-              title="Supprimer les formes sélectionnées"
+              title="Supprimer les formes sélectionnées (ou touche Suppr)"
             >
               <Trash2 className="h-5 w-5" />
             </button>
