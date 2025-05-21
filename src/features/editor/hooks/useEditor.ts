@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { slideStore } from "../store/slideStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { KonvaStage } from "../types";
+import { updateSlide } from "../api/slideApi";
 
 export function useEditor() {
   const {
@@ -54,20 +55,7 @@ export function useEditor() {
           attrs: {},
           className: "Layer",
           children: [
-            {
-              attrs: {
-                x: 100,
-                y: 100,
-                width: 300,
-                height: 50,
-                fontSize: 32,
-                fontFamily: "Arial",
-                fill: "#333333",
-                align: "center",
-                text: "Nouvelle présentation",
-              },
-              className: "Text",
-            },
+            
           ],
         },
       ],
@@ -143,7 +131,7 @@ export function useEditor() {
 
   // Ajouter une forme au slide actuel
   const addShape = useCallback(
-    (shapeType: string) => {
+    async (shapeType: string) => {
       if (!currentSlideshow || !currentSlideshow.slides || !currentKonvaData)
         return;
 
@@ -344,13 +332,24 @@ export function useEditor() {
       }
 
       console.log(`Forme ${shapeType} ajoutée avec l'ID ${shapeId}`);
+      
+      // Enregistrer dans l'API
+      try {
+        const slideId = currentSlideObj.id;
+        if (slideId) {
+          await updateSlide(slideId, { konvaData: updatedKonvaData });
+          console.log("Données Konva après ajout de forme sauvegardées dans l'API");
+        }
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde après ajout de forme:", error);
+      }
     },
     [currentSlideshow, currentSlide, currentKonvaData, updateCurrentSlideshow]
   );
 
   // Sauvegarder les données Konva du slide courant
   const saveCurrentSlideKonvaData = useCallback(
-    (updatedKonvaData: KonvaStage) => {
+    async (updatedKonvaData: KonvaStage) => {
       if (!currentSlideshow || !updateCurrentSlideshow) return;
 
       updateCurrentSlideshow((prev) => {
@@ -363,6 +362,17 @@ export function useEditor() {
           slides: updatedSlides,
         };
       });
+
+      // Enregistrer dans l'API après mise à jour du state local
+      try {
+        const slideId = currentSlideshow.slides?.[currentSlide]?.id;
+        if (slideId) {
+          await updateSlide(slideId, { konvaData: updatedKonvaData });
+          console.log("Données Konva sauvegardées dans l'API");
+        }
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde des données Konva:", error);
+      }
     },
     [currentSlideshow, currentSlide, updateCurrentSlideshow]
   );

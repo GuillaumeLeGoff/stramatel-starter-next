@@ -119,17 +119,6 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     }
   };
 
-  // Fonction pour ajouter une nouvelle slide
-  const addSlide = async (slideData: Partial<Slide>) => {
-    if (!currentSlideshow) return;
-    try {
-      return await createSlideAndAddToShow(slideData);
-    } catch (error) {
-      console.error("Erreur lors de l'ajout d'une slide", error);
-      return null;
-    }
-  };
-
   /**
    * Supprime une slide via l'API et la retire du slideshow actuel
    */
@@ -168,10 +157,15 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
   /**
    * Met à jour l'ordre des slides après un déplacement par drag and drop
    */
-  const updateSlidesOrder = async (slides: SlideshowSlide[]) => {
+  const updateSlidesOrder = useCallback(async (slides: SlideshowSlide[]) => {
     if (!currentSlideshow || !updateCurrentSlideshow) return;
 
     try {
+      // Mettre à jour le slideshow actuel avec les nouvelles positions
+      updateCurrentSlideshow((prev) => ({
+        ...prev,
+        slides: slides,
+      }));
       // Créer un tableau de promesses pour mettre à jour toutes les slides en parallèle
       const updatePromises = slides.map((slide, index) =>
         updateSlide(slide.id, { position: index })
@@ -179,12 +173,6 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
 
       // Attendre que toutes les mises à jour soient terminées
       await Promise.all(updatePromises);
-
-      // Mettre à jour le slideshow actuel avec les nouvelles positions
-      updateCurrentSlideshow((prev) => ({
-        ...prev,
-        slides: slides,
-      }));
 
       return true;
     } catch (error) {
@@ -194,7 +182,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
       );
       return false;
     }
-  };
+  }, [currentSlideshow, updateCurrentSlideshow]);
 
   /**
    * Gère la fin d'un drag-and-drop et réorganise les slides
@@ -233,9 +221,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
   return {
     previewScale,
     viewportStageData: createViewportStageData(),
-    calculateScale,
     createSlideAndAddToShow,
-    addSlide,
     deleteSlide,
     updateSlidesOrder,
     handleDragEnd,
