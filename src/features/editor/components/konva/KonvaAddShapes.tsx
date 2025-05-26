@@ -9,6 +9,7 @@ import {
   Play,
   LineChart,
 } from "lucide-react";
+import { useEditor } from "@/features/editor/hooks";
 
 interface KonvaShape {
   id: string;
@@ -17,61 +18,56 @@ interface KonvaShape {
   action: () => void;
 }
 
-interface KonvaShapeSelectorProps {
-  onAddShape: (shapeType: string) => void;
-}
-
-export function KonvaShapeSelector({ onAddShape }: KonvaShapeSelectorProps) {
+export function KonvaShapeSelector() {
+  const { addShape } = useEditor();
   const shapes: KonvaShape[] = [
     {
       id: "rectangle",
       name: "Rectangle",
       icon: <Square className="h-4 w-4" />,
-      action: () => onAddShape("rectangle"),
+      action: () => addShape("rectangle"),
     },
     {
       id: "circle",
       name: "Cercle",
       icon: <Circle className="h-4 w-4" />,
-      action: () => onAddShape("circle"),
+      action: () => addShape("circle"),
     },
     {
       id: "text",
       name: "Texte",
       icon: <Type className="h-4 w-4" />,
-      action: () => onAddShape("text"),
+      action: () => addShape("text"),
     },
     {
       id: "image",
       name: "Image",
       icon: <ImageIcon className="h-4 w-4" />,
-      action: () => onAddShape("image"),
+      action: () => addShape("image"),
     },
     {
       id: "line",
       name: "Ligne",
       icon: <PenLine className="h-4 w-4" />,
-      action: () => onAddShape("line"),
+      action: () => addShape("line"),
     },
     {
       id: "arrow",
       name: "Flèche",
       icon: <Play className="h-4 w-4" />,
-      action: () => onAddShape("arrow"),
+      action: () => addShape("arrow"),
     },
     {
       id: "chart",
       name: "Graphique",
       icon: <LineChart className="h-4 w-4" />,
-      action: () => onAddShape("chart"),
+      action: () => addShape("chart"),
     },
   ];
 
   return (
     <div className="space-y-4 h-full flex flex-col">
       <h3 className="text-sm font-medium">Ajouter un élément</h3>
-
-      <hr className="my-2 border-t border-border" />
 
       <div className="grid grid-cols-2 gap-2">
         {shapes.map((shape) => (
@@ -87,24 +83,6 @@ export function KonvaShapeSelector({ onAddShape }: KonvaShapeSelectorProps) {
             <span className="text-xs">{shape.name}</span>
           </Button>
         ))}
-      </div>
-
-      <hr className="my-2 border-t border-border" />
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Propriétés</h3>
-        <p className="text-xs text-muted-foreground">
-          Sélectionnez un élément pour modifier ses propriétés.
-        </p>
-      </div>
-
-      <div className="flex-grow"></div>
-
-      <div className="text-xs text-muted-foreground">
-        <p>
-          Astuce: Utilisez la touche Shift pour maintenir le ratio d&apos;aspect
-          lors du redimensionnement.
-        </p>
       </div>
     </div>
   );

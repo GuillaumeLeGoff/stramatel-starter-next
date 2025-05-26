@@ -6,14 +6,14 @@ import { KonvaShapeAttrs, KonvaNode } from "../types";
 import { PaintBucket, PencilLine, Trash2 } from "lucide-react";
 
 export function HeaderEditorComponents() {
-  const { 
-    selectedShapes, 
-    updateSelectedShape, 
-    setSelectedShapes, 
+  const {
+    selectedShapes,
+    updateSelectedShape,
+    setSelectedShapes,
     getCurrentSlideKonvaData,
-    saveCurrentSlideKonvaData
+    saveCurrentSlideKonvaData,
   } = useEditor();
-  
+
   const [isSelected, setIsSelected] = useState(false);
   const fillColorInputRef = useRef<HTMLInputElement>(null);
   const strokeColorInputRef = useRef<HTMLInputElement>(null);
@@ -23,46 +23,41 @@ export function HeaderEditorComponents() {
     setIsSelected(selectedShapes && selectedShapes.length > 0);
   }, [selectedShapes]);
 
-  // Détermine si un élément est sélectionné
-  const hasSelection = useMemo(() => {
-    return isSelected;
-  }, [isSelected]);
-
   // Détermine le type de l'élément sélectionné
   const selectedType = useMemo(() => {
-    if (!hasSelection || !selectedShapes || selectedShapes.length === 0) return null;
+    if (!selectedShapes || selectedShapes.length === 0) return null;
     return selectedShapes[0].className;
-  }, [hasSelection, selectedShapes]);
+  }, [selectedShapes]);
 
   // Vérifie si l'élément sélectionné a une propriété de remplissage
   const hasFill = useMemo(() => {
-    if (!hasSelection || !selectedShapes || selectedShapes.length === 0) return false;
+    if (!selectedShapes || selectedShapes.length === 0) return false;
     return selectedType !== "Line" && selectedType !== "Arrow";
-  }, [hasSelection, selectedType, selectedShapes]);
+  }, [selectedType, selectedShapes]);
 
   // Récupère la couleur actuelle de l'élément sélectionné
   const currentFillColor = useMemo(() => {
-    if (!hasSelection || !selectedShapes || selectedShapes.length === 0) return "#000000";
+    if (!selectedShapes || selectedShapes.length === 0) return "#000000";
     // Utilisation d'une assertion de type pour éviter les erreurs TS
     const attrs = selectedShapes[0].attrs as KonvaShapeAttrs;
     return attrs.fill || "#000000";
-  }, [hasSelection, selectedShapes]);
+  }, [selectedShapes]);
 
   // Récupère la couleur de contour actuelle de l'élément sélectionné
   const currentStrokeColor = useMemo(() => {
-    if (!hasSelection || !selectedShapes || selectedShapes.length === 0) return "#000000";
+    if (!selectedShapes || selectedShapes.length === 0) return "#000000";
     // Utilisation d'une assertion de type pour éviter les erreurs TS
     const attrs = selectedShapes[0].attrs as KonvaShapeAttrs;
     return attrs.stroke || "#000000";
-  }, [hasSelection, selectedShapes]);
+  }, [, selectedShapes]);
 
   // Récupère l'épaisseur de contour actuelle
   const currentStrokeWidth = useMemo(() => {
-    if (!hasSelection || !selectedShapes || selectedShapes.length === 0) return 1;
+    if (!selectedShapes || selectedShapes.length === 0) return 1;
     // Utilisation d'une assertion de type pour éviter les erreurs TS
     const attrs = selectedShapes[0].attrs as KonvaShapeAttrs;
     return attrs.strokeWidth || 1;
-  }, [hasSelection, selectedShapes]);
+  }, [selectedShapes]);
 
   // Gère le changement de couleur de remplissage
   const handleFillColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,8 +96,8 @@ export function HeaderEditorComponents() {
     const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData));
 
     // Récupérer les IDs des formes sélectionnées
-    const selectedIds = selectedShapes.map(shape => shape.attrs.id);
-
+    const selectedIds = selectedShapes.map((shape) => shape.attrs.id);
+    console.log("selectedIds", selectedIds);
     // Fonction récursive pour supprimer les formes
     const removeShapesFromNodes = (nodes: KonvaNode[]): boolean => {
       let removed = false;
@@ -110,24 +105,25 @@ export function HeaderEditorComponents() {
       // Pour chaque couche (Layer)
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
+        console.log("node", node);
 
         // Si le nœud a des enfants, filtrer pour supprimer les formes sélectionnées
         if (node.children && Array.isArray(node.children)) {
           // Filtrer les enfants directs
           const originalLength = node.children.length;
-          node.children = node.children.filter((child: KonvaNode) => 
-            !(child.attrs && child.attrs.id && selectedIds.includes(child.attrs.id as string))
+          node.children = node.children.filter(
+            (child: KonvaNode) =>
+              !(
+                child.attrs &&
+                child.attrs.id &&
+                selectedIds.includes(child.attrs.id as string)
+              )
           );
 
           // Vérifier si des enfants ont été supprimés à ce niveau
           removed = removed || node.children.length < originalLength;
 
           // Rechercher récursivement dans les enfants restants
-          for (let j = 0; j < node.children.length; j++) {
-            if (removeShapesFromNodes([node.children[j]])) {
-              removed = true;
-            }
-          }
         }
       }
 
@@ -145,7 +141,12 @@ export function HeaderEditorComponents() {
 
     // Vider la sélection actuelle
     setSelectedShapes([]);
-  }, [selectedShapes, getCurrentSlideKonvaData, saveCurrentSlideKonvaData, setSelectedShapes]);
+  }, [
+    selectedShapes,
+    getCurrentSlideKonvaData,
+    saveCurrentSlideKonvaData,
+    setSelectedShapes,
+  ]);
 
   // Ajouter un écouteur d'événement pour la touche "Suppr" (Delete)
   useEffect(() => {

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { KonvaStageRenderer } from "./KonvaStageRenderer";
-import { KonvaStage, SlidePreviewProps } from "../types";
+import { KonvaStageRenderer } from "../konva/KonvaStageRenderer";
+import { KonvaStage, SlidePreviewProps } from "../../types";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { useSlide } from "../hooks/useSlide";
+import { useSlide } from "../../hooks/useSlide";
 import { Button } from "@/shared/components/ui/button";
 import { Trash2, Clock } from "lucide-react";
 

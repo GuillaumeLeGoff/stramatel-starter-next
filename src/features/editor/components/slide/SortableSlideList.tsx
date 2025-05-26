@@ -21,7 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { GripVertical } from "lucide-react";
-import { useSlide } from "../hooks/useSlide";
+import { useSlide } from "../../hooks/useSlide";
 
 interface SortableItemProps {
   slide: SlideshowSlide;

@@ -1,13 +1,26 @@
-// Export des composants
+// ===== COMPOSANTS =====
 export * from "./components/EditorPage";
-export * from "./components/KonvaStageRenderer";
-export * from "./components/SlideComponent";
+export * from "./components/konva/KonvaStageRenderer";
+export * from "./components/slide/SlideComponent";
+export * from "./components/slide/SortableSlideList";
+export * from "./components/KonvaAddShapes";
+export * from "./components/HeaderEditorComponents";
+export * from "./components/ui/FooterEditorComponents";
 
-// Export des hooks
+// ===== HOOKS =====
 export * from "./hooks";
 
-// Export des types
+// ===== TYPES =====
 export * from "./types";
 
-// Export du store
+// ===== STORE =====
 export * from "./store/slideStore";
+
+// ===== API =====
+export * from "./api/slideApi";
+
+// ===== CONSTANTES =====
+export * from "./constants";
+
+// ===== UTILITAIRES =====
+export * from "./utils";

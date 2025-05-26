@@ -7,37 +7,12 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
-import { useEffect } from "react";
-import { KonvaStageRenderer } from "./KonvaStageRenderer";
-import { SortableSlideList } from "./";
 import { PlusIcon } from "lucide-react";
-import { KonvaShapeSelector } from "./KonvaShapeSelector";
-import { FooterEditorComponents } from "./FooterEditorComponents";
-import { HeaderEditorComponents } from "./HeaderEditorComponents";
-
-// Ajouter une classe CSS globale pour masquer les barres de défilement
-const hideScrollbarClass = "hide-scrollbar";
-
-// Créer un style global pour masquer les barres de défilement
-const createGlobalScrollbarStyle = () => {
-  if (
-    typeof document !== "undefined" &&
-    !document.getElementById("hide-scrollbar-style")
-  ) {
-    const style = document.createElement("style");
-    style.id = "hide-scrollbar-style";
-    style.innerHTML = `
-      .${hideScrollbarClass}::-webkit-scrollbar {
-        display: none;
-      }
-      .${hideScrollbarClass} {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-};
+import { SortableSlideList } from "./slide/SortableSlideList";
+import { FooterEditorComponents } from "./ui/FooterEditorComponents";
+import { HeaderEditorComponents } from "./ui/HeaderEditorComponents";
+import { KonvaShapeSelector } from "./konva/KonvaAddShapes";
+import { KonvaStageRenderer } from "./konva/KonvaStageRenderer";
 
 export function EditorPage() {
   const { currentSlideshow } = useSlideshow();
@@ -48,34 +23,14 @@ export function EditorPage() {
     containerRef,
     addShape,
   } = useEditor();
-  
+
   const konvaData = getCurrentSlideKonvaData();
   const { scale, zoomIn, zoomOut } = useZoom(konvaData);
-  
+
   const { addSlide } = useSlide({
     stageData: konvaData,
     containerRef,
   });
-
-  useEffect(() => {
-    console.log("currentSlideshow", currentSlideshow);
-    // Ajouter le style global pour masquer les barres de défilement
-    createGlobalScrollbarStyle();
-  }, [currentSlideshow]);
-
-  // Composant local pour intégrer le FooterEditorComponents
-  const FooterEditorComponent = () => {
-    return (
-      <div className="flex w-full justify-between px-2">
-        <div></div> {/* Div vide pour alignement */}
-        <FooterEditorComponents 
-          scale={scale}
-          zoomIn={zoomIn}
-          zoomOut={zoomOut}
-        />
-      </div>
-    );
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -117,7 +72,7 @@ export function EditorPage() {
                   </div>
 
                   {/* Contenu scrollable */}
-                  <div className={`flex-1 overflow-auto ${hideScrollbarClass}`}>
+                  <div className={`flex-1 overflow-auto `}>
                     {currentSlideshow.slides &&
                     currentSlideshow.slides.length > 0 ? (
                       <SortableSlideList
@@ -221,7 +176,11 @@ export function EditorPage() {
                   defaultSize={5}
                   className="flex justify-end items-center border-t border"
                 >
-                  <FooterEditorComponent />
+                  <FooterEditorComponents
+                    scale={scale}
+                    zoomIn={zoomIn}
+                    zoomOut={zoomOut}
+                  />
                 </ResizablePanel>
               </ResizablePanelGroup>
             </ResizablePanel>
@@ -232,9 +191,7 @@ export function EditorPage() {
             <ResizablePanel defaultSize={20} minSize={15}>
               <Card className="h-full rounded-none border-0 shadow-none">
                 <CardContent className="p-4 h-full">
-                  <div className={`h-full overflow-auto ${hideScrollbarClass}`}>
-                    <KonvaShapeSelector onAddShape={addShape} />
-                  </div>
+                  <KonvaShapeSelector />
                 </CardContent>
               </Card>
             </ResizablePanel>
