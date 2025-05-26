@@ -1,8 +1,8 @@
-import { useEditor } from "@/features/editor/hooks";
+import { useEditor, useSlide } from "@/features/editor/hooks";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { KonvaShapeAttrs, KonvaNode } from "../types";
+import { useEffect, useMemo, useRef, useCallback } from "react";
+import { KonvaShapeAttrs, KonvaNode } from "../../types";
 import { PaintBucket, PencilLine, Trash2 } from "lucide-react";
 
 export function HeaderEditorComponents() {
@@ -11,17 +11,16 @@ export function HeaderEditorComponents() {
     updateSelectedShape,
     setSelectedShapes,
     getCurrentSlideKonvaData,
-    saveCurrentSlideKonvaData,
   } = useEditor();
 
-  const [isSelected, setIsSelected] = useState(false);
+  const konvaData = getCurrentSlideKonvaData();
+  const { saveCurrentSlideKonvaData } = useSlide({
+    stageData: konvaData,
+    containerRef: { current: null },
+  });
+
   const fillColorInputRef = useRef<HTMLInputElement>(null);
   const strokeColorInputRef = useRef<HTMLInputElement>(null);
-
-  // Afficher les formes sélectionnées dans la console pour déboguer
-  useEffect(() => {
-    setIsSelected(selectedShapes && selectedShapes.length > 0);
-  }, [selectedShapes]);
 
   // Détermine le type de l'élément sélectionné
   const selectedType = useMemo(() => {

@@ -1,2 +1,2 @@
-export * from "./KonvaStageRenderer";
-export * from "./KonvaAddShapes";
+export { KonvaStageRenderer } from "./KonvaStageRenderer";
+export { KonvaShapeSelector } from "./KonvaAddShapes";

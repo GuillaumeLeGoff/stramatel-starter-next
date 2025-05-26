@@ -9,7 +9,6 @@ import {
   Play,
   LineChart,
 } from "lucide-react";
-import { useEditor } from "@/features/editor/hooks";
 
 interface KonvaShape {
   id: string;
@@ -18,8 +17,11 @@ interface KonvaShape {
   action: () => void;
 }
 
-export function KonvaShapeSelector() {
-  const { addShape } = useEditor();
+interface KonvaShapeSelectorProps {
+  addShape: (shapeType: string) => Promise<void>;
+}
+
+export function KonvaShapeSelector({ addShape }: KonvaShapeSelectorProps) {
   const shapes: KonvaShape[] = [
     {
       id: "rectangle",

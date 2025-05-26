@@ -16,18 +16,13 @@ import { KonvaStageRenderer } from "./konva/KonvaStageRenderer";
 
 export function EditorPage() {
   const { currentSlideshow } = useSlideshow();
-  const {
-    currentSlide,
-    getCurrentSlideKonvaData,
-    changeSlide,
-    containerRef,
-    addShape,
-  } = useEditor();
+  const { currentSlide, getCurrentSlideKonvaData, changeSlide, containerRef } =
+    useEditor();
 
   const konvaData = getCurrentSlideKonvaData();
   const { scale, zoomIn, zoomOut } = useZoom(konvaData);
 
-  const { addSlide } = useSlide({
+  const { addSlide, addShape } = useSlide({
     stageData: konvaData,
     containerRef,
   });
@@ -191,7 +186,7 @@ export function EditorPage() {
             <ResizablePanel defaultSize={20} minSize={15}>
               <Card className="h-full rounded-none border-0 shadow-none">
                 <CardContent className="p-4 h-full">
-                  <KonvaShapeSelector />
+                  <KonvaShapeSelector addShape={addShape} />
                 </CardContent>
               </Card>
             </ResizablePanel>
