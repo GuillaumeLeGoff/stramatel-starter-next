@@ -13,6 +13,7 @@ export interface KonvaTextNodeAttrs {
   id?: string;
   fontStyle?: string;
   draggable?: boolean;
+  wrap?: string;
 }
 
 export interface KonvaShapeAttrs {

@@ -42,6 +42,7 @@ export const DEFAULT_SHAPE_STYLES = {
     fontFamily: "Arial",
     fill: "#000000",
     align: "center",
+    wrap: "word",
   },
   line: {
     stroke: "#000000",

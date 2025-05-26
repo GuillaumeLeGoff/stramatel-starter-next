@@ -75,7 +75,31 @@ export function KonvaStageRenderer({
 
     switch (className) {
       case "Text":
-        shapeElement = <Text key={shapeId} {...commonProps} />;
+        shapeElement = (
+          <Text
+            key={shapeId}
+            {...commonProps}
+            onTransform={
+              isPreview
+                ? undefined
+                : (e) => {
+                    const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    const newWidth = node.width() * scaleX;
+                    const newHeight = node.height() * scaleY;
+
+                    // Appliquer immédiatement les nouvelles dimensions
+                    node.setAttrs({
+                      width: newWidth,
+                      height: newHeight,
+                      scaleX: 1,
+                      scaleY: 1,
+                    });
+                  }
+            }
+          />
+        );
         break;
       case "Circle":
         shapeElement = <Circle key={shapeId} {...commonProps} />;
@@ -158,8 +182,12 @@ export function KonvaStageRenderer({
             }}
             enabledAnchors={[
               "top-left",
+              "top-center",
               "top-right",
+              "middle-left",
+              "middle-right",
               "bottom-left",
+              "bottom-center",
               "bottom-right",
             ]}
             rotateEnabled={true}

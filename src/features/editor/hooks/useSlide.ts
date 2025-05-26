@@ -122,6 +122,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
               fontFamily: "Arial",
               fill: "#000000",
               align: "center",
+              wrap: "word",
               id: shapeId,
               name: "Texte",
               draggable: true,
@@ -455,6 +456,35 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     [currentSlide, updateSlidesOrder]
   );
 
+  // ===== MISE À JOUR DE LA DURÉE =====
+
+  /**
+   * Met à jour la durée d'une slide
+   */
+  const updateSlideDuration = async (slideId: number, duration: number) => {
+    if (!currentSlideshow || !updateCurrentSlideshow) return;
+
+    try {
+      // 1. Mettre à jour la slide dans la base de données via l'API
+      await updateSlide(slideId, { duration });
+
+      // 2. Mettre à jour le slideshow actuel avec la nouvelle durée
+      updateCurrentSlideshow((prev) => ({
+        ...prev,
+        slides: prev.slides
+          ? prev.slides.map((slide) =>
+              slide.id === slideId ? { ...slide, duration } : slide
+            )
+          : [],
+      }));
+
+      return true;
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de la durée", error);
+      return false;
+    }
+  };
+
   return {
     // Sauvegarde Konva
     saveCurrentSlideKonvaData,
@@ -469,6 +499,9 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     // CRUD des slides
     addSlide,
     deleteSlide,
+
+    // Mise à jour de la durée
+    updateSlideDuration,
 
     // Drag & drop
     updateSlidesOrder,

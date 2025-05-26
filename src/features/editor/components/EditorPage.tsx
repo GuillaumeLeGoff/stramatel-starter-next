@@ -22,10 +22,20 @@ export function EditorPage() {
   const konvaData = getCurrentSlideKonvaData();
   const { scale, zoomIn, zoomOut } = useZoom(konvaData);
 
-  const { addSlide, addShape } = useSlide({
+  const { addSlide, addShape, updateSlideDuration } = useSlide({
     stageData: konvaData,
     containerRef,
   });
+
+  // Récupérer la slide actuelle
+  const currentSlideData = currentSlideshow?.slides?.[currentSlide];
+
+  // Fonction pour gérer le changement de durée
+  const handleDurationChange = async (duration: number) => {
+    if (currentSlideData?.id) {
+      await updateSlideDuration(currentSlideData.id, duration);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -175,6 +185,8 @@ export function EditorPage() {
                     scale={scale}
                     zoomIn={zoomIn}
                     zoomOut={zoomOut}
+                    currentSlideDuration={currentSlideData?.duration}
+                    onDurationChange={handleDurationChange}
                   />
                 </ResizablePanel>
               </ResizablePanelGroup>

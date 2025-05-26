@@ -39,15 +39,17 @@ export function useKonvaEvents({
 
       selectedIds.forEach((id) => {
         const node = shapeRefs[id as string];
-        if (!node) return;
+        const shape = selectedShapes.find((s) => s.attrs.id === id);
+        if (!node || !shape) return;
 
         const newAttrs: Record<string, unknown> = {
           x: node.x(),
           y: node.y(),
           rotation: node.rotation(),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
         };
+
+        newAttrs.scaleX = node.scaleX();
+        newAttrs.scaleY = node.scaleY();
 
         if (typeof node.width === "function") {
           newAttrs.width = node.width();
@@ -85,9 +87,10 @@ export function useKonvaEvents({
         x: node.x(),
         y: node.y(),
         rotation: node.rotation(),
-        scaleX: node.scaleX(),
-        scaleY: node.scaleY(),
       };
+
+      newAttrs.scaleX = node.scaleX();
+      newAttrs.scaleY = node.scaleY();
 
       if (typeof node.width === "function") {
         newAttrs.width = node.width();
