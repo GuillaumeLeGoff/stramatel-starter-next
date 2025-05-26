@@ -12,6 +12,7 @@ import {
 } from "react-konva";
 import { KonvaStage, KonvaShape } from "../../types";
 import { useKonvaStageRenderer } from "../../hooks";
+import { KonvaTextEditor } from "./KonvaTextEditor";
 import Konva from "konva";
 
 interface KonvaStageRendererProps {
@@ -33,7 +34,6 @@ export function KonvaStageRenderer({
   isPreview = false,
 }: KonvaStageRendererProps) {
   const {
-    selectionRect,
     handleSelect,
     handleStageClick,
     handleMouseDown,
@@ -44,7 +44,20 @@ export function KonvaStageRenderer({
     handleTransformEnd,
     handleDragEnd,
     handleShapeClick,
+    textEditor,
   } = useKonvaStageRenderer({ stageData, isPreview });
+
+  // Combiner les gestionnaires de clic du stage
+  const combinedStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    // D'abord gérer l'édition de texte
+    if (textEditor.isEditing) {
+      textEditor.handleStageClickForTextEditor(e);
+    }
+    // Puis gérer la sélection normale
+    if (!isPreview) {
+      handleStageClick(e);
+    }
+  };
 
   if (!stageData) return null;
 
@@ -79,6 +92,12 @@ export function KonvaStageRenderer({
           <Text
             key={shapeId}
             {...commonProps}
+            visible={textEditor.editingTextId !== shapeId}
+            onDblClick={
+              isPreview
+                ? undefined
+                : () => textEditor.handleTextDoubleClick(shapeId)
+            }
             onTransform={
               isPreview
                 ? undefined
@@ -162,7 +181,7 @@ export function KonvaStageRenderer({
     <Stage
       width={stageData.attrs.width}
       height={stageData.attrs.height}
-      onClick={isPreview ? undefined : handleStageClick}
+      onClick={isPreview ? undefined : combinedStageClick}
       onMouseDown={isPreview ? undefined : handleMouseDown}
       onMouseMove={isPreview ? undefined : handleMouseMove}
       onMouseUp={isPreview ? undefined : handleMouseUp}
@@ -196,7 +215,7 @@ export function KonvaStageRenderer({
         )}
 
         {/* Rectangle de sélection */}
-        {!isPreview && selectionRect.visible && (
+        {/*  {!isPreview && selectionRect.visible && (
           <Rect
             fill="rgba(0, 0, 255, 0.2)"
             stroke="rgba(0, 0, 255, 0.8)"
@@ -207,6 +226,22 @@ export function KonvaStageRenderer({
             height={Math.abs(selectionRect.y2 - selectionRect.y1)}
           />
         )}
+ */}
+        {/* Éditeur de texte */}
+        {!isPreview &&
+          textEditor.isEditing &&
+          textEditor.getEditingTextNode() && (
+            <KonvaTextEditor
+              textNode={textEditor.getEditingTextNode()! as Konva.Text}
+              onClose={textEditor.stopTextEditing}
+              onTextChange={(newText) => {
+                textEditor.updateTextContentDuringEdit(newText);
+              }}
+              onFinalize={async (newText) => {
+                await textEditor.finalizeTextEdit(newText);
+              }}
+            />
+          )}
       </Layer>
     </Stage>
   );

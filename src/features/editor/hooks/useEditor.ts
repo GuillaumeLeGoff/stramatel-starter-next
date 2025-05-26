@@ -13,6 +13,7 @@ export function useEditor() {
     setError,
     selectedShapes,
     setSelectedShapes,
+    editingTextId,
   } = slideStore();
 
   const { currentSlideshow } = useSlideshow();
@@ -68,12 +69,14 @@ export function useEditor() {
       if (!currentSlideshow || !currentSlideshow.slides) return;
 
       if (slideIndex >= 0 && slideIndex < currentSlideshow.slides.length) {
-        // Réinitialiser les formes sélectionnées lors d'un changement de slide
-        setSelectedShapes([]);
+        // Réinitialiser les formes sélectionnées lors d'un changement de slide (sauf si on édite un texte)
+        if (!editingTextId) {
+          setSelectedShapes([]);
+        }
         setCurrentSlide(slideIndex);
       }
     },
-    [currentSlideshow, setCurrentSlide, setSelectedShapes]
+    [currentSlideshow, setCurrentSlide, setSelectedShapes, editingTextId]
   );
 
   // Mettre à jour une forme sélectionnée

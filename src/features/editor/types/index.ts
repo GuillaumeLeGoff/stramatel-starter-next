@@ -99,6 +99,8 @@ export interface SlideStore {
   isLoading: boolean;
   error: string | null;
   selectedShapes: KonvaShape[];
+  editingTextId: string | null;
+  editingTextShape: KonvaShape | null;
 }
 
 // ===== TYPES UTILITAIRES =====

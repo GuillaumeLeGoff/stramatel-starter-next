@@ -24,7 +24,7 @@ export function useKonvaEvents({
   shapeRefs,
   isPreview = false,
 }: UseKonvaEventsProps) {
-  const { setSelectedShapes } = slideStore();
+  const { setSelectedShapes, editingTextId } = slideStore();
 
   // Fonction pour gérer les événements de transformation de plusieurs formes
   const handleMultiTransformEnd = useCallback(
@@ -126,7 +126,7 @@ export function useKonvaEvents({
         return;
       }
 
-      if (!selectedIds.includes(nodeId)) {
+      if (!selectedIds.includes(nodeId) && !editingTextId) {
         const shape = getAllShapes().find((s) => s.attrs.id === nodeId);
         if (shape) {
           setSelectedShapes([shape]);

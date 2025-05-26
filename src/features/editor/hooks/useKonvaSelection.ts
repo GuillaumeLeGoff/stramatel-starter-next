@@ -20,7 +20,7 @@ export function useKonvaSelection({
   getAllShapes,
   isPreview = false,
 }: UseKonvaSelectionProps) {
-  const { selectedShapes, setSelectedShapes } = slideStore();
+  const { selectedShapes, setSelectedShapes, editingTextId } = slideStore();
   const [selectionRect, setSelectionRect] = useState<SelectionRect>({
     visible: false,
     x1: 0,
@@ -123,11 +123,12 @@ export function useKonvaSelection({
         y2: pos.y,
       });
 
-      if (!e.evt.shiftKey) {
+      // Ne pas désélectionner si on est en train d'éditer un texte
+      if (!e.evt.shiftKey && !editingTextId) {
         setSelectedShapes([]);
       }
     },
-    [setSelectedShapes]
+    [setSelectedShapes, editingTextId]
   );
 
   // Mettre à jour le rectangle de sélection
@@ -224,11 +225,12 @@ export function useKonvaSelection({
       }
 
       const clickedOnEmpty = e.target === e.target.getStage();
-      if (clickedOnEmpty && !e.evt.shiftKey) {
+      // Ne pas désélectionner si on est en train d'éditer un texte
+      if (clickedOnEmpty && !e.evt.shiftKey && !editingTextId) {
         setSelectedShapes([]);
       }
     },
-    [selectMode, setSelectedShapes]
+    [selectMode, setSelectedShapes, editingTextId]
   );
 
   return {

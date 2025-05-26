@@ -10,6 +10,10 @@ interface SlideActions {
   // Actions de sélection
   setSelectedShapes: (shapes: KonvaShape[]) => void;
 
+  // Actions d'édition de texte
+  setEditingTextId: (textId: string | null) => void;
+  setEditingTextShape: (shape: KonvaShape | null) => void;
+
   // Actions d'état
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
@@ -26,6 +30,8 @@ export const slideStore = create<SlideStore & SlideActions>((set) => ({
   isLoading: false,
   error: null,
   selectedShapes: [],
+  editingTextId: null,
+  editingTextShape: null,
 
   // Actions de navigation
   setCurrentSlide: (slideIndex: number) => set({ currentSlide: slideIndex }),
@@ -38,6 +44,11 @@ export const slideStore = create<SlideStore & SlideActions>((set) => ({
   // Actions de sélection
   setSelectedShapes: (shapes: KonvaShape[]) => set({ selectedShapes: shapes }),
 
+  // Actions d'édition de texte
+  setEditingTextId: (textId: string | null) => set({ editingTextId: textId }),
+  setEditingTextShape: (shape: KonvaShape | null) =>
+    set({ editingTextShape: shape }),
+
   // Actions utilitaires
   resetState: () =>
     set({
@@ -45,5 +56,7 @@ export const slideStore = create<SlideStore & SlideActions>((set) => ({
       isLoading: false,
       error: null,
       selectedShapes: [],
+      editingTextId: null,
+      editingTextShape: null,
     }),
 }));

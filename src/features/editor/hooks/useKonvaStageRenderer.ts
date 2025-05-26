@@ -4,6 +4,7 @@ import { useKonvaSelection } from "./useKonvaSelection";
 import { useKonvaTransformer } from "./useKonvaTransformer";
 import { useKonvaSave } from "./useKonvaSave";
 import { useKonvaEvents } from "./useKonvaEvents";
+import { useTextEditor } from "./useTextEditor";
 import { useSlide } from "./useSlide";
 import Konva from "konva";
 
@@ -60,6 +61,12 @@ export function useKonvaStageRenderer({
       : saveCurrentSlideKonvaData,
   });
 
+  const textEditor = useTextEditor({
+    shapeRefs: transformer.shapeRefs,
+    getAllShapes,
+    saveChanges: save.saveChanges,
+  });
+
   const events = useKonvaEvents({
     selectedShapes: selection.selectedShapes,
     getAllShapes,
@@ -105,5 +112,8 @@ export function useKonvaStageRenderer({
 
     // Sauvegarde
     saveChanges: save.saveChanges,
+
+    // Édition de texte
+    textEditor,
   };
 }

@@ -8,3 +8,4 @@ export * from "./useKonvaTransformer";
 export * from "./useKonvaSave";
 export * from "./useKonvaEvents";
 export * from "./useKonvaStageRenderer";
+export * from "./useTextEditor";

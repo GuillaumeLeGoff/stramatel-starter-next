@@ -3,8 +3,6 @@ export * from "./components/EditorPage";
 export * from "./components/konva/KonvaStageRenderer";
 export * from "./components/slide/SlideComponent";
 export * from "./components/slide/SortableSlideList";
-export * from "./components/KonvaAddShapes";
-export * from "./components/HeaderEditorComponents";
 export * from "./components/ui/FooterEditorComponents";
 
 // ===== HOOKS =====
