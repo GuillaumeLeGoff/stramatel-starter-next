@@ -11,7 +11,7 @@ import { PlusIcon } from "lucide-react";
 import { SortableSlideList } from "./slide/SortableSlideList";
 import { FooterEditorComponents } from "./ui/FooterEditorComponents";
 import { HeaderEditorComponents } from "./ui/HeaderEditorComponents";
-import { KonvaShapeSelector } from "./konva/KonvaAddShapes";
+import { TabsPanel } from "./konva/TabsPanel";
 import { KonvaStageRenderer } from "./konva/KonvaStageRenderer";
 
 export function EditorPage() {
@@ -196,11 +196,15 @@ export function EditorPage() {
 
             {/* Panneau des outils et des formes */}
             <ResizablePanel defaultSize={20} minSize={15}>
-              <Card className="h-full rounded-none border-0 shadow-none">
-                <CardContent className="p-4 h-full">
-                  <KonvaShapeSelector addShape={addShape} />
-                </CardContent>
-              </Card>
+              <ResizablePanelGroup direction="horizontal">
+                <ResizablePanel defaultSize={50}>
+                  <Card className="h-full rounded-none border-0 shadow-none">
+                    <CardContent className="p-4 h-full">
+                      <TabsPanel addShape={addShape} />
+                    </CardContent>
+                  </Card>
+                </ResizablePanel>
+              </ResizablePanelGroup>
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>

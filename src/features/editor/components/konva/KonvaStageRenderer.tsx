@@ -13,6 +13,7 @@ import {
 import { KonvaStage, KonvaShape } from "../../types";
 import { useKonvaStageRenderer } from "../../hooks";
 import { KonvaTextEditor } from "./KonvaTextEditor";
+import { KonvaImage } from "./KonvaImage";
 import Konva from "konva";
 
 interface KonvaStageRendererProps {
@@ -139,6 +140,27 @@ export function KonvaStageRenderer({
             key={shapeId}
             {...commonProps}
             points={attrs.points as number[]}
+          />
+        );
+        break;
+      case "Image":
+        if (!attrs.src) {
+          console.warn("Image requiert une propriété src", attrs);
+          return null;
+        }
+        shapeElement = (
+          <KonvaImage
+            key={shapeId}
+            src={attrs.src as string}
+            x={attrs.x as number}
+            y={attrs.y as number}
+            width={attrs.width as number}
+            height={attrs.height as number}
+            id={shapeId}
+            draggable={commonProps.draggable}
+            onTransformEnd={commonProps.onTransformEnd}
+            onDragEnd={commonProps.onDragEnd}
+            onClick={commonProps.onClick}
           />
         );
         break;

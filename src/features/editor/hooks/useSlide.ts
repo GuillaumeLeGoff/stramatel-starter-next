@@ -56,7 +56,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
 
   // Ajouter une forme au slide actuel
   const addShape = useCallback(
-    async (shapeType: string) => {
+    async (shapeType: string, options?: { src?: string; name?: string }) => {
       if (!currentSlideshow || !currentSlideshow.slides || !stageData) return;
 
       const currentSlideObj = currentSlideshow.slides[currentSlide];
@@ -168,8 +168,9 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
               y: centerY - 75,
               width: 200,
               height: 150,
+              src: options?.src || "/placeholder-image.jpg",
               id: shapeId,
-              name: "Image",
+              name: options?.name || "Image",
               draggable: true,
             },
             className: "Image",

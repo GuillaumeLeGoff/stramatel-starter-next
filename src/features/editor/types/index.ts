@@ -28,6 +28,7 @@ export interface KonvaShapeAttrs {
   points?: number[];
   pointerLength?: number;
   pointerWidth?: number;
+  src?: string; // Pour les images
   [key: string]: string | number | boolean | number[] | undefined;
 }
 

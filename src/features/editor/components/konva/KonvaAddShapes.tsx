@@ -1,14 +1,6 @@
 import React from "react";
-import { Button } from "@/shared/components/ui/button";
-import {
-  Square,
-  Circle,
-  Type,
-  Image as ImageIcon,
-  PenLine,
-  Play,
-  LineChart,
-} from "lucide-react";
+import { Card, CardContent } from "@/shared/components/ui/card";
+import { Square, Circle, Type, PenLine, Play } from "lucide-react";
 
 interface KonvaShape {
   id: string;
@@ -18,7 +10,10 @@ interface KonvaShape {
 }
 
 interface KonvaShapeSelectorProps {
-  addShape: (shapeType: string) => Promise<void>;
+  addShape: (
+    shapeType: string,
+    options?: { src?: string; name?: string }
+  ) => Promise<void>;
 }
 
 export function KonvaShapeSelector({ addShape }: KonvaShapeSelectorProps) {
@@ -42,12 +37,6 @@ export function KonvaShapeSelector({ addShape }: KonvaShapeSelectorProps) {
       action: () => addShape("text"),
     },
     {
-      id: "image",
-      name: "Image",
-      icon: <ImageIcon className="h-4 w-4" />,
-      action: () => addShape("image"),
-    },
-    {
       id: "line",
       name: "Ligne",
       icon: <PenLine className="h-4 w-4" />,
@@ -59,31 +48,28 @@ export function KonvaShapeSelector({ addShape }: KonvaShapeSelectorProps) {
       icon: <Play className="h-4 w-4" />,
       action: () => addShape("arrow"),
     },
-    {
-      id: "chart",
-      name: "Graphique",
-      icon: <LineChart className="h-4 w-4" />,
-      action: () => addShape("chart"),
-    },
   ];
 
   return (
     <div className="space-y-4 h-full flex flex-col">
-      <h3 className="text-sm font-medium">Ajouter un élément</h3>
-
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {shapes.map((shape) => (
-          <Button
+          <Card
             key={shape.id}
-            variant="outline"
-            size="sm"
-            className="h-10 w-full flex items-center justify-center gap-2"
+            className="cursor-pointer hover:bg-accent transition-colors border-dashed"
             onClick={shape.action}
-            title={`Ajouter un ${shape.name.toLowerCase()}`}
           >
-            {shape.icon}
-            <span className="text-xs">{shape.name}</span>
-          </Button>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 p-2 bg-primary/10 rounded-md">
+                  {shape.icon}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{shape.name}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>
