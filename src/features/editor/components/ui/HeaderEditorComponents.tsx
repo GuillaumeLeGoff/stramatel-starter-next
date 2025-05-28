@@ -3,7 +3,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Button } from "@/shared/components/ui/button";
 import { useEffect, useMemo, useRef, useCallback } from "react";
-import { KonvaShapeAttrs, KonvaNode, KonvaTextNodeAttrs } from "../../types";
+import { KonvaShapeAttrs, KonvaNode, KonvaTextNodeAttrs, KonvaLiveTextAttrs } from "../../types";
 import { slideStore } from "../../store/slideStore";
 import {
   PaintBucket,
@@ -34,6 +34,15 @@ export function HeaderEditorComponents() {
   const fillColorInputRef = useRef<HTMLInputElement>(null);
   const strokeColorInputRef = useRef<HTMLInputElement>(null);
 
+  // Fonction utilitaire pour obtenir les attributs de texte selon le type
+  const getTextAttrs = (shape: any): KonvaTextNodeAttrs | KonvaLiveTextAttrs => {
+    if (shape.className === "Text") {
+      return shape.attrs as KonvaTextNodeAttrs;
+    } else {
+      return shape.attrs as KonvaLiveTextAttrs;
+    }
+  };
+
   // Détermine le type de l'élément sélectionné ou en cours d'édition
   const selectedType = useMemo(() => {
     // Si on édite un texte, utiliser le type de la forme en cours d'édition
@@ -59,7 +68,10 @@ export function HeaderEditorComponents() {
 
   // Vérifie si l'élément sélectionné est un texte
   const isText = useMemo(() => {
-    return selectedType === "Text";
+    return selectedType === "Text" || 
+           selectedType === "liveDate" || 
+           selectedType === "liveTime" || 
+           selectedType === "liveDateTime";
   }, [selectedType]);
 
   // Vérifie si l'élément sélectionné a des propriétés de contour (pas pour les textes)
@@ -99,64 +111,64 @@ export function HeaderEditorComponents() {
 
   // Propriétés spécifiques au texte
   const currentFontSize = useMemo(() => {
-    if (selectedType !== "Text") return 16;
+    if (!isText) return 16;
 
     // Si on édite un texte, utiliser ses propriétés
     if (editingTextId && editingTextShape) {
-      const attrs = editingTextShape.attrs as KonvaTextNodeAttrs;
+      const attrs = getTextAttrs(editingTextShape);
       return attrs.fontSize || 16;
     }
 
     // Sinon, utiliser la forme sélectionnée
     if (!selectedShapes || selectedShapes.length === 0) return 16;
-    const attrs = selectedShapes[0].attrs as KonvaTextNodeAttrs;
+    const attrs = getTextAttrs(selectedShapes[0]);
     return attrs.fontSize || 16;
-  }, [selectedShapes, selectedType, editingTextId, editingTextShape]);
+  }, [selectedShapes, isText, editingTextId, editingTextShape]);
 
   const currentFontFamily = useMemo(() => {
-    if (selectedType !== "Text") return "Arial";
+    if (!isText) return "Arial";
 
     // Si on édite un texte, utiliser ses propriétés
     if (editingTextId && editingTextShape) {
-      const attrs = editingTextShape.attrs as KonvaTextNodeAttrs;
+      const attrs = getTextAttrs(editingTextShape);
       return attrs.fontFamily || "Arial";
     }
 
     // Sinon, utiliser la forme sélectionnée
     if (!selectedShapes || selectedShapes.length === 0) return "Arial";
-    const attrs = selectedShapes[0].attrs as KonvaTextNodeAttrs;
+    const attrs = getTextAttrs(selectedShapes[0]);
     return attrs.fontFamily || "Arial";
-  }, [selectedShapes, selectedType, editingTextId, editingTextShape]);
+  }, [selectedShapes, isText, editingTextId, editingTextShape]);
 
   const currentFontStyle = useMemo(() => {
-    if (selectedType !== "Text") return "normal";
+    if (!isText) return "normal";
 
     // Si on édite un texte, utiliser ses propriétés
     if (editingTextId && editingTextShape) {
-      const attrs = editingTextShape.attrs as KonvaTextNodeAttrs;
+      const attrs = getTextAttrs(editingTextShape);
       return attrs.fontStyle || "normal";
     }
 
     // Sinon, utiliser la forme sélectionnée
     if (!selectedShapes || selectedShapes.length === 0) return "normal";
-    const attrs = selectedShapes[0].attrs as KonvaTextNodeAttrs;
+    const attrs = getTextAttrs(selectedShapes[0]);
     return attrs.fontStyle || "normal";
-  }, [selectedShapes, selectedType, editingTextId, editingTextShape]);
+  }, [selectedShapes, isText, editingTextId, editingTextShape]);
 
   const currentTextAlign = useMemo(() => {
-    if (selectedType !== "Text") return "left";
+    if (!isText) return "left";
 
     // Si on édite un texte, utiliser ses propriétés
     if (editingTextId && editingTextShape) {
-      const attrs = editingTextShape.attrs as KonvaTextNodeAttrs;
+      const attrs = getTextAttrs(editingTextShape);
       return attrs.align || "left";
     }
 
     // Sinon, utiliser la forme sélectionnée
     if (!selectedShapes || selectedShapes.length === 0) return "left";
-    const attrs = selectedShapes[0].attrs as KonvaTextNodeAttrs;
+    const attrs = getTextAttrs(selectedShapes[0]);
     return attrs.align || "left";
-  }, [selectedShapes, selectedType, editingTextId, editingTextShape]);
+  }, [selectedShapes, isText, editingTextId, editingTextShape]);
 
   // Gère le changement de couleur de remplissage
   const handleFillColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {

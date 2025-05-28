@@ -31,6 +31,7 @@ export function useMedias() {
   const [medias, setMedias] = useState<Media[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingMediaIds, setDeletingMediaIds] = useState<Set<string>>(new Set());
 
   // Fonction pour convertir la taille en bytes pour le tri
   const getSizeInBytes = (size: string): number => {
@@ -173,7 +174,8 @@ export function useMedias() {
   // Fonction pour supprimer un média
   const deleteMedia = async (mediaId: string) => {
     try {
-      setLoading(true);
+      // Ajouter le média à la liste des suppressions en cours
+      setDeletingMediaIds(prev => new Set(prev).add(mediaId));
       setError(null);
       
       // Trouver le média pour récupérer son URL
@@ -196,7 +198,12 @@ export function useMedias() {
       );
       throw err;
     } finally {
-      setLoading(false);
+      // Retirer le média de la liste des suppressions en cours
+      setDeletingMediaIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(mediaId);
+        return newSet;
+      });
     }
   };
 
@@ -222,6 +229,7 @@ export function useMedias() {
     medias: sortedMedias,
     loading,
     error,
+    deletingMediaIds,
 
     // Actions
     setViewMode,

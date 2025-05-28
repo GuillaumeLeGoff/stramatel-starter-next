@@ -5,13 +5,13 @@ import {
   updateSlide,
   associateMediaToSlide,
 } from "../api/slideApi";
-import { KonvaStage, Slide } from "../types";
+import { KonvaStage, Slide, ShapeType } from "../types";
 import { slideStore } from "../store/slideStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
-import { cleanMediaFromKonvaData } from "../utils";
+import { cleanMediaFromKonvaData, createShape, getStageCenter } from "../utils";
 
 interface UseSlideProps {
   stageData: KonvaStage | null;
@@ -106,7 +106,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
 
   // Ajouter une forme au slide actuel
   const addShape = useCallback(
-    async (shapeType: string, options?: { src?: string; name?: string; mediaId?: string }) => {
+    async (shapeType: string, options?: { src?: string; name?: string; mediaId?: string; x?: number; y?: number }) => {
       if (!currentSlideshow || !currentSlideshow.slides || !stageData) return;
 
       const currentSlideObj = currentSlideshow.slides[currentSlide];
@@ -115,184 +115,114 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
       // Créer un clone profond du konvaData actuel
       const updatedKonvaData = JSON.parse(JSON.stringify(stageData));
 
-      // Générer un ID unique pour la forme
-      const shapeId = `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
       // Déterminer les dimensions et la position de la nouvelle forme
-      const centerX = updatedKonvaData.attrs.width / 2;
-      const centerY = updatedKonvaData.attrs.height / 2;
+      const { x: centerX, y: centerY } = getStageCenter(updatedKonvaData);
 
       let newShape;
 
-      switch (shapeType) {
-        case "rectangle":
-          newShape = {
-            attrs: {
-              x: centerX - 100,
-              y: centerY - 50,
-              width: 200,
-              height: 100,
-              fill: "#3B82F6",
-              stroke: "#2563EB",
-              strokeWidth: 2,
-              id: shapeId,
-              name: "Rectangle",
-              draggable: true,
-            },
-            className: "Rect",
-          };
-          break;
-
-        case "circle":
-          newShape = {
-            attrs: {
-              x: centerX,
-              y: centerY,
-              radius: 50,
-              fill: "#10B981",
-              stroke: "#059669",
-              strokeWidth: 2,
-              id: shapeId,
-              name: "Cercle",
-              draggable: true,
-            },
-            className: "Circle",
-          };
-          break;
-
-        case "text":
-          newShape = {
-            attrs: {
-              x: centerX - 100,
-              y: centerY - 25,
-              width: 200,
-              height: 50,
-              text: "Nouveau texte",
-              fontSize: 20,
-              fontFamily: "Arial",
-              fill: "#000000",
-              align: "center",
-              wrap: "word",
-              id: shapeId,
-              name: "Texte",
-              draggable: true,
-            },
-            className: "Text",
-          };
-          break;
-
-        case "line":
-          newShape = {
-            attrs: {
-              points: [centerX - 100, centerY, centerX + 100, centerY],
-              stroke: "#000000",
-              strokeWidth: 4,
-              id: shapeId,
-              name: "Ligne",
-              draggable: true,
-            },
-            className: "Line",
-          };
-          break;
-
-        case "arrow":
-          newShape = {
-            attrs: {
-              points: [centerX - 100, centerY, centerX + 100, centerY],
-              stroke: "#000000",
-              strokeWidth: 4,
-              pointerLength: 10,
-              pointerWidth: 10,
-              id: shapeId,
-              name: "Flèche",
-              draggable: true,
-            },
-            className: "Arrow",
-          };
-          break;
-
-        case "image":
-          newShape = {
-            attrs: {
-              x: centerX - 100,
-              y: centerY - 75,
-              width: 200,
-              height: 150,
-              src: options?.src || "/placeholder-image.jpg",
-              id: shapeId,
-              name: options?.name || "Image",
-              draggable: true,
-            },
-            className: "Image",
-          };
-          break;
-
-        case "video":
-          newShape = {
-            attrs: {
-              x: centerX - 100,
-              y: centerY - 75,
-              width: 200,
-              height: 150,
-              src: options?.src || "/placeholder-video.mp4",
-              id: shapeId,
-              name: options?.name || "Vidéo",
-              draggable: true,
-            },
-            className: "Video",
-          };
-          break;
-
-        case "chart":
-          // Pour un graphique, on peut créer un groupe avec plusieurs formes
-          newShape = {
-            attrs: {
-              x: centerX - 150,
-              y: centerY - 100,
-              width: 300,
-              height: 200,
-              id: shapeId,
-              name: "Graphique",
-              draggable: true,
-            },
-            className: "Group",
-            children: [
-              {
-                attrs: {
-                  width: 300,
-                  height: 200,
-                  fill: "#F9FAFB",
-                  stroke: "#E5E7EB",
-                  strokeWidth: 1,
-                },
-                className: "Rect",
+      // Utiliser createShape pour les types standards
+      if (["rectangle", "circle", "text", "line", "arrow", "liveDate", "liveTime", "liveDateTime"].includes(shapeType)) {
+        newShape = createShape(shapeType as ShapeType, centerX, centerY);
+        
+        // Pour les types live, ajuster la position si fournie dans les options
+        if (shapeType.startsWith("live") && options?.x !== undefined && options?.y !== undefined) {
+          newShape.attrs.x = options.x;
+          newShape.attrs.y = options.y;
+        }
+      } else {
+        // Gérer les cas spéciaux (image, video) qui nécessitent des propriétés supplémentaires
+        const shapeId = `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        switch (shapeType) {
+          case "image":
+            newShape = {
+              attrs: {
+                x: centerX - 100,
+                y: centerY - 75,
+                width: 200,
+                height: 150,
+                src: options?.src || "/placeholder-image.jpg",
+                id: shapeId,
+                name: options?.name || "Image",
+                draggable: true,
               },
-              {
-                attrs: {
-                  points: [10, 190, 10, 10, 290, 10],
-                  stroke: "#9CA3AF",
-                  strokeWidth: 2,
-                },
-                className: "Line",
-              },
-              // Graphique exemple
-              {
-                attrs: {
-                  points: [30, 150, 90, 100, 150, 130, 210, 50, 270, 90],
-                  stroke: "#3B82F6",
-                  strokeWidth: 3,
-                  tension: 0.3,
-                  lineCap: "round",
-                  lineJoin: "round",
-                },
-                className: "Line",
-              },
-            ],
-          };
-          break;
+              className: "Image",
+            };
+            break;
 
-        default:
-          return; // Sortir si le type n'est pas géré
+          case "video":
+            newShape = {
+              attrs: {
+                x: centerX - 100,
+                y: centerY - 75,
+                width: 200,
+                height: 150,
+                src: options?.src || "/placeholder-video.mp4",
+                id: shapeId,
+                name: options?.name || "Vidéo",
+                draggable: true,
+              },
+              className: "Video",
+            };
+            break;
+
+          case "chart":
+            // Pour un graphique, on peut créer un groupe avec plusieurs formes
+            newShape = {
+              attrs: {
+                x: centerX - 150,
+                y: centerY - 100,
+                width: 300,
+                height: 200,
+                id: shapeId,
+                name: "Graphique",
+                draggable: true,
+              },
+              className: "Group",
+              children: [
+                {
+                  attrs: {
+                    width: 300,
+                    height: 200,
+                    fill: "#F9FAFB",
+                    stroke: "#E5E7EB",
+                    strokeWidth: 1,
+                  },
+                  className: "Rect",
+                },
+                {
+                  attrs: {
+                    points: [10, 190, 10, 10, 290, 10],
+                    stroke: "#9CA3AF",
+                    strokeWidth: 2,
+                  },
+                  className: "Line",
+                },
+                // Graphique exemple
+                {
+                  attrs: {
+                    points: [30, 150, 90, 100, 150, 130, 210, 50, 270, 90],
+                    stroke: "#3B82F6",
+                    strokeWidth: 3,
+                    tension: 0.3,
+                    lineCap: "round",
+                    lineJoin: "round",
+                  },
+                  className: "Line",
+                },
+              ],
+            };
+            break;
+
+          default:
+            console.error(`Type de forme non supporté: ${shapeType}`);
+            return; // Sortir si le type n'est pas géré
+        }
+      }
+
+      if (!newShape) {
+        console.error(`Impossible de créer la forme de type: ${shapeType}`);
+        return;
       }
 
       // Ajouter la nouvelle forme à la première couche
@@ -321,7 +251,7 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
         }
       }
 
-      console.log(`Forme ${shapeType} ajoutée avec l'ID ${shapeId}`);
+      console.log(`Forme ${shapeType} ajoutée avec l'ID ${newShape.attrs.id || 'unknown'}`);
     },
     [currentSlideshow, currentSlide, stageData, saveCurrentSlideKonvaData]
   );

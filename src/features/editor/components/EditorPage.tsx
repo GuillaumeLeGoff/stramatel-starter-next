@@ -203,6 +203,7 @@ export function EditorPage() {
                       <TabsPanel 
                         addShape={addShape} 
                         onMediaDeleted={cleanMediaFromAllSlides}
+                        konvaData={konvaData}
                       />
                     </CardContent>
                   </Card>

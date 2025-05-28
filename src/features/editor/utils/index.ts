@@ -144,6 +144,60 @@ export const createShape = (
       };
     }
 
+    case "liveDate": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 15,
+          width: 200,
+          height: 30,
+          fontSize: 16,
+          fontFamily: "Arial",
+          fontStyle: "normal",
+          fill: "#000000",
+          align: "left",
+        },
+        className: "liveDate",
+      };
+    }
+
+    case "liveTime": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 15,
+          width: 200,
+          height: 30,
+          fontSize: 16,
+          fontFamily: "Arial",
+          fontStyle: "normal",
+          fill: "#000000",
+          align: "left",
+        },
+        className: "liveTime",
+      };
+    }
+
+    case "liveDateTime": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 150,
+          y: centerY - 15,
+          width: 300,
+          height: 30,
+          fontSize: 16,
+          fontFamily: "Arial",
+          fontStyle: "normal",
+          fill: "#000000",
+          align: "left",
+        },
+        className: "liveDateTime",
+      };
+    }
+
     default:
       throw new Error(`Type de forme non supporté: ${shapeType}`);
   }
@@ -161,6 +215,9 @@ export const getShapeDisplayName = (shapeType: ShapeType): string => {
     arrow: "Flèche",
     image: "Image",
     video: "Vidéo",
+    liveDate: "Date en direct",
+    liveTime: "Heure en direct",
+    liveDateTime: "Date/heure en direct",
   };
 
   return displayNames[shapeType];

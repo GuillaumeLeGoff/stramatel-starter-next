@@ -15,6 +15,7 @@ import { useKonvaStageRenderer } from "../../hooks";
 import { KonvaTextEditor } from "./KonvaTextEditor";
 import { KonvaImage } from "./KonvaImage";
 import { KonvaVideo } from "./KonvaVideo";
+import { KonvaLiveText } from "./KonvaLiveText";
 import Konva from "konva";
 
 interface KonvaStageRendererProps {
@@ -243,6 +244,53 @@ export function KonvaStageRenderer({
                 } as ExtendedKonvaShape);
               })}
           </Group>
+        );
+        break;
+      case "liveDate":
+      case "liveTime":
+      case "liveDateTime":
+        const liveType = className === "liveDate" ? "date" : 
+                        className === "liveTime" ? "time" : "datetime";
+        shapeElement = (
+          <KonvaLiveText
+            key={shapeId}
+            ref={commonProps.ref}
+            x={attrs.x as number}
+            y={attrs.y as number}
+            width={attrs.width as number}
+            height={attrs.height as number}
+            rotation={attrs.rotation as number}
+            id={shapeId}
+            type={liveType}
+            fontSize={attrs.fontSize as number}
+            fontFamily={attrs.fontFamily as string}
+            fontStyle={attrs.fontStyle as string}
+            fill={attrs.fill as string}
+            align={attrs.align as string}
+            draggable={commonProps.draggable}
+            onTransform={
+              isPreview
+                ? undefined
+                : (e) => {
+                    const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    const newWidth = node.width() * scaleX;
+                    const newHeight = node.height() * scaleY;
+
+                    // Appliquer immédiatement les nouvelles dimensions
+                    node.setAttrs({
+                      width: newWidth,
+                      height: newHeight,
+                      scaleX: 1,
+                      scaleY: 1,
+                    });
+                  }
+            }
+            onTransformEnd={commonProps.onTransformEnd}
+            onDragEnd={commonProps.onDragEnd}
+            onClick={commonProps.onClick}
+          />
         );
         break;
       default:

@@ -16,6 +16,22 @@ export interface KonvaTextNodeAttrs {
   wrap?: string;
 }
 
+export interface KonvaLiveTextAttrs {
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  fontSize?: number;
+  fontFamily?: string;
+  fill?: string;
+  align?: string;
+  id?: string;
+  fontStyle?: string;
+  draggable?: boolean;
+  name?: string;
+  rotation?: number;
+}
+
 export interface KonvaShapeAttrs {
   x?: number;
   y?: number;
@@ -29,6 +45,10 @@ export interface KonvaShapeAttrs {
   pointerLength?: number;
   pointerWidth?: number;
   src?: string; // Pour les images
+  fontSize?: number; // Pour les éléments live
+  fontFamily?: string; // Pour les éléments live
+  fontStyle?: string; // Pour les éléments live
+  align?: string; // Pour les éléments live
   [key: string]: string | number | boolean | number[] | undefined;
 }
 
@@ -46,6 +66,7 @@ export interface KonvaNode {
   attrs:
     | KonvaShapeAttrs
     | KonvaTextNodeAttrs
+    | KonvaLiveTextAttrs
     | KonvaLayerAttrs
     | KonvaStageAttrs;
   className: string;
@@ -67,7 +88,7 @@ export interface KonvaLayer extends KonvaNode {
 }
 
 export interface KonvaShape extends KonvaNode {
-  attrs: KonvaShapeAttrs | KonvaTextNodeAttrs;
+  attrs: KonvaShapeAttrs | KonvaTextNodeAttrs | KonvaLiveTextAttrs;
   className: string;
   children?: KonvaShape[];
 }
@@ -113,7 +134,10 @@ export type ShapeType =
   | "line"
   | "arrow"
   | "image"
-  | "video";
+  | "video"
+  | "liveDate"
+  | "liveTime"
+  | "liveDateTime";
 
 export interface EditorState {
   zoom: number;

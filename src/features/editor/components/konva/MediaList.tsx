@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   Popover,
   PopoverContent,
@@ -50,6 +51,52 @@ const getMediaIcon = (type: Media["type"]) => {
   }
 };
 
+// Composant skeleton pour le mode liste
+const MediaListSkeleton = ({ count = 3 }: { count?: number }) => (
+  <div className="space-y-2">
+    {Array.from({ length: count }).map((_, index) => (
+      <Card key={`skeleton-${index}`}>
+        <CardContent className="p-3">
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-4 w-4 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-12" />
+              </div>
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <Skeleton className="h-6 w-6 flex-shrink-0" />
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
+// Composant skeleton pour le mode grille
+const MediaGridSkeleton = ({ count = 4 }: { count?: number }) => (
+  <>
+    {Array.from({ length: count }).map((_, index) => (
+      <Card key={`skeleton-${index}`} className="aspect-square">
+        <CardContent className="p-3 h-full flex flex-col">
+          <Skeleton className="flex-1 rounded-md mb-2" />
+          <div className="space-y-1">
+            <Skeleton className="h-3 w-full" />
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </>
+);
+
 export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaListProps) {
   const {
     viewMode,
@@ -58,6 +105,7 @@ export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaList
     medias,
     loading,
     error,
+    deletingMediaIds,
     setViewMode,
     setSortBy,
     selectMedia,
@@ -279,135 +327,168 @@ export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaList
           </Button>
         </div>
       </div>
-      {medias.length !== 0 ? (
+      {medias.length === 0 && loading ? (
+        // Affichage du skeleton complet quand aucun média et en chargement
+        viewMode === "list" ? <MediaListSkeleton count={6} /> : (
+          <ScrollArea className="flex-1">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 pb-2">
+              <MediaGridSkeleton count={8} />
+            </div>
+          </ScrollArea>
+        )
+      ) : medias.length !== 0 ? (
         viewMode === "list" ? (
           <>
             <div className="space-y-2 ">
-              {medias.map((media) => (
-                <Card
-                  key={media.id}
-                  className="cursor-pointer hover:bg-accent transition-colors"
-                  onClick={() => handleMediaSelect(media)}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0">
-                        {getMediaIcon(media.type)}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-medium truncate">
-                            {media.name}
-                          </p>
-                          <Badge
-                            variant="secondary"
-                            className={`text-xs ${getMediaTypeColor(
-                              media.type
-                            )}`}
-                          >
-                            {media.type}
-                          </Badge>
+              {medias.map((media) => {
+                const isDeleting = deletingMediaIds.has(media.id);
+                return (
+                  <Card
+                    key={media.id}
+                    className={`cursor-pointer hover:bg-accent transition-colors ${
+                      isDeleting ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    onClick={() => !isDeleting && handleMediaSelect(media)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                          {getMediaIcon(media.type)}
                         </div>
 
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{media.size}</span>
-                          <span>{media.uploadedAt}</span>
-                        </div>
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-medium truncate">
+                              {media.name}
+                            </p>
+                            <Badge
+                              variant="secondary"
+                              className={`text-xs ${getMediaTypeColor(
+                                media.type
+                              )}`}
+                            >
+                              {media.type}
+                            </Badge>
+                          </div>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteMedia(media.id, e);
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{media.size}</span>
+                            <span>{media.uploadedAt}</span>
+                          </div>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 flex-shrink-0"
+                          disabled={isDeleting}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isDeleting) {
+                              handleDeleteMedia(media.id, e);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {/* Skeleton après les médias existants pendant le chargement */}
+              {loading && <MediaListSkeleton count={3} />}
             </div>
           </>
         ) : (
           <ScrollArea className="flex-1">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 pb-2">
-              {medias.map((media) => (
-                <Card
-                  key={media.id}
-                  className="cursor-pointer hover:bg-accent transition-colors aspect-square"
-                  onClick={() => handleMediaSelect(media)}
-                >
-                  <CardContent className="p-3 h-full flex flex-col">
-                    <div className="flex-1 flex items-center justify-center bg-muted rounded-md mb-2 overflow-hidden relative">
-                      {media.type === "image" ? (
-                        <Image
-                          src={media.url}
-                          alt={media.name}
-                          fill
-                          className="object-cover"
-                          onError={(e) => {
-                            // Fallback vers l'icône si l'image ne charge pas
-                            e.currentTarget.style.display = "none";
-                            e.currentTarget.nextElementSibling?.classList.remove(
-                              "hidden"
-                            );
-                          }}
-                        />
-                      ) : media.thumbnail ? (
-                        <>
+              {medias.map((media) => {
+                const isDeleting = deletingMediaIds.has(media.id);
+                return (
+                  <Card
+                    key={media.id}
+                    className={`cursor-pointer hover:bg-accent transition-colors aspect-square ${
+                      isDeleting ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                    onClick={() => !isDeleting && handleMediaSelect(media)}
+                  >
+                    <CardContent className="p-3 h-full flex flex-col">
+                      <div className="flex-1 flex items-center justify-center bg-muted rounded-md mb-2 overflow-hidden relative">
+                        {media.type === "image" ? (
                           <Image
-                            src={media.thumbnail.url}
-                            alt={`Thumbnail de ${media.name}`}
+                            src={media.url}
+                            alt={media.name}
                             fill
                             className="object-cover"
                             onError={(e) => {
+                              // Fallback vers l'icône si l'image ne charge pas
                               e.currentTarget.style.display = "none";
-                              e.currentTarget.parentElement
-                                ?.querySelector(".fallback-icon")
-                                ?.classList.remove("hidden");
+                              e.currentTarget.nextElementSibling?.classList.remove(
+                                "hidden"
+                              );
                             }}
                           />
+                        ) : media.thumbnail ? (
+                          <>
+                            <Image
+                              src={media.thumbnail.url}
+                              alt={`Thumbnail de ${media.name}`}
+                              fill
+                              className="object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                e.currentTarget.parentElement
+                                  ?.querySelector(".fallback-icon")
+                                  ?.classList.remove("hidden");
+                              }}
+                            />
 
-                          <div className="absolute bottom-1 right-1 bg-black/70 rounded p-1">
-                            <Video className="h-3 w-3 text-white" />
-                          </div>
-                        </>
-                      ) : (
-                        <Video className="h-8 w-8 text-muted-foreground" />
-                      )}
-
-                      <div className="hidden fallback-icon">
-                        {media.type === "image" ? (
-                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                            <div className="absolute bottom-1 right-1 bg-black/70 rounded p-1">
+                              <Video className="h-3 w-3 text-white" />
+                            </div>
+                          </>
                         ) : (
                           <Video className="h-8 w-8 text-muted-foreground" />
                         )}
+
+                        <div className="hidden fallback-icon">
+                          {media.type === "image" ? (
+                            <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                          ) : (
+                            <Video className="h-8 w-8 text-muted-foreground" />
+                          )}
+                        </div>
+
+                        {/* Overlay de suppression */}
+                        {isDeleting && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium truncate">
-                        {media.name}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs ${getMediaTypeColor(media.type)}`}
-                        >
-                          {media.type}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {media.size}
-                        </span>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium truncate">
+                          {media.name}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <Badge
+                            variant="secondary"
+                            className={`text-xs ${getMediaTypeColor(media.type)}`}
+                          >
+                            {media.type}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {media.size}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {/* Skeleton après les médias existants pendant le chargement */}
+              {loading && <MediaGridSkeleton count={4} />}
             </div>
           </ScrollArea>
         )
