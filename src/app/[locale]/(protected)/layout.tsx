@@ -8,7 +8,7 @@ import {
   SidebarBody,
   SidebarLink,
 } from "@/shared/components/ui/sidebar";
-import { Gauge, Settings, LogOut, Image } from "lucide-react";
+import { Gauge, Settings, LogOut, Image, Calendar } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,11 @@ export default function ProtectedLayout({
       icon: (
         <Settings className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />
       ),
+    },
+    {
+      label: "Planification",
+      href: "/schedule",
+      icon: <Calendar className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />,
     },
   ];
 
@@ -139,13 +144,19 @@ const Logo = () => {
       href="/dashboard"
       className="font-normal flex space-x-2 items-center text-sm py-1 relative z-20"
     >
-      <div className="h-5 w-6 bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+     
+   {/*    <div className="h-5 w-6 bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" /> */}
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="font-medium text-sidebar-foreground whitespace-pre"
       >
-        Stramatel
+        <img
+          src="/images/Logo_Stramatel_Dark.png"
+          alt="Logo Stramatel"
+          className="h-5  bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0"
+        />
+        
       </motion.span>
     </Link>
   );
@@ -158,6 +169,11 @@ const LogoIcon = () => {
       href="/dashboard"
       className="font-normal flex space-x-2 items-center text-sm py-1 relative z-20"
     >
+      <img
+        src="/images/Logo_Stramatel.png"
+        alt="Logo Stramatel"
+        className="h-5  bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0"
+      />
       <div className="h-5 w-6 bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
     </Link>
   );
