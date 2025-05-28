@@ -60,7 +60,7 @@ export async function PUT(
     const { id } = await params;
 
     const body = await request.json();
-    const { name, description, konvaState } = body;
+    const { name, description } = body;
 
     const slideshow = await prisma.slideshow.update({
       where: {
@@ -69,7 +69,6 @@ export async function PUT(
       data: {
         name,
         description,
-        ...(konvaState && { konvaState }),
       },
       include: {
         user: {

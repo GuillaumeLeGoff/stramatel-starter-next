@@ -21,18 +21,21 @@ export async function GET() {
         slides: {
           select: {
             duration: true,
-          }
+          },
         },
       },
     });
 
     // Calculer le temps total pour chaque diaporama
-    const slideshowsWithTotalDuration = slideshows.map(slideshow => {
-      const totalDuration = slideshow.slides.reduce((total, slide) => total + slide.duration, 0);
+    const slideshowsWithTotalDuration = slideshows.map((slideshow) => {
+      const totalDuration = slideshow.slides.reduce(
+        (total, slide) => total + slide.duration,
+        0
+      );
       return {
         ...slideshow,
         totalDuration,
-        slides: undefined // Supprimer les slides pour ne pas les renvoyer
+        slides: undefined, // Supprimer les slides pour ne pas les renvoyer
       };
     });
 
@@ -52,30 +55,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, description, createdBy } = body;
 
-    // Structure Konva initiale
-    const initialKonvaState = {
-      version: 1,
-      stageConfig: {
-        width: 800,
-        height: 600,
-        draggable: false,
-      },
-    };
-
     // Créer un diaporama avec une slide vide
     const slideshow = await prisma.slideshow.create({
       data: {
         name,
         description,
         createdBy,
-        konvaState: initialKonvaState,
         slides: {
           create: [
             {
               position: 1,
               duration: 5, // 5 secondes par défaut
-              width: 800,
-              height: 600,
               konvaData: {
                 width: 800,
                 height: 600,

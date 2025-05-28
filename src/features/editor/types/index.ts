@@ -1,3 +1,5 @@
+// ===== TYPES KONVA =====
+
 export interface KonvaTextNodeAttrs {
   x: number;
   y: number;
@@ -11,6 +13,7 @@ export interface KonvaTextNodeAttrs {
   id?: string;
   fontStyle?: string;
   draggable?: boolean;
+  wrap?: string;
 }
 
 export interface KonvaShapeAttrs {
@@ -22,17 +25,21 @@ export interface KonvaShapeAttrs {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
-  [key: string]: any;
+  points?: number[];
+  pointerLength?: number;
+  pointerWidth?: number;
+  src?: string; // Pour les images
+  [key: string]: string | number | boolean | number[] | undefined;
 }
 
 export interface KonvaLayerAttrs {
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface KonvaStageAttrs {
   width: number;
   height: number;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface KonvaNode {
@@ -65,12 +72,7 @@ export interface KonvaShape extends KonvaNode {
   children?: KonvaShape[];
 }
 
-export interface SlideStore {
-  currentSlide: number;
-  isLoading: boolean;
-  error: string | null;
-  selectedShapes: KonvaShape[];
-}
+// ===== TYPES SLIDE =====
 
 export interface Slide {
   id: number;
@@ -89,4 +91,38 @@ export interface SlidePreviewProps {
   index: number;
   isActive?: boolean;
   onClick?: () => void;
+}
+
+// ===== TYPES STORE =====
+
+export interface SlideStore {
+  currentSlide: number;
+  isLoading: boolean;
+  error: string | null;
+  selectedShapes: KonvaShape[];
+  editingTextId: string | null;
+  editingTextShape: KonvaShape | null;
+}
+
+// ===== TYPES UTILITAIRES =====
+
+export type ShapeType =
+  | "rectangle"
+  | "circle"
+  | "text"
+  | "line"
+  | "arrow"
+  | "image";
+
+export interface EditorState {
+  zoom: number;
+  selectedTool: ShapeType | null;
+  isEditing: boolean;
+}
+
+export interface ZoomControls {
+  scale: number;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
 }
