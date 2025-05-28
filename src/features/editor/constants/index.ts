@@ -58,6 +58,10 @@ export const DEFAULT_SHAPE_STYLES = {
     width: 200,
     height: 150,
   },
+  video: {
+    width: 200,
+    height: 150,
+  },
 } as const;
 
 // Types de formes disponibles
@@ -68,6 +72,7 @@ export const SHAPE_TYPES = [
   "line",
   "arrow",
   "image",
+  "video",
 ] as const;
 
 // Configuration des panneaux redimensionnables

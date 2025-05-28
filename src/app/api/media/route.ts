@@ -5,6 +5,15 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const media = await prisma.media.findMany({
+      where: {
+        // Exclure les médias qui sont utilisés comme thumbnails
+        // Un média est une thumbnail s'il est référencé par un autre média via thumbnailId
+        NOT: {
+          thumbnails: {
+            some: {}
+          }
+        }
+      },
       include: {
         thumbnail: true,
         thumbnails: true,

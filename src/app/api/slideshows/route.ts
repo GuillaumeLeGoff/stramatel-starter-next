@@ -62,43 +62,7 @@ export async function POST(request: Request) {
         description,
         createdBy,
         slides: {
-          create: [
-            {
-              position: 1,
-              duration: 5, // 5 secondes par défaut
-              konvaData: {
-                width: 800,
-                height: 600,
-                attrs: {
-                  width: 800,
-                  height: 600,
-                },
-                className: "Stage",
-                children: [
-                  {
-                    attrs: {},
-                    className: "Layer",
-                    children: [
-                      {
-                        attrs: {
-                          x: 100,
-                          y: 100,
-                          width: 300,
-                          height: 50,
-                          fontSize: 32,
-                          fontFamily: "Arial",
-                          fill: "#333333",
-                          align: "center",
-                          text: "Nouvelle présentation",
-                        },
-                        className: "Text",
-                      },
-                    ],
-                  },
-                ],
-              },
-            },
-          ],
+         
         },
       },
       include: {

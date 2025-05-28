@@ -112,7 +112,8 @@ export type ShapeType =
   | "text"
   | "line"
   | "arrow"
-  | "image";
+  | "image"
+  | "video";
 
 export interface EditorState {
   zoom: number;

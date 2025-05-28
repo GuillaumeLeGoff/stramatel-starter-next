@@ -3,6 +3,7 @@ import {
   createSlide,
   deleteSlide as deleteSlideAPI,
   updateSlide,
+  associateMediaToSlide,
 } from "../api/slideApi";
 import { KonvaStage, Slide } from "../types";
 import { slideStore } from "../store/slideStore";
@@ -10,6 +11,7 @@ import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
+import { cleanMediaFromKonvaData } from "../utils";
 
 interface UseSlideProps {
   stageData: KonvaStage | null;
@@ -52,11 +54,59 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     [currentSlideshow, currentSlide, updateCurrentSlideshow]
   );
 
+  // ===== NETTOYAGE DES MÉDIAS =====
+
+  // Nettoyer un média supprimé de toutes les slides du slideshow actuel
+  const cleanMediaFromAllSlides = useCallback(
+    async (mediaUrl: string) => {
+      if (!currentSlideshow || !updateCurrentSlideshow) return;
+
+      try {
+        // Nettoyer toutes les slides du slideshow actuel
+        const updatedSlides = currentSlideshow.slides?.map((slide) => {
+          if (!slide.konvaData) return slide;
+
+          // Nettoyer les données Konva de cette slide
+          const cleanedKonvaData = cleanMediaFromKonvaData(slide.konvaData as any, mediaUrl);
+          
+          return {
+            ...slide,
+            konvaData: cleanedKonvaData,
+          };
+        }) || [];
+
+        // Mettre à jour le slideshow avec toutes les slides nettoyées
+        updateCurrentSlideshow((prev) => ({
+          ...prev,
+          slides: updatedSlides,
+        }));
+
+        // Sauvegarder chaque slide modifiée dans l'API
+        const updatePromises = updatedSlides.map(async (slide) => {
+          if (slide.konvaData) {
+            try {
+              await updateSlide(slide.id, { konvaData: slide.konvaData });
+            } catch (error) {
+              console.error(`Erreur lors de la sauvegarde de la slide ${slide.id}:`, error);
+            }
+          }
+        });
+
+        await Promise.all(updatePromises);
+        
+        console.log(`Média ${mediaUrl} nettoyé de toutes les slides du slideshow`);
+      } catch (error) {
+        console.error("Erreur lors du nettoyage du média de toutes les slides:", error);
+      }
+    },
+    [currentSlideshow, updateCurrentSlideshow]
+  );
+
   // ===== AJOUT DE FORMES =====
 
   // Ajouter une forme au slide actuel
   const addShape = useCallback(
-    async (shapeType: string, options?: { src?: string; name?: string }) => {
+    async (shapeType: string, options?: { src?: string; name?: string; mediaId?: string }) => {
       if (!currentSlideshow || !currentSlideshow.slides || !stageData) return;
 
       const currentSlideObj = currentSlideshow.slides[currentSlide];
@@ -177,6 +227,22 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
           };
           break;
 
+        case "video":
+          newShape = {
+            attrs: {
+              x: centerX - 100,
+              y: centerY - 75,
+              width: 200,
+              height: 150,
+              src: options?.src || "/placeholder-video.mp4",
+              id: shapeId,
+              name: options?.name || "Vidéo",
+              draggable: true,
+            },
+            className: "Video",
+          };
+          break;
+
         case "chart":
           // Pour un graphique, on peut créer un groupe avec plusieurs formes
           newShape = {
@@ -245,6 +311,15 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
 
       // Sauvegarder les modifications
       await saveCurrentSlideKonvaData(updatedKonvaData);
+
+      // Si c'est un média (image ou vidéo), l'associer à la slide
+      if ((shapeType === "image" || shapeType === "video") && options?.mediaId) {
+        try {
+          await associateMediaToSlide(currentSlideObj.id, parseInt(options.mediaId));
+        } catch (error) {
+          console.error("Erreur lors de l'association du média à la slide:", error);
+        }
+      }
 
       console.log(`Forme ${shapeType} ajoutée avec l'ID ${shapeId}`);
     },
@@ -489,6 +564,9 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
   return {
     // Sauvegarde Konva
     saveCurrentSlideKonvaData,
+
+    // Nettoyage des médias
+    cleanMediaFromAllSlides,
 
     // Ajout de formes
     addShape,

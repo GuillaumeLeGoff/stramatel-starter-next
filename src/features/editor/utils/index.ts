@@ -131,6 +131,19 @@ export const createShape = (
       };
     }
 
+    case "video": {
+      const videoStyle = DEFAULT_SHAPE_STYLES.video;
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - videoStyle.width / 2,
+          y: centerY - videoStyle.height / 2,
+          ...videoStyle,
+        },
+        className: "Video",
+      };
+    }
+
     default:
       throw new Error(`Type de forme non supporté: ${shapeType}`);
   }
@@ -147,6 +160,7 @@ export const getShapeDisplayName = (shapeType: ShapeType): string => {
     line: "Ligne",
     arrow: "Flèche",
     image: "Image",
+    video: "Vidéo",
   };
 
   return displayNames[shapeType];
@@ -198,4 +212,70 @@ export const getStageBounds = (stage: KonvaStage) => {
     centerX: stage.attrs.width / 2,
     centerY: stage.attrs.height / 2,
   };
+};
+
+/**
+ * Nettoie les références à un média supprimé dans les données Konva
+ */
+export const cleanMediaFromKonvaData = (
+  konvaData: KonvaStage,
+  mediaUrl: string
+): KonvaStage => {
+  const cleanedData = deepCloneKonvaData(konvaData);
+
+  const cleanShapes = (shapes: KonvaShape[]): KonvaShape[] => {
+    return shapes.filter((shape) => {
+      // Supprimer les images et vidéos qui référencent le média supprimé
+      if (
+        (shape.className === "Image" || shape.className === "Video") &&
+        shape.attrs.src === mediaUrl
+      ) {
+        return false;
+      }
+
+      // Nettoyer récursivement les enfants (pour les groupes)
+      if (shape.children && shape.children.length > 0) {
+        shape.children = cleanShapes(shape.children);
+      }
+
+      return true;
+    });
+  };
+
+  // Nettoyer toutes les couches
+  cleanedData.children = cleanedData.children.map((layer) => ({
+    ...layer,
+    children: cleanShapes(layer.children),
+  }));
+
+  return cleanedData;
+};
+
+/**
+ * Trouve tous les médias utilisés dans les données Konva
+ */
+export const findMediasInKonvaData = (konvaData: KonvaStage): string[] => {
+  const mediaUrls: string[] = [];
+
+  const findInShapes = (shapes: KonvaShape[]) => {
+    shapes.forEach((shape) => {
+      if (
+        (shape.className === "Image" || shape.className === "Video") &&
+        shape.attrs.src
+      ) {
+        mediaUrls.push(shape.attrs.src as string);
+      }
+
+      // Chercher récursivement dans les enfants
+      if (shape.children && shape.children.length > 0) {
+        findInShapes(shape.children);
+      }
+    });
+  };
+
+  konvaData.children.forEach((layer) => {
+    findInShapes(layer.children);
+  });
+
+  return [...new Set(mediaUrls)]; // Supprimer les doublons
 };

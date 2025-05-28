@@ -4,6 +4,7 @@ import {
   uploadFiles,
   deleteMedia as deleteMediaApi,
 } from "../api/mediaApi";
+import { cleanSlidesFromMedia } from "../api/slideApi";
 
 // Types pour les médias
 export interface Media {
@@ -21,10 +22,12 @@ export interface Media {
 
 export type SortOption = "name" | "date" | "size" | "type";
 export type ViewMode = "list" | "grid";
+export type SortDirection = "asc" | "desc";
 
 export function useMedias() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortOption>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [medias, setMedias] = useState<Media[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,28 +64,67 @@ export function useMedias() {
     }
   };
 
-  // Tri des médias
+  // Fonction pour changer le critère de tri avec gestion de la direction
+  const handleSortChange = (newSortBy: SortOption) => {
+    if (newSortBy === sortBy) {
+      // Si on clique sur le même critère, inverser la direction
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Si on change de critère, utiliser la direction par défaut
+      setSortBy(newSortBy);
+      // Direction par défaut selon le critère
+      switch (newSortBy) {
+        case "date":
+          setSortDirection("desc"); // Plus récent en premier
+          break;
+        case "size":
+          setSortDirection("desc"); // Plus gros en premier
+          break;
+        case "name":
+        case "type":
+          setSortDirection("asc"); // Alphabétique A-Z
+          break;
+        default:
+          setSortDirection("asc");
+      }
+    }
+  };
+
+  // Tri des médias avec direction
   const sortedMedias = useMemo(() => {
     const sorted = [...medias];
 
     switch (sortBy) {
       case "name":
-        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        sorted.sort((a, b) => {
+          const comparison = a.name.localeCompare(b.name);
+          return sortDirection === "asc" ? comparison : -comparison;
+        });
+        break;
       case "date":
-        return sorted.sort(
-          (a, b) =>
-            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-        );
+        sorted.sort((a, b) => {
+          const comparison = new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
+          return sortDirection === "asc" ? comparison : -comparison;
+        });
+        break;
       case "size":
-        return sorted.sort(
-          (a, b) => getSizeInBytes(b.size) - getSizeInBytes(a.size)
-        );
+        sorted.sort((a, b) => {
+          const comparison = getSizeInBytes(a.size) - getSizeInBytes(b.size);
+          return sortDirection === "asc" ? comparison : -comparison;
+        });
+        break;
       case "type":
-        return sorted.sort((a, b) => a.type.localeCompare(b.type));
+        sorted.sort((a, b) => {
+          const comparison = a.type.localeCompare(b.type);
+          return sortDirection === "asc" ? comparison : -comparison;
+        });
+        break;
       default:
-        return sorted;
+        break;
     }
-  }, [medias, sortBy]);
+
+    return sorted;
+  }, [medias, sortBy, sortDirection]);
 
   // Fonction pour obtenir l'icône du type de média
   const getMediaIcon = (type: Media["type"]) => {
@@ -133,7 +175,18 @@ export function useMedias() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Trouver le média pour récupérer son URL
+      const mediaToDelete = medias.find((media) => media.id === mediaId);
+      if (!mediaToDelete) {
+        throw new Error("Média introuvable");
+      }
+
+      // Supprimer le média
       await deleteMediaApi(mediaId);
+      
+      // Nettoyer toutes les slides de tous les slideshows qui utilisent ce média
+      await cleanSlidesFromMedia(mediaToDelete.url);
 
       // Retirer le média de la liste
       setMedias((prev) => prev.filter((media) => media.id !== mediaId));
@@ -165,13 +218,14 @@ export function useMedias() {
     // État
     viewMode,
     sortBy,
+    sortDirection,
     medias: sortedMedias,
     loading,
     error,
 
     // Actions
     setViewMode,
-    setSortBy,
+    setSortBy: handleSortChange, // Utiliser la nouvelle fonction
     selectMedia,
     uploadMedia,
     deleteMedia,

@@ -14,6 +14,7 @@ import { KonvaStage, KonvaShape } from "../../types";
 import { useKonvaStageRenderer } from "../../hooks";
 import { KonvaTextEditor } from "./KonvaTextEditor";
 import { KonvaImage } from "./KonvaImage";
+import { KonvaVideo } from "./KonvaVideo";
 import Konva from "konva";
 
 interface KonvaStageRendererProps {
@@ -151,13 +152,76 @@ export function KonvaStageRenderer({
         shapeElement = (
           <KonvaImage
             key={shapeId}
+            ref={commonProps.ref}
             src={attrs.src as string}
             x={attrs.x as number}
             y={attrs.y as number}
             width={attrs.width as number}
             height={attrs.height as number}
+            rotation={attrs.rotation as number}
             id={shapeId}
             draggable={commonProps.draggable}
+            onTransform={
+              isPreview
+                ? undefined
+                : (e) => {
+                    const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    const newWidth = node.width() * scaleX;
+                    const newHeight = node.height() * scaleY;
+
+                    // Appliquer immédiatement les nouvelles dimensions
+                    node.setAttrs({
+                      width: newWidth,
+                      height: newHeight,
+                      scaleX: 1,
+                      scaleY: 1,
+                    });
+                  }
+            }
+            onTransformEnd={commonProps.onTransformEnd}
+            onDragEnd={commonProps.onDragEnd}
+            onClick={commonProps.onClick}
+          />
+        );
+        break;
+      case "Video":
+        if (!attrs.src) {
+          console.warn("Video requiert une propriété src", attrs);
+          return null;
+        }
+        shapeElement = (
+          <KonvaVideo
+            key={shapeId}
+            ref={commonProps.ref}
+            src={attrs.src as string}
+            x={attrs.x as number}
+            y={attrs.y as number}
+            width={attrs.width as number}
+            height={attrs.height as number}
+            rotation={attrs.rotation as number}
+            id={shapeId}
+            draggable={commonProps.draggable}
+            onTransform={
+              isPreview
+                ? undefined
+                : (e) => {
+                    const node = e.target;
+                    const scaleX = node.scaleX();
+                    const scaleY = node.scaleY();
+                    const newWidth = node.width() * scaleX;
+                    const newHeight = node.height() * scaleY;
+
+                    // Appliquer immédiatement les nouvelles dimensions
+                    node.setAttrs({
+                      width: newWidth,
+                      height: newHeight,
+                      scaleX: 1,
+                      scaleY: 1,
+                    });
+                  }
+            }
             onTransformEnd={commonProps.onTransformEnd}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}

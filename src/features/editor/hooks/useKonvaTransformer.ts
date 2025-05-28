@@ -14,7 +14,9 @@ export function useKonvaTransformer({
 
   // Mettre à jour le transformer
   const updateTransformer = useCallback(() => {
-    if (!transformerRef.current) return;
+    if (!transformerRef.current) {
+      return;
+    }
 
     const selectedIds = selectedShapes.map((shape) => shape.attrs.id);
     const selectedNodes = selectedIds

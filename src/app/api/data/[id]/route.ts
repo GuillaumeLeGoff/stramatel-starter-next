@@ -7,9 +7,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
     const data = await prisma.data.findUnique({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       include: {
         slides: {
@@ -51,12 +52,13 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, value, type, edit } = body;
 
     const data = await prisma.data.update({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       data: {
         name,
@@ -81,17 +83,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
     // Supprimer d'abord les associations avec les slides
     await prisma.slideData.deleteMany({
       where: {
-        dataId: parseInt(params.id),
+        dataId: parseInt(id),
       },
     });
 
     // Puis supprimer la donnée
     await prisma.data.delete({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
     });
 

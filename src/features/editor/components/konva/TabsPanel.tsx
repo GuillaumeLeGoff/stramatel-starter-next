@@ -12,11 +12,12 @@ import { MediaList } from "./MediaList";
 interface TabsPanelProps {
   addShape: (
     shapeType: string,
-    options?: { src?: string; name?: string }
+    options?: { src?: string; name?: string; mediaId?: string }
   ) => Promise<void>;
+  onMediaDeleted?: (mediaUrl: string) => Promise<void>;
 }
 
-export function TabsPanel({ addShape }: TabsPanelProps) {
+export function TabsPanel({ addShape, onMediaDeleted }: TabsPanelProps) {
   return (
     <Tabs defaultValue="shapes" className="h-full flex flex-col">
       <TabsList className="grid w-full grid-cols-2">
@@ -37,6 +38,7 @@ export function TabsPanel({ addShape }: TabsPanelProps) {
       <TabsContent value="medias" className="flex-1 mt-4">
         <MediaList
           addShape={addShape}
+          onMediaDeleted={onMediaDeleted}
           onMediaSelect={(media) => {
             console.log("Média sélectionné:", media);
           }}

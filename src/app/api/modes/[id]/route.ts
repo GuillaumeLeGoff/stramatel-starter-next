@@ -7,9 +7,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
     const mode = await prisma.mode.findUnique({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       include: {
         slideshow: {
@@ -43,12 +44,13 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, slideshowId, settings } = body;
 
     const mode = await prisma.mode.update({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
       data: {
         name,
@@ -80,9 +82,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params;
     await prisma.mode.delete({
       where: {
-        id: parseInt(params.id),
+        id: parseInt(id),
       },
     });
 

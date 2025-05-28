@@ -22,7 +22,7 @@ export function EditorPage() {
   const konvaData = getCurrentSlideKonvaData();
   const { scale, zoomIn, zoomOut } = useZoom(konvaData);
 
-  const { addSlide, addShape, updateSlideDuration } = useSlide({
+  const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides } = useSlide({
     stageData: konvaData,
     containerRef,
   });
@@ -200,7 +200,10 @@ export function EditorPage() {
                 <ResizablePanel defaultSize={50}>
                   <Card className="h-full rounded-none border-0 shadow-none">
                     <CardContent className="p-4 h-full">
-                      <TabsPanel addShape={addShape} />
+                      <TabsPanel 
+                        addShape={addShape} 
+                        onMediaDeleted={cleanMediaFromAllSlides}
+                      />
                     </CardContent>
                   </Card>
                 </ResizablePanel>
