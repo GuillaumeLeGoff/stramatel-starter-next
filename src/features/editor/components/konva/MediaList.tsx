@@ -1,10 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -98,6 +106,8 @@ const MediaGridSkeleton = ({ count = 4 }: { count?: number }) => (
 );
 
 export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaListProps) {
+  const [mediaToDelete, setMediaToDelete] = useState<{ id: string; name: string } | null>(null);
+  
   const {
     viewMode,
     sortBy,
@@ -147,25 +157,39 @@ export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaList
   const handleDeleteMedia = async (mediaId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce média ? Il sera également retiré de toutes les slides qui l'utilisent.")) {
-      try {
-        // Trouver le média pour récupérer son URL avant suppression
-        const mediaToDelete = medias.find((media) => media.id === mediaId);
-        if (!mediaToDelete) {
-          throw new Error("Média introuvable");
-        }
-
-        // Supprimer le média (côté serveur et nettoyage global de toutes les slides)
-        await deleteMedia(mediaId);
-        
-        // Nettoyer les données Konva localement pour le slideshow actuel (mise à jour immédiate de l'interface)
-        if (onMediaDeleted) {
-          await onMediaDeleted(mediaToDelete.url);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la suppression:", error);
-      }
+    // Trouver le média pour afficher son nom dans le dialog
+    const media = medias.find((m) => m.id === mediaId);
+    if (media) {
+      setMediaToDelete({ id: mediaId, name: media.name });
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!mediaToDelete) return;
+
+    try {
+      // Trouver le média pour récupérer son URL avant suppression
+      const mediaToDeleteData = medias.find((media) => media.id === mediaToDelete.id);
+      if (!mediaToDeleteData) {
+        throw new Error("Média introuvable");
+      }
+
+      // Supprimer le média (côté serveur et nettoyage global de toutes les slides)
+      await deleteMedia(mediaToDelete.id);
+      
+      // Nettoyer les données Konva localement pour le slideshow actuel (mise à jour immédiate de l'interface)
+      if (onMediaDeleted) {
+        await onMediaDeleted(mediaToDeleteData.url);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+    } finally {
+      setMediaToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setMediaToDelete(null);
   };
 
   const handleUpload = () => {
@@ -501,6 +525,30 @@ export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaList
           </div>
         </div>
       )}
+
+      {/* Dialog de confirmation de suppression */}
+      <Dialog open={!!mediaToDelete} onOpenChange={(open) => !open && cancelDelete()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer le média &quot;{mediaToDelete?.name}&quot; ?
+              <br />
+              <span className="text-destructive font-medium">
+                Il sera également retiré de toutes les slides qui l&apos;utilisent.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelDelete}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

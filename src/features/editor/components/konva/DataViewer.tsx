@@ -47,13 +47,13 @@ export function DataViewer({ konvaData, addShape }: DataViewerProps) {
   const dateTimeActions: DateTimeAction[] = [
     {
       id: "date",
-      name: "Date en direct",
+      name: "Date",
       icon: <Calendar className="h-4 w-4" />,
       action: addDateToCanvas,
     },
     {
       id: "time",
-      name: "Heure en direct",
+      name: "Heure",
       icon: <Clock className="h-4 w-4" />,
       action: addTimeToCanvas,
     },
