@@ -1,6 +1,6 @@
 import { isSameDay } from "date-fns";
 import { useScheduleStore } from "../store/scheduleStore";
-import { Schedule, SchedulePriority } from "../types";
+import { Schedule } from "../types";
 
 export function useScheduleEvents() {
   const {
@@ -17,22 +17,6 @@ export function useScheduleEvents() {
       const scheduleDate = new Date(schedule.startDate);
       return isSameDay(scheduleDate, date);
     });
-  };
-
-  // Obtenir la couleur selon la priorité
-  const getPriorityColor = (priority: SchedulePriority): string => {
-    switch (priority) {
-      case SchedulePriority.URGENT:
-        return "bg-red-500";
-      case SchedulePriority.HIGH:
-        return "bg-orange-500";
-      case SchedulePriority.NORMAL:
-        return "bg-blue-500";
-      case SchedulePriority.LOW:
-        return "bg-gray-500";
-      default:
-        return "bg-blue-500";
-    }
   };
 
   // Gestionnaires d'événements
@@ -61,7 +45,6 @@ export function useScheduleEvents() {
   return {
     schedules,
     getEventsForDate,
-    getPriorityColor,
     handleEventClick,
     handleDateClick,
     handleCreateEvent,

@@ -1,10 +1,5 @@
 import { create } from "zustand";
-import {
-  Schedule,
-  CreateScheduleData,
-  SchedulePriority,
-  ScheduleStatus,
-} from "../types";
+import { Schedule, CreateScheduleData } from "../types";
 
 type ViewType = "month" | "week" | "day";
 
@@ -39,59 +34,8 @@ interface ScheduleState {
   navigateToDay: (date: Date) => void;
 }
 
-// Données d'exemple
-const initialSchedules: Schedule[] = [
-  {
-    id: 1,
-    title: "Réunion équipe",
-    description: "Réunion hebdomadaire de l'équipe",
-    slideshowId: 1,
-    createdBy: 1,
-    startDate: new Date(),
-    startTime: "09:00",
-    endTime: "10:00",
-    allDay: false,
-    isRecurring: true,
-    status: ScheduleStatus.ACTIVE,
-    priority: SchedulePriority.HIGH,
-    color: "#F59E0B",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 2,
-    title: "Formation",
-    description: "Formation sur les nouvelles technologies",
-    slideshowId: 2,
-    createdBy: 1,
-    startDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Demain
-    startTime: "14:00",
-    endTime: "17:00",
-    allDay: false,
-    isRecurring: false,
-    status: ScheduleStatus.ACTIVE,
-    priority: SchedulePriority.NORMAL,
-    color: "#3B82F6",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 3,
-    title: "Conférence",
-    description: "Conférence annuelle de l'entreprise",
-    slideshowId: 3,
-    createdBy: 1,
-    startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Dans une semaine
-    allDay: true,
-    startTime: "00:00",
-    isRecurring: false,
-    status: ScheduleStatus.ACTIVE,
-    priority: SchedulePriority.URGENT,
-    color: "#EF4444",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+// Calendrier vide au démarrage
+const initialSchedules: Schedule[] = [];
 
 export const useScheduleStore = create<ScheduleState>((set, get) => ({
   // État initial
@@ -155,7 +99,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       // Modifier un événement existant
       state.updateSchedule(state.selectedEvent.id, {
         title: eventData.title,
-        description: eventData.description,
         slideshowId: eventData.slideshowId,
         startDate: eventData.startDate,
         endDate: eventData.endDate,
@@ -163,8 +106,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         endTime: eventData.endTime,
         allDay: eventData.allDay,
         isRecurring: eventData.isRecurring,
-        status: eventData.status,
-        priority: eventData.priority,
         color: eventData.color,
       });
     } else {
@@ -172,7 +113,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       const newEvent: Schedule = {
         id: Math.max(...state.schedules.map((s) => s.id), 0) + 1,
         title: eventData.title,
-        description: eventData.description,
         slideshowId: eventData.slideshowId,
         createdBy: 1, // ID utilisateur par défaut
         startDate: eventData.startDate,
@@ -181,8 +121,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         endTime: eventData.endTime,
         allDay: eventData.allDay,
         isRecurring: eventData.isRecurring,
-        status: eventData.status,
-        priority: eventData.priority,
         color: eventData.color,
         createdAt: new Date(),
         updatedAt: new Date(),

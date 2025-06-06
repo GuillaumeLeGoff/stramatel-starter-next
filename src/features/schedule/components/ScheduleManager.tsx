@@ -10,6 +10,7 @@ export function ScheduleManager() {
     isDialogOpen,
     closeDialog,
     saveEvent,
+    deleteSchedule,
     selectedEvent,
     dialogInitialDate,
     dialogInitialTime,
@@ -25,6 +26,7 @@ export function ScheduleManager() {
         isOpen={isDialogOpen}
         onClose={closeDialog}
         onSave={saveEvent}
+        onDelete={deleteSchedule}
         event={selectedEvent}
         initialDate={dialogInitialDate}
         initialTime={dialogInitialTime}

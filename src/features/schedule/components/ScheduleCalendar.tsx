@@ -36,7 +36,6 @@ type ViewType = "month" | "week" | "day";
 export function ScheduleCalendar() {
   const {
     getEventsForDate,
-    getPriorityColor,
     handleEventClick,
     handleDateClick,
     handleCreateEvent,
@@ -44,6 +43,42 @@ export function ScheduleCalendar() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<ViewType>("month");
+
+  // Fonction pour calculer la position et la taille des événements
+  const getEventStyle = (event: any) => {
+    if (event.allDay) {
+      return {
+        top: "2px",
+        height: "20px",
+      };
+    }
+
+    const startHour = parseInt(event.startTime.split(":")[0]);
+    const startMinute = parseInt(event.startTime.split(":")[1]);
+    const endHour = parseInt(event.endTime?.split(":")[0] || startHour + 1);
+    const endMinute = parseInt(event.endTime?.split(":")[1] || 0);
+
+    // Hauteur d'une heure = 48px (h-12 = 3rem = 48px)
+    const hourHeight = 48;
+
+    // Position de départ en minutes depuis minuit
+    const startTotalMinutes = startHour * 60 + startMinute;
+    // Position de fin en minutes depuis minuit
+    const endTotalMinutes = endHour * 60 + endMinute;
+
+    // Durée en minutes
+    const durationMinutes = endTotalMinutes - startTotalMinutes;
+
+    // Position en pixels depuis le début de l'heure
+    const topOffset = (startMinute / 60) * hourHeight;
+    // Hauteur en pixels basée sur la durée
+    const height = (durationMinutes / 60) * hourHeight;
+
+    return {
+      top: `${topOffset}px`,
+      height: `${height}px`,
+    };
+  };
 
   // Navigation functions
   const navigatePrevious = () => {
@@ -146,9 +181,8 @@ export function ScheduleCalendar() {
                     {dayEvents.slice(0, 3).map((event) => (
                       <div
                         key={event.id}
-                        className={`text-xs p-2 rounded cursor-pointer ${getPriorityColor(
-                          event.priority
-                        )} text-white min-h-[24px] flex items-center justify-between hover:opacity-90 transition-opacity`}
+                        className="text-xs p-2 rounded cursor-pointer text-white min-h-[24px] flex items-center justify-between hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: event.color || "#3B82F6" }}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEventClick?.(event);
@@ -213,7 +247,7 @@ export function ScheduleCalendar() {
         </div>
 
         {/* Time grid */}
-        <div className="flex flex-1">
+        <div className="flex flex-1 relative">
           {/* Time column */}
           <div className="w-16 flex-shrink-0 border-r border-gray-200 relative">
             {hours.map((hour) => (
@@ -229,12 +263,13 @@ export function ScheduleCalendar() {
           </div>
 
           {/* Day columns with scroll */}
-          <div className="flex flex-1 overflow-auto">
-            {weekDays.map((day) => (
+          <div className="flex flex-1 overflow-auto relative">
+            {weekDays.map((day, dayIndex) => (
               <div
                 key={day.toISOString()}
                 className="flex-1 border-r border-gray-200 last:border-r-0 relative min-w-0"
               >
+                {/* Grille des heures */}
                 {hours.map((hour) => (
                   <div
                     key={hour}
@@ -245,42 +280,42 @@ export function ScheduleCalendar() {
                         `${hour.toString().padStart(2, "0")}:00`
                       )
                     }
-                  >
-                    {getEventsForDate(day)
-                      .filter((event) => {
-                        if (event.allDay) return hour === 0;
-                        const eventHour = parseInt(
-                          event.startTime.split(":")[0]
-                        );
-                        return eventHour === hour;
-                      })
-                      .map((event) => (
-                        <div
-                          key={event.id}
-                          className={`absolute left-1 right-1 p-1 rounded text-xs cursor-pointer ${getPriorityColor(
-                            event.priority
-                          )} text-white z-10`}
-                          style={{
-                            top: event.allDay ? "2px" : "2px",
-                            height: event.allDay ? "20px" : "44px",
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEventClick?.(event);
-                          }}
-                        >
-                          <div className="truncate font-medium">
-                            {event.title}
-                          </div>
-                          {!event.allDay && (
-                            <div className="truncate opacity-90">
-                              {event.startTime} - {event.endTime}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
+                  />
                 ))}
+
+                {/* Événements pour ce jour */}
+                {getEventsForDate(day).map((event) => {
+                  const eventStyle = getEventStyle(event);
+                  const startHour = parseInt(event.startTime.split(":")[0]);
+                  const topPosition =
+                    startHour * 48 + parseFloat(eventStyle.top);
+
+                  return (
+                    <div
+                      key={event.id}
+                      className="absolute left-1 right-1 p-1 rounded text-xs cursor-pointer text-white z-10 overflow-hidden"
+                      style={{
+                        top: `${topPosition}px`,
+                        height: eventStyle.height,
+                        backgroundColor: event.color || "#3B82F6",
+                        minHeight: "20px",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEventClick?.(event);
+                      }}
+                    >
+                      <div className="truncate font-medium text-xs">
+                        {event.title}
+                      </div>
+                      {!event.allDay && (
+                        <div className="truncate opacity-90 text-xs">
+                          {event.startTime} - {event.endTime}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -314,6 +349,7 @@ export function ScheduleCalendar() {
 
           {/* Day column */}
           <div className="flex-1 relative">
+            {/* Heures */}
             {hours.map((hour) => (
               <div
                 key={hour}
@@ -324,43 +360,39 @@ export function ScheduleCalendar() {
                     `${hour.toString().padStart(2, "0")}:00`
                   )
                 }
-              >
-                {dayEvents
-                  .filter((event) => {
-                    if (event.allDay) return hour === 0;
-                    const eventHour = parseInt(event.startTime.split(":")[0]);
-                    return eventHour === hour;
-                  })
-                  .map((event) => (
-                    <div
-                      key={event.id}
-                      className={`absolute left-2 right-2 p-2 rounded cursor-pointer ${getPriorityColor(
-                        event.priority
-                      )} text-white z-10`}
-                      style={{
-                        top: event.allDay ? "2px" : "2px",
-                        height: event.allDay ? "20px" : "44px",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEventClick?.(event);
-                      }}
-                    >
-                      <div className="font-medium">{event.title}</div>
-                      {!event.allDay && (
-                        <div className="text-sm opacity-90">
-                          {event.startTime} - {event.endTime}
-                        </div>
-                      )}
-                      {event.description && (
-                        <div className="text-xs opacity-75 mt-1">
-                          {event.description}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
+              />
             ))}
+
+            {/* Événements positionnés absolument */}
+            {dayEvents.map((event) => {
+              const eventStyle = getEventStyle(event);
+              const startHour = parseInt(event.startTime.split(":")[0]);
+              const topPosition = startHour * 48 + parseFloat(eventStyle.top);
+
+              return (
+                <div
+                  key={event.id}
+                  className="absolute left-2 right-2 p-2 rounded cursor-pointer text-white z-10 overflow-hidden"
+                  style={{
+                    top: `${topPosition}px`,
+                    height: eventStyle.height,
+                    backgroundColor: event.color || "#3B82F6",
+                    minHeight: "20px",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEventClick?.(event);
+                  }}
+                >
+                  <div className="font-medium text-sm">{event.title}</div>
+                  {!event.allDay && (
+                    <div className="text-xs opacity-90">
+                      {event.startTime} - {event.endTime}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
