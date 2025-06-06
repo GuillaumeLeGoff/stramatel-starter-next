@@ -1,22 +1,16 @@
 "use client";
 
 import { PageHeader } from "@/shared/components/ui/page-header";
-import { ScheduleCalendar } from "@/features/schedule/components/ScheduleCalendar";
-import { ScheduleProvider } from "@/features/schedule/store/ScheduleProvider";
+import { ScheduleManager } from "@/features/schedule/components/ScheduleManager";
 
 export default function SchedulePage() {
   return (
-    <ScheduleProvider>
-      <div className="space-y-6 h-full flex flex-col">
-        <PageHeader
-          title="Planification"
-         
-        />
+    <div className="space-y-6 h-full flex flex-col">
+      <PageHeader title="Planification" />
 
-        <div className="flex-1 min-h-0">
-          <ScheduleCalendar />
-        </div>
+      <div className="flex-1 min-h-0">
+        <ScheduleManager />
       </div>
-    </ScheduleProvider>
+    </div>
   );
-} 
+}
