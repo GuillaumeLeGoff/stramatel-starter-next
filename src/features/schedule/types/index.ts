@@ -65,7 +65,7 @@ export interface ScheduleException {
   exceptionDate: Date;
 
   // Type d'exception
-  type: ExceptionType;
+  type: string;
 
   // Nouvelles valeurs si modifié
   newStartTime?: string;
@@ -82,17 +82,11 @@ export enum RecurrenceType {
   YEARLY = "YEARLY",
 }
 
-export enum ExceptionType {
-  CANCELLED = "CANCELLED",
-  MODIFIED = "MODIFIED",
-}
-
 // Types pour les formulaires
 export interface CreateScheduleData {
   title: string;
   slideshowId: number;
   startDate: Date;
-  endDate?: Date;
   startTime: string;
   endTime?: string;
   allDay: boolean;

@@ -35,16 +35,18 @@ export default function ProtectedLayout({
       icon: <Image className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />,
     },
     {
+      label: "Planification",
+      href: "/schedule",
+      icon: (
+        <Calendar className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
       label: "Paramètres",
       href: "/settings",
       icon: (
         <Settings className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />
       ),
-    },
-    {
-      label: "Planification",
-      href: "/schedule",
-      icon: <Calendar className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />,
     },
   ];
 
@@ -144,8 +146,7 @@ const Logo = () => {
       href="/dashboard"
       className="font-normal flex space-x-2 items-center text-sm py-1 relative z-20"
     >
-     
-   {/*    <div className="h-5 w-6 bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" /> */}
+      {/*    <div className="h-5 w-6 bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" /> */}
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -156,7 +157,6 @@ const Logo = () => {
           alt="Logo Stramatel"
           className="h-5  bg-sidebar-primary rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0"
         />
-        
       </motion.span>
     </Link>
   );

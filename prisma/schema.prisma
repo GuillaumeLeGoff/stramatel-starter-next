@@ -22,6 +22,7 @@ model User {
   theme      String
   role       String      @default("USER")
   slideshows Slideshow[]
+  schedules  Schedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -44,13 +45,14 @@ model Media {
 }
 
 model Slideshow {
-  id          Int     @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   name        String
   description String?
   createdBy   Int
-  user        User    @relation(fields: [createdBy], references: [id])
+  user        User       @relation(fields: [createdBy], references: [id])
   slides      Slide[]
   modes       Mode[]
+  schedules   Schedule[]
 }
 
 model Slide {
@@ -84,6 +86,78 @@ model AppSettings {
   height           Int      @default(1080)
 }
 
+// Modèles pour la planification
+model Schedule {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  slideshowId Int
+  slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
+  createdBy   Int
+  user        User      @relation(fields: [createdBy], references: [id])
+
+  // Dates et heures
+  startDate DateTime
+  endDate   DateTime?
+  startTime String // Format HH:mm
+  endTime   String? // Format HH:mm
+  allDay    Boolean   @default(false)
+
+  // Récurrence
+  isRecurring Boolean             @default(false)
+  recurrence  ScheduleRecurrence?
+
+  // Couleur
+  color String?
+
+  // Métadonnées
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  exceptions ScheduleException[]
+}
+
+model ScheduleRecurrence {
+  id         Int      @id @default(autoincrement())
+  scheduleId Int      @unique
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  // Type de récurrence
+  type     RecurrenceType
+  interval Int            @default(1)
+
+  // Pour récurrence hebdomadaire (stocké comme JSON string)
+  daysOfWeek String?
+
+  // Pour récurrence mensuelle
+  dayOfMonth  Int?
+  weekOfMonth Int?
+
+  // Fin de récurrence
+  endDate     DateTime?
+  occurrences Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduleException {
+  id         Int      @id @default(autoincrement())
+  scheduleId Int
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  // Date de l'exception
+  exceptionDate DateTime
+
+  // Nouvelles valeurs si modifié
+  newStartTime String?
+  newEndTime   String?
+  newTitle     String?
+
+  createdAt DateTime @default(now())
+}
+
 // Enums pour la planification
 enum ScheduleStatus {
   ACTIVE
@@ -92,21 +166,9 @@ enum ScheduleStatus {
   CANCELLED
 }
 
-enum SchedulePriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
 enum RecurrenceType {
   DAILY
   WEEKLY
   MONTHLY
   YEARLY
-}
-
-enum ExceptionType {
-  CANCELLED
-  MODIFIED
 }

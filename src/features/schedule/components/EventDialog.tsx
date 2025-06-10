@@ -1,20 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Calendar, Clock, Repeat, Trash2 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { Switch } from "@/shared/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -27,8 +15,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 import { Calendar as CalendarComponent } from "@/shared/components/ui/calendar";
+import { Switch } from "@/shared/components/ui/switch";
+import { Calendar, Clock, Play, Trash2 } from "lucide-react";
 import { Schedule, CreateScheduleData, RecurrenceType } from "../types";
+import { useScheduleStore } from "../store/scheduleStore";
+import { useSlideshowStore } from "@/features/slideshow/store/slideshowStore";
+import { useSlideshow } from "@/features/slideshow/hooks/useSlideshow";
 
 interface EventDialogProps {
   isOpen: boolean;
@@ -40,24 +43,35 @@ interface EventDialogProps {
   initialTime?: string;
 }
 
-// Couleurs aléatoires pour les nouveaux événements
-const randomColors = [
-  "#EF4444", // Rouge
-  "#F59E0B", // Orange
-  "#10B981", // Vert
-  "#3B82F6", // Bleu
-  "#8B5CF6", // Violet
-  "#EC4899", // Rose
-  "#06B6D4", // Cyan
-  "#84CC16", // Lime
-  "#F97316", // Orange foncé
-  "#6366F1", // Indigo
-];
-
-// Fonction pour générer une couleur aléatoire
 const getRandomColor = () => {
-  return randomColors[Math.floor(Math.random() * randomColors.length)];
+  const colors = [
+    "#3B82F6",
+    "#EF4444",
+    "#10B981",
+    "#F59E0B",
+    "#8B5CF6",
+    "#EC4899",
+    "#6B7280",
+    "#14B8A6",
+    "#F97316",
+    "#84CC16",
+    "#06B6D4",
+    "#8B5A2B",
+    "#DC2626",
+    "#059669",
+    "#7C3AED",
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 };
+
+const recurrenceOptions = [
+  { value: "none", label: "Une seule fois" },
+  { value: "daily", label: "Tous les jours" },
+  { value: "weekly", label: "Toutes les semaines" },
+  { value: "monthly", label: "Tous les mois" },
+  { value: "yearly", label: "Tous les ans" },
+  { value: "custom", label: "Récurrence personnalisée" },
+];
 
 export function EventDialog({
   isOpen,
@@ -68,11 +82,14 @@ export function EventDialog({
   initialDate,
   initialTime,
 }: EventDialogProps) {
+  const { slideshows } = useSlideshowStore();
+  const { fetchSlideshows } = useSlideshow();
+  const { schedules } = useScheduleStore();
+
   const [formData, setFormData] = useState<CreateScheduleData>({
     title: "",
-    slideshowId: 1, // Default value
+    slideshowId: slideshows.length > 0 ? slideshows[0].id : 0,
     startDate: initialDate || new Date(),
-    endDate: undefined,
     startTime: initialTime || "09:00",
     endTime: "10:00",
     allDay: false,
@@ -80,50 +97,243 @@ export function EventDialog({
     color: getRandomColor(),
   });
 
+  const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [conflictError, setConflictError] = useState<string | null>(null);
+
+  // Fonctions utilitaires
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const minutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const getValidEndTimeOptions = () => {
+    if (!formData.startTime) return [];
+    const startMinutes = timeToMinutes(formData.startTime);
+    return Array.from({ length: 48 }, (_, i) => i * 30)
+      .filter((minutes) => minutes > startMinutes)
+      .map((minutes) => minutesToTime(minutes));
+  };
+
+  const handleStartTimeChange = (value: string) => {
+    setFormData((prev) => {
+      const newData = { ...prev, startTime: value };
+
+      // Vérifier si l'heure de fin est encore valide
+      if (prev.endTime) {
+        const startMinutes = timeToMinutes(value);
+        const endMinutes = timeToMinutes(prev.endTime);
+
+        if (endMinutes <= startMinutes) {
+          // Ajuster l'heure de fin automatiquement
+          newData.endTime = minutesToTime(startMinutes + 60);
+        }
+      }
+
+      return newData;
+    });
+  };
+
+  const checkTimeConflicts = (eventData: CreateScheduleData): string | null => {
+    if (eventData.allDay) return null;
+
+    const startMinutes = timeToMinutes(eventData.startTime);
+    const endMinutes = eventData.endTime
+      ? timeToMinutes(eventData.endTime)
+      : startMinutes + 60;
+
+    for (const schedule of schedules) {
+      if (event && schedule.id === event.id) continue;
+
+      const scheduleStart = timeToMinutes(schedule.startTime);
+      const scheduleEnd = schedule.endTime
+        ? timeToMinutes(schedule.endTime)
+        : scheduleStart + 60;
+
+      const isSameDate =
+        format(new Date(schedule.startDate), "yyyy-MM-dd") ===
+        format(eventData.startDate, "yyyy-MM-dd");
+
+      if (isSameDate) {
+        const hasOverlap =
+          startMinutes < scheduleEnd && endMinutes > scheduleStart;
+
+        if (hasOverlap) {
+          return `Conflit détecté avec "${schedule.title}" (${
+            schedule.startTime
+          } - ${schedule.endTime || "fin non définie"})`;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // Charger les slideshows au montage du composant
+  useEffect(() => {
+    if (slideshows.length === 0) {
+      fetchSlideshows();
+    }
+  }, [slideshows.length, fetchSlideshows]);
 
   useEffect(() => {
     if (event) {
+      let eventEndTime = event.endTime || "";
+
+      // Vérifier si l'heure de fin est valide (après l'heure de début)
+      if (eventEndTime && event.startTime) {
+        const startMinutes = timeToMinutes(event.startTime);
+        const endMinutes = timeToMinutes(eventEndTime);
+
+        if (endMinutes <= startMinutes) {
+          // Si l'heure de fin n'est pas valide, l'ajuster
+          eventEndTime = minutesToTime(startMinutes + 60); // Ajouter 1 heure par défaut
+        }
+      }
+
+      // Trouver le slideshow correspondant pour récupérer le nom
+      const relatedSlideshow = slideshows.find(
+        (s) => s.id === event.slideshowId
+      );
+
       const newFormData = {
-        title: event.title,
+        title: relatedSlideshow?.name || event.title,
         slideshowId: event.slideshowId,
         startDate: new Date(event.startDate),
-        endDate: event.endDate ? new Date(event.endDate) : undefined,
         startTime: event.startTime,
-        endTime: event.endTime || "",
+        endTime: eventEndTime,
         allDay: event.allDay,
         isRecurring: event.isRecurring,
         color: event.color || getRandomColor(),
       };
       setFormData(newFormData);
+
+      // Déterminer le type de récurrence
+      if (event.isRecurring && event.recurrence) {
+        if (
+          event.recurrence.type === RecurrenceType.DAILY &&
+          event.recurrence.interval === 1
+        ) {
+          setRecurrenceType("daily");
+        } else if (
+          event.recurrence.type === RecurrenceType.WEEKLY &&
+          event.recurrence.interval === 1
+        ) {
+          setRecurrenceType("weekly");
+        } else if (
+          event.recurrence.type === RecurrenceType.MONTHLY &&
+          event.recurrence.interval === 1
+        ) {
+          setRecurrenceType("monthly");
+        } else if (
+          event.recurrence.type === RecurrenceType.YEARLY &&
+          event.recurrence.interval === 1
+        ) {
+          setRecurrenceType("yearly");
+        } else {
+          setRecurrenceType("custom");
+        }
+      } else {
+        setRecurrenceType("none");
+      }
     } else if (initialDate || initialTime) {
-      setFormData((prev) => ({
-        ...prev,
-        startDate: initialDate || prev.startDate,
-        startTime: initialTime || prev.startTime,
-      }));
+      setFormData((prev) => {
+        const newStartTime = initialTime || prev.startTime;
+        let newEndTime = prev.endTime;
+
+        // Si on définit une nouvelle heure de début, vérifier l'heure de fin
+        if (initialTime && prev.endTime) {
+          const startMinutes = timeToMinutes(newStartTime);
+          const endMinutes = timeToMinutes(prev.endTime);
+
+          if (endMinutes <= startMinutes) {
+            newEndTime = minutesToTime(startMinutes + 60);
+          }
+        }
+
+        return {
+          ...prev,
+          startDate: initialDate || prev.startDate,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        };
+      });
     }
-  }, [event, initialDate, initialTime]);
+  }, [event, initialDate, initialTime, slideshows]);
 
   // Réinitialiser le formulaire quand le dialog se ferme
   useEffect(() => {
     if (!isOpen) {
+      const defaultSlideshowId = slideshows.length > 0 ? slideshows[0].id : 0;
+      const defaultTitle = slideshows.length > 0 ? slideshows[0].name : "";
+
       setFormData({
-        title: "",
-        slideshowId: 1,
+        title: defaultTitle,
+        slideshowId: defaultSlideshowId,
         startDate: new Date(),
-        endDate: undefined,
         startTime: "09:00",
         endTime: "10:00",
         allDay: false,
         isRecurring: false,
         color: getRandomColor(),
       });
+      setRecurrenceType("none");
+      setConflictError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, slideshows]);
 
-  const handleSave = () => {
-    if (!formData.title.trim()) return;
+  const handleRecurrenceChange = (value: string) => {
+    setRecurrenceType(value);
+
+    if (value === "none") {
+      setFormData((prev) => ({
+        ...prev,
+        isRecurring: false,
+        recurrence: undefined,
+      }));
+    } else if (value !== "custom") {
+      // Types de récurrence prédéfinis
+      const typeMap: Record<string, RecurrenceType> = {
+        daily: RecurrenceType.DAILY,
+        weekly: RecurrenceType.WEEKLY,
+        monthly: RecurrenceType.MONTHLY,
+        yearly: RecurrenceType.YEARLY,
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        isRecurring: true,
+        recurrence: {
+          type: typeMap[value],
+          interval: 1,
+        },
+      }));
+    } else {
+      // Récurrence personnalisée
+      setFormData((prev) => ({
+        ...prev,
+        isRecurring: true,
+        recurrence: {
+          type: RecurrenceType.WEEKLY,
+          interval: 1,
+        },
+      }));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.slideshowId || formData.slideshowId === 0) {
+      console.error("Aucun slideshow sélectionné");
+      return;
+    }
 
     // Si c'est un nouvel événement (pas d'event existant), on génère une nouvelle couleur aléatoire
     const eventData = {
@@ -131,31 +341,26 @@ export function EventDialog({
       color: event ? formData.color : getRandomColor(),
     };
 
+    // Vérifier les conflits d'horaires
+    const conflictMessage = checkTimeConflicts(eventData);
+    if (conflictMessage) {
+      setConflictError(conflictMessage);
+      return;
+    }
+
+    // Effacer toute erreur de conflit précédente
+    setConflictError(null);
+
     onSave(eventData);
     onClose();
-
-    // Reset form avec une nouvelle couleur aléatoire
-    setFormData({
-      title: "",
-      slideshowId: 1,
-      startDate: new Date(),
-      endDate: undefined,
-      startTime: "09:00",
-      endTime: "10:00",
-      allDay: false,
-      isRecurring: false,
-      color: getRandomColor(),
-    });
   };
 
   const handleDelete = () => {
-    if (event && onDelete) {
-      setShowDeleteConfirm(true);
-    }
+    setShowDeleteConfirm(true);
   };
 
   const confirmDelete = () => {
-    if (event && onDelete) {
+    if (onDelete && event) {
       onDelete(event.id);
       setShowDeleteConfirm(false);
       onClose();
@@ -166,136 +371,129 @@ export function EventDialog({
     setShowDeleteConfirm(false);
   };
 
-  const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
-    const hour = Math.floor(i / 2);
-    const minute = i % 2 === 0 ? "00" : "30";
-    return `${hour.toString().padStart(2, "0")}:${minute}`;
-  });
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {event ? "Modifier l'événement" : "Créer un événement"}
+              {event ? "Modifier l'événement" : "Nouvel événement"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Titre */}
+            {/* Erreur de conflit */}
+            {conflictError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-red-800 text-sm font-medium">
+                  Conflit d'horaires détecté
+                </p>
+                <p className="text-red-700 text-sm mt-1">{conflictError}</p>
+              </div>
+            )}
+
+            {/* Slideshow */}
             <div className="space-y-2">
-              <Label htmlFor="title">Titre *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, title: e.target.value }))
-                }
-                placeholder="Titre de l'événement"
-              />
+              <Label htmlFor="slideshow">Slideshow *</Label>
+              <Select
+                value={formData.slideshowId.toString()}
+                onValueChange={(value) => {
+                  const slideshowId = parseInt(value);
+                  const selectedSlideshow = slideshows.find(
+                    (s) => s.id === slideshowId
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    slideshowId,
+                    title: selectedSlideshow?.name || "",
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {formData.slideshowId > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <Play className="h-4 w-4 text-blue-600" />
+                        <span>
+                          {
+                            slideshows.find(
+                              (s) => s.id === formData.slideshowId
+                            )?.name
+                          }
+                        </span>
+                        {slideshows.find((s) => s.id === formData.slideshowId)
+                          ?.description && (
+                          <span className="text-sm text-gray-500">
+                            -{" "}
+                            {
+                              slideshows.find(
+                                (s) => s.id === formData.slideshowId
+                              )?.description
+                            }
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {slideshows.map((slideshow) => (
+                    <SelectItem
+                      key={slideshow.id}
+                      value={slideshow.id.toString()}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Play className="h-4 w-4 text-blue-600" />
+                        <span>{slideshow.name}</span>
+                        {slideshow.description && (
+                          <span className="text-sm text-gray-500">
+                            - {slideshow.description}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Date et heure */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Date de début */}
-              <div className="space-y-2">
-                <Label>Date de début</Label>
-                <Popover modal={true}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      type="button"
-                      onClick={() => {
-                        console.log("Bouton date de début cliqué");
-                      }}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {format(formData.startDate, "dd/MM/yyyy", { locale: fr })}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0"
-                    style={{ zIndex: 9999 }}
-                    align="start"
-                    side="bottom"
-                    sideOffset={5}
-                    avoidCollisions={true}
-                  >
-                    <CalendarComponent
-                      mode="single"
-                      selected={formData.startDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          console.log("Date de début sélectionnée:", date);
-                          setFormData((prev) => ({ ...prev, startDate: date }));
-                        }
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Date de fin */}
-              <div className="space-y-2">
-                <Label>Date de fin (optionnelle)</Label>
-                <Popover modal={true}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      type="button"
-                      onClick={() => {
-                        console.log("Bouton date de fin cliqué");
-                      }}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {formData.endDate
-                        ? format(formData.endDate, "dd/MM/yyyy", { locale: fr })
-                        : "Sélectionner"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto p-0"
-                    style={{ zIndex: 9999 }}
-                    align="start"
-                    side="bottom"
-                    sideOffset={5}
-                    avoidCollisions={true}
-                  >
-                    <CalendarComponent
-                      mode="single"
-                      selected={formData.endDate}
-                      onSelect={(date) => {
-                        console.log("Date de fin sélectionnée:", date);
-                        setFormData((prev) => ({ ...prev, endDate: date }));
-                      }}
-                      initialFocus
-                      disabled={(date) =>
-                        formData.startDate && date < formData.startDate
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
-                {formData.endDate && (
+            {/* Date */}
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <Popover modal={true}>
+                <PopoverTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, endDate: undefined }));
-                    }}
-                    className="mt-1"
+                    variant="outline"
+                    className="w-full justify-start"
                     type="button"
                   >
-                    Supprimer la date de fin
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {format(formData.startDate, "dd/MM/yyyy", { locale: fr })}
                   </Button>
-                )}
-              </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto p-0"
+                  style={{ zIndex: 9999 }}
+                  align="start"
+                  side="bottom"
+                  sideOffset={5}
+                  avoidCollisions={true}
+                >
+                  <CalendarComponent
+                    mode="single"
+                    selected={formData.startDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setFormData((prev) => ({ ...prev, startDate: date }));
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
-            {/* Toute la journée */}
+            {/* Journée entière */}
             <div className="flex items-center space-x-2">
               <Switch
                 id="allDay"
@@ -304,48 +502,63 @@ export function EventDialog({
                   setFormData((prev) => ({ ...prev, allDay: checked }))
                 }
               />
-              <Label htmlFor="allDay">Toute la journée</Label>
+              <Label htmlFor="allDay">Journée entière</Label>
             </div>
 
             {/* Heures */}
             {!formData.allDay && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Heure de début</Label>
+                  <Label htmlFor="startTime">Heure de début *</Label>
                   <Select
                     value={formData.startTime}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, startTime: value }))
-                    }
+                    onValueChange={handleStartTimeChange}
                   >
                     <SelectTrigger>
-                      <Clock className="mr-2 h-4 w-4" />
-                      <SelectValue />
+                      <SelectValue>
+                        <div className="flex items-center">
+                          <Clock className="mr-2 h-4 w-4" />
+                          {formData.startTime}
+                        </div>
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {Array.from({ length: 48 }, (_, i) => {
+                        const minutes = i * 30;
+                        const time = minutesToTime(minutes);
+                        return (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Heure de fin</Label>
+                  <Label htmlFor="endTime">Heure de fin</Label>
                   <Select
-                    value={formData.endTime}
+                    value={formData.endTime || ""}
                     onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, endTime: value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        endTime: value || undefined,
+                      }))
                     }
                   >
                     <SelectTrigger>
-                      <Clock className="mr-2 h-4 w-4" />
-                      <SelectValue />
+                      <SelectValue placeholder="Sélectionner une heure">
+                        {formData.endTime && (
+                          <div className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4" />
+                            {formData.endTime}
+                          </div>
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.map((time) => (
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {getValidEndTimeOptions().map((time) => (
                         <SelectItem key={time} value={time}>
                           {time}
                         </SelectItem>
@@ -358,56 +571,298 @@ export function EventDialog({
 
             {/* Récurrence */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="recurring"
-                  checked={formData.isRecurring}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({ ...prev, isRecurring: checked }))
-                  }
-                />
-                <Label
-                  htmlFor="recurring"
-                  className="flex items-center space-x-1"
+              <div className="space-y-2">
+                <Label>Récurrence</Label>
+                <Select
+                  value={recurrenceType}
+                  onValueChange={handleRecurrenceChange}
                 >
-                  <Repeat className="h-4 w-4" />
-                  <span>Événement récurrent</span>
-                </Label>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recurrenceOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {formData.isRecurring && (
-                <div className="space-y-2">
-                  <Label>Type de récurrence</Label>
-                  <Select
-                    value={formData.recurrence?.type || RecurrenceType.WEEKLY}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        recurrence: {
-                          type: value as RecurrenceType,
-                          interval: 1,
-                        },
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={RecurrenceType.DAILY}>
-                        Quotidien
-                      </SelectItem>
-                      <SelectItem value={RecurrenceType.WEEKLY}>
-                        Hebdomadaire
-                      </SelectItem>
-                      <SelectItem value={RecurrenceType.MONTHLY}>
-                        Mensuel
-                      </SelectItem>
-                      <SelectItem value={RecurrenceType.YEARLY}>
-                        Annuel
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Configuration récurrence personnalisée */}
+              {recurrenceType === "custom" && (
+                <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Type</Label>
+                      <Select
+                        value={
+                          formData.recurrence?.type || RecurrenceType.WEEKLY
+                        }
+                        onValueChange={(value: string) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            recurrence: {
+                              ...prev.recurrence,
+                              type: value as RecurrenceType,
+                              interval: prev.recurrence?.interval || 1,
+                            },
+                          }));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={RecurrenceType.DAILY}>
+                            Quotidien
+                          </SelectItem>
+                          <SelectItem value={RecurrenceType.WEEKLY}>
+                            Hebdomadaire
+                          </SelectItem>
+                          <SelectItem value={RecurrenceType.MONTHLY}>
+                            Mensuel
+                          </SelectItem>
+                          <SelectItem value={RecurrenceType.YEARLY}>
+                            Annuel
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Intervalle</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={formData.recurrence?.interval || 1}
+                        onChange={(e) => {
+                          const interval = parseInt(e.target.value) || 1;
+                          setFormData((prev) => ({
+                            ...prev,
+                            recurrence: {
+                              ...prev.recurrence,
+                              type:
+                                prev.recurrence?.type || RecurrenceType.WEEKLY,
+                              interval,
+                            },
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Jours de la semaine pour récurrence hebdomadaire */}
+                  {formData.recurrence?.type === RecurrenceType.WEEKLY && (
+                    <div className="space-y-2">
+                      <Label>Jours de la semaine</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { value: 1, label: "Lun" },
+                          { value: 2, label: "Mar" },
+                          { value: 3, label: "Mer" },
+                          { value: 4, label: "Jeu" },
+                          { value: 5, label: "Ven" },
+                          { value: 6, label: "Sam" },
+                          { value: 0, label: "Dim" },
+                        ].map((day) => (
+                          <Button
+                            key={day.value}
+                            type="button"
+                            variant={
+                              formData.recurrence?.daysOfWeek?.includes(
+                                day.value
+                              )
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            onClick={() => {
+                              const currentDays =
+                                formData.recurrence?.daysOfWeek || [];
+                              const newDays = currentDays.includes(day.value)
+                                ? currentDays.filter((d) => d !== day.value)
+                                : [...currentDays, day.value];
+
+                              setFormData((prev) => ({
+                                ...prev,
+                                recurrence: {
+                                  ...prev.recurrence,
+                                  type:
+                                    prev.recurrence?.type ||
+                                    RecurrenceType.WEEKLY,
+                                  interval: prev.recurrence?.interval || 1,
+                                  daysOfWeek: newDays,
+                                },
+                              }));
+                            }}
+                          >
+                            {day.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fin de récurrence */}
+                  <div className="space-y-2">
+                    <Label>Fin de récurrence</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="never"
+                          name="recurrenceEnd"
+                          checked={
+                            !formData.recurrence?.endDate &&
+                            !formData.recurrence?.occurrences
+                          }
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              recurrence: {
+                                ...prev.recurrence,
+                                type:
+                                  prev.recurrence?.type ||
+                                  RecurrenceType.WEEKLY,
+                                interval: prev.recurrence?.interval || 1,
+                                endDate: undefined,
+                                occurrences: undefined,
+                              },
+                            }));
+                          }}
+                        />
+                        <Label htmlFor="never">Jamais</Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="endDate"
+                          name="recurrenceEnd"
+                          checked={!!formData.recurrence?.endDate}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              recurrence: {
+                                ...prev.recurrence,
+                                type:
+                                  prev.recurrence?.type ||
+                                  RecurrenceType.WEEKLY,
+                                interval: prev.recurrence?.interval || 1,
+                                endDate: new Date(),
+                                occurrences: undefined,
+                              },
+                            }));
+                          }}
+                        />
+                        <Label htmlFor="endDate">Le</Label>
+                        {formData.recurrence?.endDate && (
+                          <Popover modal={true}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" type="button">
+                                <Calendar className="mr-2 h-4 w-4" />
+                                {format(
+                                  formData.recurrence.endDate,
+                                  "dd/MM/yyyy",
+                                  { locale: fr }
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              style={{ zIndex: 9999 }}
+                              align="start"
+                              side="bottom"
+                              sideOffset={5}
+                              avoidCollisions={true}
+                            >
+                              <CalendarComponent
+                                mode="single"
+                                selected={formData.recurrence.endDate}
+                                onSelect={(date: Date | undefined) => {
+                                  if (date) {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      recurrence: {
+                                        ...prev.recurrence,
+                                        type:
+                                          prev.recurrence?.type ||
+                                          RecurrenceType.WEEKLY,
+                                        interval:
+                                          prev.recurrence?.interval || 1,
+                                        endDate: date,
+                                      },
+                                    }));
+                                  }
+                                }}
+                                initialFocus
+                                disabled={(date) =>
+                                  formData.startDate &&
+                                  date < formData.startDate
+                                }
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id="occurrences"
+                          name="recurrenceEnd"
+                          checked={!!formData.recurrence?.occurrences}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              recurrence: {
+                                ...prev.recurrence,
+                                type:
+                                  prev.recurrence?.type ||
+                                  RecurrenceType.WEEKLY,
+                                interval: prev.recurrence?.interval || 1,
+                                endDate: undefined,
+                                occurrences: 10,
+                              },
+                            }));
+                          }}
+                        />
+                        <Label htmlFor="occurrences">Après</Label>
+                        {formData.recurrence?.occurrences && (
+                          <>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="999"
+                              value={formData.recurrence.occurrences}
+                              onChange={(e) => {
+                                const occurrences =
+                                  parseInt(e.target.value) || 1;
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  recurrence: {
+                                    ...prev.recurrence,
+                                    type:
+                                      prev.recurrence?.type ||
+                                      RecurrenceType.WEEKLY,
+                                    interval: prev.recurrence?.interval || 1,
+                                    occurrences,
+                                  },
+                                }));
+                              }}
+                              className="w-20"
+                            />
+                            <span className="text-sm text-gray-600">
+                              occurrences
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -430,7 +885,10 @@ export function EventDialog({
               <Button variant="outline" onClick={onClose}>
                 Annuler
               </Button>
-              <Button onClick={handleSave} disabled={!formData.title.trim()}>
+              <Button
+                onClick={handleSave}
+                disabled={!formData.slideshowId || formData.slideshowId === 0}
+              >
                 {event ? "Modifier" : "Créer"}
               </Button>
             </div>

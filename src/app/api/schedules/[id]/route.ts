@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/shared/lib/auth";
-import { ScheduleStatus, SchedulePriority } from "@/features/schedule/types";
 
 // GET /api/schedules/[id] - Récupérer une planification par ID
 export async function GET(
@@ -10,13 +7,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     if (isNaN(id)) {
-      return NextResponse.json(
-        { message: 'ID invalide' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "ID invalide" }, { status: 400 });
     }
 
     const schedule = await prisma.schedule.findUnique({
@@ -42,16 +37,16 @@ export async function GET(
 
     if (!schedule) {
       return NextResponse.json(
-        { message: 'Planification introuvable' },
+        { message: "Planification introuvable" },
         { status: 404 }
       );
     }
 
     return NextResponse.json(schedule);
   } catch (error) {
-    console.error('Erreur lors de la récupération de la planification:', error);
+    console.error("Erreur lors de la récupération de la planification:", error);
     return NextResponse.json(
-      { message: 'Erreur lors de la récupération de la planification' },
+      { message: "Erreur lors de la récupération de la planification" },
       { status: 500 }
     );
   }
@@ -63,13 +58,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     if (isNaN(id)) {
-      return NextResponse.json(
-        { message: 'ID invalide' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "ID invalide" }, { status: 400 });
     }
 
     const body = await request.json();
@@ -97,7 +90,7 @@ export async function PUT(
 
     if (!existingSchedule) {
       return NextResponse.json(
-        { message: 'Planification introuvable' },
+        { message: "Planification introuvable" },
         { status: 404 }
       );
     }
@@ -110,7 +103,7 @@ export async function PUT(
 
       if (!slideshow) {
         return NextResponse.json(
-          { message: 'Slideshow introuvable' },
+          { message: "Slideshow introuvable" },
           { status: 404 }
         );
       }
@@ -123,7 +116,8 @@ export async function PUT(
     if (description !== undefined) updateData.description = description;
     if (slideshowId !== undefined) updateData.slideshowId = slideshowId;
     if (startDate !== undefined) updateData.startDate = new Date(startDate);
-    if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
+    if (endDate !== undefined)
+      updateData.endDate = endDate ? new Date(endDate) : null;
     if (startTime !== undefined) updateData.startTime = startTime;
     if (endTime !== undefined) updateData.endTime = endTime;
     if (allDay !== undefined) updateData.allDay = allDay;
@@ -193,9 +187,9 @@ export async function PUT(
 
     return NextResponse.json(schedule);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de la planification:', error);
+    console.error("Erreur lors de la mise à jour de la planification:", error);
     return NextResponse.json(
-      { message: 'Erreur lors de la mise à jour de la planification' },
+      { message: "Erreur lors de la mise à jour de la planification" },
       { status: 500 }
     );
   }
@@ -207,13 +201,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     if (isNaN(id)) {
-      return NextResponse.json(
-        { message: 'ID invalide' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "ID invalide" }, { status: 400 });
     }
 
     // Vérifier que la planification existe
@@ -223,7 +215,7 @@ export async function DELETE(
 
     if (!existingSchedule) {
       return NextResponse.json(
-        { message: 'Planification introuvable' },
+        { message: "Planification introuvable" },
         { status: 404 }
       );
     }
@@ -233,12 +225,14 @@ export async function DELETE(
       where: { id },
     });
 
-    return NextResponse.json({ message: 'Planification supprimée avec succès' });
+    return NextResponse.json({
+      message: "Planification supprimée avec succès",
+    });
   } catch (error) {
-    console.error('Erreur lors de la suppression de la planification:', error);
+    console.error("Erreur lors de la suppression de la planification:", error);
     return NextResponse.json(
-      { message: 'Erreur lors de la suppression de la planification' },
+      { message: "Erreur lors de la suppression de la planification" },
       { status: 500 }
     );
   }
-} 
+}

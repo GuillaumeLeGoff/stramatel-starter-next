@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   format,
   startOfMonth,
@@ -16,6 +16,7 @@ import {
   addDays,
   subDays,
   isToday,
+  isSameDay,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -43,13 +44,65 @@ export function ScheduleCalendar() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<ViewType>("month");
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Mettre à jour l'heure actuelle chaque minute
+  useEffect(() => {
+    const updateCurrentTime = () => {
+      setCurrentTime(new Date());
+    };
+
+    // Mise à jour immédiate
+    updateCurrentTime();
+
+    // Mise à jour chaque minute
+    const interval = setInterval(updateCurrentTime, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Composant pour la ligne de temps actuelle
+  const CurrentTimeLine = ({ day }: { day: Date }) => {
+    if (!isToday(day)) return null;
+
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    // Hauteur d'une heure = 48px
+    const hourHeight = 48;
+
+    // Position en pixels depuis le début de la journée
+    const topPosition = hours * hourHeight + (minutes / 60) * hourHeight;
+
+    return (
+      <>
+        {/* Ligne rouge */}
+        <div
+          className="absolute left-0 right-0 z-20 flex items-center"
+          style={{ top: `${topPosition}px` }}
+        >
+          <div className="h-0.5 bg-red-500 flex-1"></div>
+          <div className="bg-red-500 w-3 h-3 rounded-full -mr-1.5"></div>
+        </div>
+        {/* Heure actuelle dans la colonne de temps */}
+        <div
+          className="absolute -left-16 z-20 text-xs text-red-500 font-medium bg-white px-1 rounded"
+          style={{ top: `${topPosition - 8}px` }}
+        >
+          {format(now, "HH:mm")}
+        </div>
+      </>
+    );
+  };
 
   // Fonction pour calculer la position et la taille des événements
   const getEventStyle = (event: any) => {
     if (event.allDay) {
+      // Les événements "journée entière" couvrent toute la journée (24h * 48px = 1152px)
       return {
-        top: "2px",
-        height: "20px",
+        top: "0px",
+        height: "1152px", // 24 heures * 48px par heure
       };
     }
 
@@ -113,6 +166,12 @@ export function ScheduleCalendar() {
     setCurrentDate(new Date());
   };
 
+  // Fonction pour naviguer vers la vue jour d'une date spécifique
+  const navigateToDay = (day: Date) => {
+    setCurrentDate(day);
+    setViewType("day");
+  };
+
   // Month view component
   const MonthView = () => {
     const monthStart = startOfMonth(currentDate);
@@ -151,7 +210,7 @@ export function ScheduleCalendar() {
                 className={`min-h-[140px] cursor-pointer transition-colors hover:bg-gray-50 ${
                   !isCurrentMonth ? "opacity-50" : ""
                 } ${isCurrentDay ? "ring-2 ring-blue-500" : ""}`}
-                onClick={() => handleDateClick?.(day)}
+                onClick={() => navigateToDay(day)}
               >
                 <CardContent className="p-3 h-full flex flex-col">
                   <div className="flex justify-between items-center mb-2">
@@ -162,19 +221,6 @@ export function ScheduleCalendar() {
                     >
                       {format(day, "d")}
                     </span>
-                    {dayEvents.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCreateEvent?.(day);
-                        }}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    )}
                   </div>
 
                   <div className="space-y-1 flex-1">
@@ -283,21 +329,37 @@ export function ScheduleCalendar() {
                   />
                 ))}
 
+                {/* Ligne de temps actuelle */}
+                <CurrentTimeLine day={day} />
+
                 {/* Événements pour ce jour */}
                 {getEventsForDate(day).map((event) => {
                   const eventStyle = getEventStyle(event);
-                  const startHour = parseInt(event.startTime.split(":")[0]);
-                  const topPosition =
-                    startHour * 48 + parseFloat(eventStyle.top);
+                  let topPosition;
+
+                  if (event.allDay) {
+                    // Pour les événements "journée entière", commencer en haut
+                    topPosition = parseFloat(eventStyle.top);
+                  } else {
+                    // Pour les événements normaux, calculer selon l'heure de début
+                    const startHour = parseInt(event.startTime.split(":")[0]);
+                    topPosition = startHour * 48 + parseFloat(eventStyle.top);
+                  }
 
                   return (
                     <div
                       key={event.id}
-                      className="absolute left-1 right-1 p-1 rounded text-xs cursor-pointer text-white z-10 overflow-hidden"
+                      className={`absolute left-1 right-1 p-1 rounded text-xs cursor-pointer z-10 overflow-hidden ${
+                        event.allDay
+                          ? "text-white border-2 border-white border-opacity-30"
+                          : "text-white"
+                      }`}
                       style={{
                         top: `${topPosition}px`,
                         height: eventStyle.height,
-                        backgroundColor: event.color || "#3B82F6",
+                        backgroundColor: event.allDay
+                          ? `${event.color || "#3B82F6"}40` // Transparence pour les événements journée entière
+                          : event.color || "#3B82F6",
                         minHeight: "20px",
                       }}
                       onClick={(e) => {
@@ -307,6 +369,11 @@ export function ScheduleCalendar() {
                     >
                       <div className="truncate font-medium text-xs">
                         {event.title}
+                        {event.allDay && (
+                          <span className="ml-1 opacity-75">
+                            (Journée entière)
+                          </span>
+                        )}
                       </div>
                       {!event.allDay && (
                         <div className="truncate opacity-90 text-xs">
@@ -363,20 +430,37 @@ export function ScheduleCalendar() {
               />
             ))}
 
+            {/* Ligne de temps actuelle */}
+            <CurrentTimeLine day={currentDate} />
+
             {/* Événements positionnés absolument */}
             {dayEvents.map((event) => {
               const eventStyle = getEventStyle(event);
-              const startHour = parseInt(event.startTime.split(":")[0]);
-              const topPosition = startHour * 48 + parseFloat(eventStyle.top);
+              let topPosition;
+
+              if (event.allDay) {
+                // Pour les événements "journée entière", commencer en haut
+                topPosition = parseFloat(eventStyle.top);
+              } else {
+                // Pour les événements normaux, calculer selon l'heure de début
+                const startHour = parseInt(event.startTime.split(":")[0]);
+                topPosition = startHour * 48 + parseFloat(eventStyle.top);
+              }
 
               return (
                 <div
                   key={event.id}
-                  className="absolute left-2 right-2 p-2 rounded cursor-pointer text-white z-10 overflow-hidden"
+                  className={`absolute left-2 right-2 p-2 rounded cursor-pointer z-10 overflow-hidden ${
+                    event.allDay
+                      ? "text-white border-2 border-white border-opacity-30"
+                      : "text-white"
+                  }`}
                   style={{
                     top: `${topPosition}px`,
                     height: eventStyle.height,
-                    backgroundColor: event.color || "#3B82F6",
+                    backgroundColor: event.allDay
+                      ? `${event.color || "#3B82F6"}40` // Transparence pour les événements journée entière
+                      : event.color || "#3B82F6",
                     minHeight: "20px",
                   }}
                   onClick={(e) => {
@@ -384,7 +468,12 @@ export function ScheduleCalendar() {
                     handleEventClick?.(event);
                   }}
                 >
-                  <div className="font-medium text-sm">{event.title}</div>
+                  <div className="font-medium text-sm">
+                    {event.title}
+                    {event.allDay && (
+                      <span className="ml-1 opacity-75">(Journée entière)</span>
+                    )}
+                  </div>
                   {!event.allDay && (
                     <div className="text-xs opacity-90">
                       {event.startTime} - {event.endTime}

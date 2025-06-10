@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Schedule, CreateScheduleData } from "../types";
+import * as scheduleApi from "../api/scheduleApi";
 
 type ViewType = "month" | "week" | "day";
 
@@ -13,12 +14,14 @@ interface ScheduleState {
   dialogInitialDate: Date | undefined;
   dialogInitialTime: string | undefined;
   selectedDate: Date | undefined;
+  isLoading: boolean;
+  error: string | null;
 
   // Actions
   setSchedules: (schedules: Schedule[]) => void;
   addSchedule: (schedule: Schedule) => void;
   updateSchedule: (id: number, data: Partial<Schedule>) => void;
-  deleteSchedule: (id: number) => void;
+  deleteSchedule: (id: number) => Promise<void>;
   setCurrentDate: (date: Date) => void;
   setViewType: (viewType: ViewType) => void;
   setIsDialogOpen: (isOpen: boolean) => void;
@@ -26,11 +29,14 @@ interface ScheduleState {
   setDialogInitialDate: (date: Date | undefined) => void;
   setDialogInitialTime: (time: string | undefined) => void;
   setSelectedDate: (date: Date | undefined) => void;
+  setLoading: (isLoading: boolean) => void;
+  setError: (error: string | null) => void;
 
   // Actions composées
   openEventDialog: (event?: Schedule, date?: Date, time?: string) => void;
   closeDialog: () => void;
-  saveEvent: (eventData: CreateScheduleData) => void;
+  saveEvent: (eventData: CreateScheduleData) => Promise<void>;
+  loadSchedules: () => Promise<void>;
   navigateToDay: (date: Date) => void;
 }
 
@@ -47,6 +53,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   dialogInitialDate: undefined,
   dialogInitialTime: undefined,
   selectedDate: undefined,
+  isLoading: false,
+  error: null,
 
   // Actions simples
   setSchedules: (schedules) => set({ schedules }),
@@ -62,10 +70,24 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           : schedule
       ),
     })),
-  deleteSchedule: (id) =>
-    set((state) => ({
-      schedules: state.schedules.filter((schedule) => schedule.id !== id),
-    })),
+  deleteSchedule: async (id) => {
+    try {
+      set({ isLoading: true, error: null });
+      await scheduleApi.deleteSchedule(id);
+      set((state) => ({
+        schedules: state.schedules.filter((schedule) => schedule.id !== id),
+      }));
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors de la suppression";
+      set({ error: errorMessage });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
   setCurrentDate: (date) => set({ currentDate: date }),
   setViewType: (viewType) => set({ viewType }),
   setIsDialogOpen: (isDialogOpen) => set({ isDialogOpen }),
@@ -73,6 +95,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   setDialogInitialDate: (dialogInitialDate) => set({ dialogInitialDate }),
   setDialogInitialTime: (dialogInitialTime) => set({ dialogInitialTime }),
   setSelectedDate: (selectedDate) => set({ selectedDate }),
+  setLoading: (isLoading) => set({ isLoading }),
+  setError: (error) => set({ error }),
 
   // Actions composées
   openEventDialog: (event, date, time) => {
@@ -93,41 +117,52 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       dialogInitialTime: undefined,
     }),
 
-  saveEvent: (eventData) => {
+  saveEvent: async (eventData) => {
     const state = get();
-    if (state.selectedEvent) {
-      // Modifier un événement existant
-      state.updateSchedule(state.selectedEvent.id, {
-        title: eventData.title,
-        slideshowId: eventData.slideshowId,
-        startDate: eventData.startDate,
-        endDate: eventData.endDate,
-        startTime: eventData.startTime,
-        endTime: eventData.endTime,
-        allDay: eventData.allDay,
-        isRecurring: eventData.isRecurring,
-        color: eventData.color,
-      });
-    } else {
-      // Créer un nouvel événement
-      const newEvent: Schedule = {
-        id: Math.max(...state.schedules.map((s) => s.id), 0) + 1,
-        title: eventData.title,
-        slideshowId: eventData.slideshowId,
-        createdBy: 1, // ID utilisateur par défaut
-        startDate: eventData.startDate,
-        endDate: eventData.endDate,
-        startTime: eventData.startTime,
-        endTime: eventData.endTime,
-        allDay: eventData.allDay,
-        isRecurring: eventData.isRecurring,
-        color: eventData.color,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      state.addSchedule(newEvent);
+
+    try {
+      set({ isLoading: true, error: null });
+
+      if (state.selectedEvent) {
+        // Modifier un événement existant
+        const updatedSchedule = await scheduleApi.updateSchedule(
+          state.selectedEvent.id,
+          eventData
+        );
+        state.updateSchedule(state.selectedEvent.id, updatedSchedule);
+      } else {
+        // Créer un nouvel événement
+        const newSchedule = await scheduleApi.createSchedule(eventData);
+        state.addSchedule(newSchedule);
+      }
+
+      state.closeDialog();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Erreur inconnue";
+      set({ error: errorMessage });
+      throw error; // Re-throw pour que l'EventDialog puisse gérer l'erreur
+    } finally {
+      set({ isLoading: false });
     }
-    state.closeDialog();
+  },
+
+  loadSchedules: async () => {
+    const state = get();
+
+    try {
+      set({ isLoading: true, error: null });
+      const schedules = await scheduleApi.fetchAllSchedules();
+      set({ schedules });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors du chargement des événements";
+      set({ error: errorMessage });
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
   navigateToDay: (date) =>
