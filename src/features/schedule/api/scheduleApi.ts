@@ -1,8 +1,6 @@
 import {
-  Schedule,
   CreateScheduleData,
-  UpdateScheduleData,
-  ScheduleFilters,
+  Schedule
 } from "../types";
 
 const API_BASE = "/api/schedules";
