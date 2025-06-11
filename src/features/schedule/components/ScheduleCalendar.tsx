@@ -310,7 +310,7 @@ export function ScheduleCalendar() {
 
           {/* Day columns with scroll */}
           <div className="flex flex-1 overflow-auto relative">
-            {weekDays.map((day, dayIndex) => (
+            {weekDays.map((day) => (
               <div
                 key={day.toISOString()}
                 className="flex-1 border-r border-gray-200 last:border-r-0 relative min-w-0"

@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { useSlideshow } from "@/features/slideshow/hooks/useSlideshow";
+import { useSlideshowStore } from "@/features/slideshow/store/slideshowStore";
+import { Button } from "@/shared/components/ui/button";
+import { Calendar as CalendarComponent } from "@/shared/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -22,16 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { Calendar as CalendarComponent } from "@/shared/components/ui/calendar";
 import { Switch } from "@/shared/components/ui/switch";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Calendar, Clock, Play, Trash2 } from "lucide-react";
-import { Schedule, CreateScheduleData, RecurrenceType } from "../types";
+import { useEffect, useState } from "react";
 import { useScheduleStore } from "../store/scheduleStore";
-import { useSlideshowStore } from "@/features/slideshow/store/slideshowStore";
-import { useSlideshow } from "@/features/slideshow/hooks/useSlideshow";
+import { CreateScheduleData, RecurrenceType, Schedule } from "../types";
 
 interface EventDialogProps {
   isOpen: boolean;
@@ -83,7 +83,6 @@ export function EventDialog({
   initialTime,
 }: EventDialogProps) {
   const { slideshows } = useSlideshowStore();
-  const { fetchSlideshows } = useSlideshow();
   const { schedules } = useScheduleStore();
 
   const [formData, setFormData] = useState<CreateScheduleData>({
@@ -177,12 +176,7 @@ export function EventDialog({
     return null;
   };
 
-  // Charger les slideshows au montage du composant
-  useEffect(() => {
-    if (slideshows.length === 0) {
-      fetchSlideshows();
-    }
-  }, [slideshows.length, fetchSlideshows]);
+
 
   useEffect(() => {
     if (event) {
