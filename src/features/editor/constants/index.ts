@@ -1,15 +1,6 @@
 // ===== CONSTANTES DE L'ÉDITEUR =====
 
-// Dimensions par défaut
-export const DEFAULT_SLIDE_DIMENSIONS = {
-  width: 1920,
-  height: 1080,
-} as const;
 
-export const DEFAULT_STAGE_DIMENSIONS = {
-  width: 800,
-  height: 600,
-} as const;
 
 // Zoom
 export const ZOOM_CONFIG = {

@@ -1,15 +1,12 @@
 import {
-  isSameDay,
   addDays,
-  addWeeks,
-  addMonths,
-  addYears,
   isAfter,
   isBefore,
-  startOfDay,
+  isSameDay,
+  startOfDay
 } from "date-fns";
 import { useScheduleStore } from "../store/scheduleStore";
-import { Schedule, RecurrenceType } from "../types";
+import { RecurrenceType, Schedule } from "../types";
 
 export function useScheduleEvents() {
   const {

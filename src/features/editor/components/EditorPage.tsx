@@ -16,15 +16,16 @@ import { KonvaStageRenderer } from "./konva/KonvaStageRenderer";
 
 export function EditorPage() {
   const { currentSlideshow } = useSlideshow();
-  const { currentSlide, getCurrentSlideKonvaData, changeSlide, containerRef } =
+  const { currentSlide, getCurrentSlideKonvaData, changeSlide, width, height } =
     useEditor();
 
   const konvaData = getCurrentSlideKonvaData();
-  const { scale, zoomIn, zoomOut } = useZoom(konvaData);
+  const { scale, normalizedScale, zoomIn, zoomOut, containerRef } = useZoom();
 
   const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides } = useSlide({
     stageData: konvaData,
     containerRef,
+    scale,
   });
 
   // Récupérer la slide actuelle
@@ -67,8 +68,8 @@ export function EditorPage() {
                           slideshowId: currentSlideshow.id,
                           position: currentSlideshow.slides?.length || 0,
                           duration: 5,
-                          width: 1920,
-                          height: 1080,
+                          width,
+                          height,
                         });
                       }}
                     >
@@ -132,9 +133,7 @@ export function EditorPage() {
                                   top: 0,
                                   left: 0,
                                   width: "100%",
-                                  height: `calc(50% - ${
-                                    konvaData.height / 2
-                                  }px)`,
+                                  height: `calc(50% - ${height / 2}px)`,
                                 }}
                               />
                               <div
@@ -143,18 +142,16 @@ export function EditorPage() {
                                   bottom: 0,
                                   left: 0,
                                   width: "100%",
-                                  height: `calc(50% - ${
-                                    konvaData.height / 2
-                                  }px)`,
+                                  height: `calc(50% - ${height / 2}px)`,
                                 }}
                               />
                               <div
                                 className="absolute bg-black/30"
                                 style={{
-                                  top: `calc(50% - ${konvaData.height / 2}px)`,
+                                  top: `calc(50% - ${height / 2}px)`,
                                   left: 0,
-                                  width: `calc(50% - ${konvaData.width / 2}px)`,
-                                  height: `${konvaData.height}px`,
+                                  width: `calc(50% - ${width / 2}px)`,
+                                  height: `${height}px`,
                                 }}
                               />
 
@@ -162,14 +159,14 @@ export function EditorPage() {
                               <div
                                 className="absolute bg-black/30"
                                 style={{
-                                  top: `calc(50% - ${konvaData.height / 2}px)`,
+                                  top: `calc(50% - ${height / 2}px)`,
                                   right: 0,
-                                  width: `calc(50% - ${konvaData.width / 2}px)`,
-                                  height: `${konvaData.height}px`,
+                                  width: `calc(50% - ${width / 2}px)`,
+                                  height: `${height}px`,
                                 }}
                               />
 
-                              <KonvaStageRenderer stageData={konvaData} />
+                              <KonvaStageRenderer stageData={konvaData} scale={scale} />
                             </div>
                           )}
                         </div>
@@ -182,7 +179,7 @@ export function EditorPage() {
                   className="flex justify-end items-center border-t border"
                 >
                   <FooterEditorComponents
-                    scale={scale}
+                    scale={normalizedScale}
                     zoomIn={zoomIn}
                     zoomOut={zoomOut}
                     currentSlideDuration={currentSlideData?.duration}

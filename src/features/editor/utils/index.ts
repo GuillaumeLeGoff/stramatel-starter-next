@@ -1,5 +1,5 @@
-import { KonvaStage, KonvaShape, ShapeType } from "../types";
-import { DEFAULT_SHAPE_STYLES, DEFAULT_STAGE_DIMENSIONS } from "../constants";
+import { DEFAULT_SHAPE_STYLES } from "../constants";
+import { KonvaShape, KonvaStage, ShapeType } from "../types";
 
 // ===== UTILITAIRES KONVA =====
 
@@ -14,18 +14,14 @@ export const generateShapeId = (prefix: string = "shape"): string => {
  * Crée un stage Konva par défaut
  */
 export const createDefaultKonvaStage = (
-  width?: number,
-  height?: number
+
 ): KonvaStage => {
-  const stageWidth = width || DEFAULT_STAGE_DIMENSIONS.width;
-  const stageHeight = height || DEFAULT_STAGE_DIMENSIONS.height;
+
 
   return {
-    width: stageWidth,
-    height: stageHeight,
     attrs: {
-      width: stageWidth,
-      height: stageHeight,
+      width: 10000,
+      height: 10000,
     },
     className: "Stage",
     children: [

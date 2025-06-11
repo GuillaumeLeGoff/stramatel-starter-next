@@ -6,26 +6,23 @@ import {
   SlideshowSlide,
 } from "@/features/slideshow/types";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import * as slideshowApi from "@/features/slideshow/api/slideshowApi";
 import { useParams, useRouter } from "next/navigation";
-import { fetchSlideshowById } from "@/features/slideshow/api/slideshowApi";
 import { slideStore } from "@/features/editor/store/slideStore";
 
 export function useSlideshow() {
-  // États du store
+  // États du store avec actions API intégrées
   const {
     slideshows,
     currentSlideshow,
     isLoading,
     error,
-    setSlideshows,
-    addSlideshow,
-    deleteSlideshow,
-    setLoading,
-    setError,
     setCurrentSlideshow,
     isEditorOpen,
     setEditorOpen,
+    fetchSlideshows,
+    createSlideshow,
+    deleteSlideshowById,
+    fetchSlideshowById,
   } = useSlideshowStore();
 
   const { user } = useAuth();
@@ -49,78 +46,26 @@ export function useSlideshow() {
   const params = useParams();
   const locale = (params.locale as string) || "fr";
 
-  // Charge les slideshows au chargement
+  // Charge les slideshows au chargement (une seule fois)
   useEffect(() => {
-    if (!dataFetchedRef.current) {
+    if (!dataFetchedRef.current && !isLoading && slideshows.length === 0) {
       console.log("Chargement initial des slideshows");
       fetchSlideshows();
       dataFetchedRef.current = true;
     }
-  }, []);
+  }, [fetchSlideshows, isLoading, slideshows.length]);
 
-  // Charge tous les slideshows
-  const fetchSlideshows = useCallback(async () => {
-    try {
-      // Éviter les appels multiples si déjà en cours de chargement
-      if (isLoading) {
-        console.log("Chargement déjà en cours, appel ignoré");
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      console.log("Récupération des slideshows...");
-      const data = await slideshowApi.fetchAllSlideshows();
-
-      // S'assurer que data est un tableau
-      if (Array.isArray(data)) {
-        console.log(`${data.length} slideshows récupérés`);
-        setSlideshows(data);
-      } else {
-        console.error("Les données reçues ne sont pas un tableau:", data);
-        setSlideshows([]);
-      }
-      return data;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Erreur inconnue";
-      setError(errorMessage);
-      console.error("Erreur lors de la récupération des slideshows:", error);
-      // Initialiser avec un tableau vide en cas d'erreur
-      setSlideshows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [setLoading, setError, setSlideshows, isLoading]);
-
-  // Crée un nouveau slideshow
-  const createSlideshow = useCallback(
+  // Crée un nouveau slideshow (wrapper avec vérification user)
+  const handleCreateSlideshow = useCallback(
     async (formData: SlideshowFormData) => {
       if (!user) {
-        setError("Vous devez être connecté pour créer un slideshow");
+        console.error("Vous devez être connecté pour créer un slideshow");
         return null;
       }
 
-      try {
-        setLoading(true);
-        setError(null);
-
-        const data = await slideshowApi.createSlideshow(formData, user.id);
-
-        addSlideshow(data);
-        return data;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Erreur inconnue";
-        setError(errorMessage);
-        console.error("Erreur lors de la création du slideshow:", error);
-        return null;
-      } finally {
-        setLoading(false);
-      }
+      return await createSlideshow(formData, user.id);
     },
-    [user, setLoading, setError, addSlideshow]
+    [user, createSlideshow]
   );
 
   // Naviguer vers l'éditeur de slideshow
@@ -134,12 +79,11 @@ export function useSlideshow() {
   // Fonction pour définir le slideshow courant et ouvrir l'éditeur
   const handleSetSlideshow = useCallback(
     (slideshow: SlideshowConfig) => {
-      fetchSlideshowById(slideshow.id).then((data) => {
-        setCurrentSlideshow(data);
+      fetchSlideshowById(slideshow.id).then(() => {
         setEditorOpen(true);
       });
     },
-    [setCurrentSlideshow, setEditorOpen]
+    [fetchSlideshowById, setEditorOpen]
   );
 
   // Fonction pour fermer l'éditeur
@@ -148,30 +92,6 @@ export function useSlideshow() {
     slideStore.getState().setSelectedShapes([]);
     setEditorOpen(false);
   }, [setEditorOpen]);
-
-  // Supprime un slideshow
-  const deleteSlideshowById = useCallback(
-    async (id: number) => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        await slideshowApi.deleteSlideshow(id);
-
-        deleteSlideshow(id);
-        return true;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Erreur inconnue";
-        setError(errorMessage);
-        console.error("Erreur lors de la suppression du slideshow:", error);
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [setLoading, setError, deleteSlideshow]
-  );
 
   // Met à jour le slideshow courant
   const updateCurrentSlideshow = useCallback(
@@ -196,7 +116,7 @@ export function useSlideshow() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const result = await createSlideshow(formData);
+      const result = await handleCreateSlideshow(formData);
       if (result) {
         setFormData({
           name: "",
@@ -266,9 +186,9 @@ export function useSlideshow() {
     createError: error,
     isCreating: isLoading,
 
-    // Fonctions du store
+    // Fonctions du store (actions API)
     fetchSlideshows,
-    createSlideshow,
+    createSlideshow: handleCreateSlideshow,
     deleteSlideshowById,
 
     // Fonctions de l'interface

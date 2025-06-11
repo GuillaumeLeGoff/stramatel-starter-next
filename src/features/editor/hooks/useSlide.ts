@@ -12,17 +12,19 @@ import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
 import { cleanMediaFromKonvaData, createShape, getStageCenter } from "../utils";
+import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 interface UseSlideProps {
   stageData: KonvaStage | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  scale?: number;
 }
 
-export function useSlide({ stageData, containerRef }: UseSlideProps) {
+export function useSlide({ stageData, containerRef}: UseSlideProps) {
   const [previewScale, setPreviewScale] = useState(0.2);
   const { setCurrentSlide, currentSlide } = slideStore();
   const { updateCurrentSlideshow, currentSlideshow } = useSlideshow();
-
+  const { width, height } = useAppSettings();
   // ===== SAUVEGARDE KONVA =====
 
   // Sauvegarder les données Konva du slide courant
@@ -166,52 +168,9 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
             };
             break;
 
-          case "chart":
+          
             // Pour un graphique, on peut créer un groupe avec plusieurs formes
-            newShape = {
-              attrs: {
-                x: centerX - 150,
-                y: centerY - 100,
-                width: 300,
-                height: 200,
-                id: shapeId,
-                name: "Graphique",
-                draggable: true,
-              },
-              className: "Group",
-              children: [
-                {
-                  attrs: {
-                    width: 300,
-                    height: 200,
-                    fill: "#F9FAFB",
-                    stroke: "#E5E7EB",
-                    strokeWidth: 1,
-                  },
-                  className: "Rect",
-                },
-                {
-                  attrs: {
-                    points: [10, 190, 10, 10, 290, 10],
-                    stroke: "#9CA3AF",
-                    strokeWidth: 2,
-                  },
-                  className: "Line",
-                },
-                // Graphique exemple
-                {
-                  attrs: {
-                    points: [30, 150, 90, 100, 150, 130, 210, 50, 270, 90],
-                    stroke: "#3B82F6",
-                    strokeWidth: 3,
-                    tension: 0.3,
-                    lineCap: "round",
-                    lineJoin: "round",
-                  },
-                  className: "Line",
-                },
-              ],
-            };
+         
             break;
 
           default:
@@ -251,7 +210,6 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
         }
       }
 
-      console.log(`Forme ${shapeType} ajoutée avec l'ID ${newShape.attrs.id || 'unknown'}`);
     },
     [currentSlideshow, currentSlide, stageData, saveCurrentSlideKonvaData]
   );
@@ -269,14 +227,14 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
     const containerHeight = container.clientHeight;
 
     // Calculer le ratio pour adapter le canvas au conteneur
-    const scaleX = containerWidth / stageData.width;
-    const scaleY = containerHeight / stageData.height;
+    const scaleX = containerWidth / width;
+    const scaleY = containerHeight / height;
 
     // Utiliser le plus petit ratio pour s'assurer que tout est visible
     const newScale = Math.min(scaleX, scaleY) * 0.9; // 90% pour une petite marge
 
     setPreviewScale(newScale);
-  }, [containerRef, stageData]);
+  }, [containerRef, stageData, width, height]);
 
   // Mettre à jour l'échelle lorsque les dimensions changent
   useEffect(() => {
@@ -296,13 +254,12 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
 
     return {
       ...stageData,
-      // Utiliser les dimensions du viewport (800x600)
-      width: stageData.width,
-      height: stageData.height,
+      width: stageData.attrs.width,
+      height: stageData.attrs.height,
       attrs: {
         // Pour le rendu, on maintient les dimensions du viewport
-        width: stageData.width,
-        height: stageData.height,
+        width:width,
+        height: height,
         x: 0,
         y: 0,
       },
@@ -312,8 +269,8 @@ export function useSlide({ stageData, containerRef }: UseSlideProps) {
         ...layer,
         attrs: { ...layer.attrs },
         children: layer.children.map((child) => {
-          const centerOffsetX = (stageData.attrs.width - stageData.width) / 2;
-          const centerOffsetY = (stageData.attrs.height - stageData.height) / 2;
+          const centerOffsetX = (stageData.attrs.width - width) / 2;
+          const centerOffsetY = (stageData.attrs.height - height) / 2;
 
           return {
             ...child,

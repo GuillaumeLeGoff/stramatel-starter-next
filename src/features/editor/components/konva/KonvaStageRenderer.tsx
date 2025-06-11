@@ -21,6 +21,7 @@ import Konva from "konva";
 interface KonvaStageRendererProps {
   stageData: KonvaStage;
   isPreview?: boolean;
+  scale?: number;
 }
 
 // Extension des types existants pour inclure id
@@ -35,6 +36,7 @@ type ExtendedKonvaShape = KonvaShape & {
 export function KonvaStageRenderer({
   stageData,
   isPreview = false,
+  scale = 1,
 }: KonvaStageRendererProps) {
   const {
     handleSelect,
@@ -327,6 +329,7 @@ export function KonvaStageRenderer({
         {!isPreview && (
           <Transformer
             ref={transformerRef}
+            anchorSize={10 / scale}
             boundBoxFunc={(oldBox, newBox) => {
               if (newBox.width < 5 || newBox.height < 5) {
                 return oldBox;

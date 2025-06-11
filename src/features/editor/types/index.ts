@@ -74,8 +74,6 @@ export interface KonvaNode {
 }
 
 export interface KonvaStage extends KonvaNode {
-  width: number;
-  height: number;
   attrs: KonvaStageAttrs;
   className: "Stage";
   children: KonvaLayer[];

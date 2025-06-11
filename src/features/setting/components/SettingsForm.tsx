@@ -123,7 +123,7 @@ export function SettingsForm() {
               type="number"
               value={formData.width}
               onChange={handleChange}
-              min={640}
+              min={10}
               max={3840}
             />
           </div>
@@ -136,7 +136,7 @@ export function SettingsForm() {
               type="number"
               value={formData.height}
               onChange={handleChange}
-              min={480}
+              min={10}
               max={2160}
             />
           </div>

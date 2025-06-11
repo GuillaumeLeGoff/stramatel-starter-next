@@ -5,15 +5,16 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { useSlide } from "../../hooks/useSlide";
 import { Button } from "@/shared/components/ui/button";
 import { Trash2, Clock } from "lucide-react";
+import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 export function SlidePreview({
   slide,
-  index,
   isActive = false,
   onClick,
 }: SlidePreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const { width, height } = useAppSettings();
 
   // Convertir le konvaData du slide en KonvaStage
   let stageData: KonvaStage | null = null;
@@ -21,37 +22,18 @@ export function SlidePreview({
   if (slide.konvaData) {
     stageData = slide.konvaData as unknown as KonvaStage;
   } else {
+    // Créer des données par défaut si aucune donnée Konva n'existe
     stageData = {
-      width: 800,
-      height: 600,
-      attrs: {
-        width: slide.width || 1920,
-        height: slide.height || 1080,
-      },
+      attrs: { width, height },
       className: "Stage",
       children: [
         {
           attrs: {},
           className: "Layer",
-          children: [
-            {
-              attrs: {
-                x: 100,
-                y: 100,
-                width: 300,
-                height: 50,
-                fontSize: 32,
-                fontFamily: "Arial",
-                fill: "#333333",
-                align: "center",
-                text: `Slide ${index + 1}`,
-              },
-              className: "Text",
-            },
-          ],
+          children: [],
         },
       ],
-    };
+    } as KonvaStage;
   }
 
   const { previewScale, viewportStageData, deleteSlide } = useSlide({
@@ -68,19 +50,13 @@ export function SlidePreview({
         // toast.success("Slide supprimée avec succès");
       } catch (error) {
         console.error("Erreur lors de la suppression de la slide", error);
-        // Si besoin d'afficher une notification d'erreur
-        // toast.error("Erreur lors de la suppression de la slide");
+       
       }
     }
   };
 
-  useEffect(() => {
-    if (stageData) {
-      console.log("stageData", stageData);
-    }
-  }, [stageData]);
 
-  if (!stageData || !viewportStageData) return null;
+
 
   // Formatage de la durée (en secondes)
   const formatDuration = (duration?: number) => {
@@ -143,8 +119,8 @@ export function SlidePreview({
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: `${stageData.width}px`,
-                height: `${stageData.height}px`,
+                width: `${width}px`,
+                height: `${height}px`,
                 backgroundColor: "white",
               }}
             >

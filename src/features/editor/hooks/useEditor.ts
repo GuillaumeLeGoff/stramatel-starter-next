@@ -2,6 +2,7 @@ import { useSlideshow } from "@/features/slideshow/hooks";
 import { useCallback, useMemo, useRef } from "react";
 import { slideStore } from "../store/slideStore";
 import { KonvaStage } from "../types";
+import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 export function useEditor() {
   const {
@@ -17,6 +18,7 @@ export function useEditor() {
   } = slideStore();
 
   const { currentSlideshow } = useSlideshow();
+  const { width, height } = useAppSettings();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -33,29 +35,27 @@ export function useEditor() {
     const slide = currentSlideshow.slides[currentSlide];
     if (!slide) return null;
 
-    // Si le slide a des données Konva, les retourner
+    // Si le slide a des données Konva, les retourner avec les dimensions des settings
     if (slide.konvaData) {
-      return slide.konvaData as unknown as KonvaStage;
+      const konvaData = slide.konvaData as unknown as KonvaStage;
+      return {
+        ...konvaData,
+        attrs: {
+          ...konvaData.attrs,
+        },
+      };
     }
 
-    // Sinon, créer un stage Konva par défaut
+    // Sinon, créer un stage Konva par défaut avec les dimensions des settings
     return {
-      width: 800,
-      height: 600,
       attrs: {
-        width: slide.width || 1920,
-        height: slide.height || 1080,
+        width: 10000,
+        height: 10000,
       },
       className: "Stage",
-      children: [
-        {
-          attrs: {},
-          className: "Layer",
-          children: [],
-        },
-      ],
-    };
-  }, [currentSlideshow, currentSlide]);
+      children: [],
+    } as KonvaStage;
+  }, [currentSlideshow, currentSlide,]);
 
   // Obtenir le konvaData actuel (mémorisé)
   const currentKonvaData = useMemo(
@@ -107,6 +107,10 @@ export function useEditor() {
     error,
     containerRef,
     selectedShapes,
+
+    // Dimensions depuis AppSettings
+    width,
+    height,
 
     // Données Konva
     getCurrentSlideKonvaData,

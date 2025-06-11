@@ -21,7 +21,7 @@ interface DateTimeAction {
   action: () => void;
 }
 
-export function DataViewer({ konvaData, addShape }: DataViewerProps) {
+export function DataViewer({ addShape }: DataViewerProps) {
   const addDateToCanvas = async () => {
     if (addShape) {
       try {
