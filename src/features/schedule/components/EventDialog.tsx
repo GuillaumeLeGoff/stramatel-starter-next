@@ -29,7 +29,6 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Calendar, Clock, Play, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useScheduleStore } from "../store/scheduleStore";
 import { CreateScheduleData, RecurrenceType, Schedule } from "../types";
 
 interface EventDialogProps {
@@ -82,9 +81,9 @@ export function EventDialog({
   initialTime,
 }: EventDialogProps) {
   const { slideshows } = useSlideshowStore();
-  const { schedules } = useScheduleStore();
 
   const [formData, setFormData] = useState<CreateScheduleData>({
+    title: slideshows.length > 0 ? slideshows[0].name : "",
     slideshowId: slideshows.length > 0 ? slideshows[0].id : 0,
     startDate: initialDate || new Date(),
     startTime: initialTime || "09:00",
@@ -96,7 +95,6 @@ export function EventDialog({
 
   const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [conflictError, setConflictError] = useState<string | null>(null);
 
   // Fonctions utilitaires
   const timeToMinutes = (time: string): number => {
@@ -139,40 +137,7 @@ export function EventDialog({
     });
   };
 
-  const checkTimeConflicts = (eventData: CreateScheduleData): string | null => {
-    if (eventData.allDay) return null;
 
-    const startMinutes = timeToMinutes(eventData.startTime);
-    const endMinutes = eventData.endTime
-      ? timeToMinutes(eventData.endTime)
-      : startMinutes + 60;
-
-    for (const schedule of schedules) {
-      if (event && schedule.id === event.id) continue;
-
-      const scheduleStart = timeToMinutes(schedule.startTime);
-      const scheduleEnd = schedule.endTime
-        ? timeToMinutes(schedule.endTime)
-        : scheduleStart + 60;
-
-      const isSameDate =
-        format(new Date(schedule.startDate), "yyyy-MM-dd") ===
-        format(eventData.startDate, "yyyy-MM-dd");
-
-      if (isSameDate) {
-        const hasOverlap =
-          startMinutes < scheduleEnd && endMinutes > scheduleStart;
-
-        if (hasOverlap) {
-          return `Conflit détecté avec "${schedule.title}" (${
-            schedule.startTime
-          } - ${schedule.endTime || "fin non définie"})`;
-        }
-      }
-    }
-
-    return null;
-  };
 
 
 
@@ -196,6 +161,19 @@ export function EventDialog({
         (s) => s.id === event.slideshowId
       );
 
+      // Parser les daysOfWeek si c'est une chaîne JSON
+      let parsedDaysOfWeek: number[] | undefined;
+      if (event.recurrence?.daysOfWeek) {
+        try {
+          parsedDaysOfWeek = typeof event.recurrence.daysOfWeek === 'string'
+            ? JSON.parse(event.recurrence.daysOfWeek)
+            : event.recurrence.daysOfWeek;
+        } catch (error) {
+          console.error('Erreur lors du parsing de daysOfWeek:', error);
+          parsedDaysOfWeek = undefined;
+        }
+      }
+
       const newFormData = {
         title: relatedSlideshow?.name || event.title,
         slideshowId: event.slideshowId,
@@ -205,32 +183,51 @@ export function EventDialog({
         allDay: event.allDay,
         isRecurring: event.isRecurring,
         color: event.color || getRandomColor(),
+        // Inclure les données de récurrence complètes
+        recurrence: event.recurrence ? {
+          type: event.recurrence.type,
+          interval: event.recurrence.interval,
+          daysOfWeek: parsedDaysOfWeek,
+          dayOfMonth: event.recurrence.dayOfMonth,
+          weekOfMonth: event.recurrence.weekOfMonth,
+          endDate: event.recurrence.endDate ? new Date(event.recurrence.endDate) : undefined,
+          occurrences: event.recurrence.occurrences,
+        } : undefined,
       };
       setFormData(newFormData);
 
       // Déterminer le type de récurrence
       if (event.isRecurring && event.recurrence) {
-        if (
-          event.recurrence.type === RecurrenceType.DAILY &&
-          event.recurrence.interval === 1
-        ) {
+        // Vérifier si c'est une récurrence simple (prédéfinie)
+        const isSimpleDaily = event.recurrence.type === RecurrenceType.DAILY && 
+                              event.recurrence.interval === 1 && 
+                              !event.recurrence.daysOfWeek && 
+                              !event.recurrence.dayOfMonth && 
+                              !event.recurrence.weekOfMonth;
+        
+        const isSimpleWeekly = event.recurrence.type === RecurrenceType.WEEKLY && 
+                               event.recurrence.interval === 1 && 
+                               (!event.recurrence.daysOfWeek || 
+                                (parsedDaysOfWeek && parsedDaysOfWeek.length === 0));
+        
+        const isSimpleMonthly = event.recurrence.type === RecurrenceType.MONTHLY && 
+                                event.recurrence.interval === 1 && 
+                                !event.recurrence.dayOfMonth && 
+                                !event.recurrence.weekOfMonth;
+        
+        const isSimpleYearly = event.recurrence.type === RecurrenceType.YEARLY && 
+                               event.recurrence.interval === 1;
+
+        if (isSimpleDaily) {
           setRecurrenceType("daily");
-        } else if (
-          event.recurrence.type === RecurrenceType.WEEKLY &&
-          event.recurrence.interval === 1
-        ) {
+        } else if (isSimpleWeekly) {
           setRecurrenceType("weekly");
-        } else if (
-          event.recurrence.type === RecurrenceType.MONTHLY &&
-          event.recurrence.interval === 1
-        ) {
+        } else if (isSimpleMonthly) {
           setRecurrenceType("monthly");
-        } else if (
-          event.recurrence.type === RecurrenceType.YEARLY &&
-          event.recurrence.interval === 1
-        ) {
+        } else if (isSimpleYearly) {
           setRecurrenceType("yearly");
         } else {
+          // Récurrence complexe - utiliser le mode personnalisé
           setRecurrenceType("custom");
         }
       } else {
@@ -278,7 +275,6 @@ export function EventDialog({
         color: getRandomColor(),
       });
       setRecurrenceType("none");
-      setConflictError(null);
     }
   }, [isOpen, slideshows]);
 
@@ -333,15 +329,7 @@ export function EventDialog({
       color: event ? formData.color : getRandomColor(),
     };
 
-    // Vérifier les conflits d'horaires
-    const conflictMessage = checkTimeConflicts(eventData);
-    if (conflictMessage) {
-      setConflictError(conflictMessage);
-      return;
-    }
-
     // Effacer toute erreur de conflit précédente
-    setConflictError(null);
 
     onSave(eventData);
     onClose();
@@ -369,20 +357,11 @@ export function EventDialog({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {event ? "Modifier l'événement" : "Nouvel événement"}
+              {event ? "Modifier l&apos;événement" : "Nouvel événement"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Erreur de conflit */}
-            {conflictError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-red-800 text-sm font-medium">
-                  Conflit d'horaires détecté
-                </p>
-                <p className="text-red-700 text-sm mt-1">{conflictError}</p>
-              </div>
-            )}
 
             {/* Slideshow */}
             <div className="space-y-2">

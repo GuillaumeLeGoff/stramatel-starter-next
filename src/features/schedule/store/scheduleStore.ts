@@ -72,7 +72,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     })),
   deleteSchedule: async (id) => {
     try {
-      set({ isLoading: true, error: null });
+      set({ error: null });
       await scheduleApi.deleteSchedule(id);
       set((state) => ({
         schedules: state.schedules.filter((schedule) => schedule.id !== id),
@@ -121,7 +121,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const state = get();
 
     try {
-      set({ isLoading: true, error: null });
+      set({ error: null });
 
       if (state.selectedEvent) {
         // Modifier un événement existant
@@ -148,7 +148,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   },
 
   loadSchedules: async () => {
-    const state = get();
 
     try {
       set({ isLoading: true, error: null });

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { ScheduleCalendar } from "./ScheduleCalendar";
-import { EventDialog } from "./EventDialog";
-import { useScheduleStore } from "../store/scheduleStore";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useEffect } from "react";
+import { useScheduleStore } from "../store/scheduleStore";
+import { EventDialog } from "./EventDialog";
+import { ScheduleCalendar } from "./ScheduleCalendar";
 
 export function ScheduleManager() {
   const {
@@ -17,7 +17,6 @@ export function ScheduleManager() {
     dialogInitialTime,
     loadSchedules,
     isLoading,
-    error,
   } = useScheduleStore();
 
   // Charger les planifications au montage du composant
@@ -62,17 +61,6 @@ export function ScheduleManager() {
           <CalendarSkeleton />
         </div>
       )}
-
-      {/* Indicateur d'erreur */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3 m-4">
-          <p className="text-red-800 text-sm font-medium">
-            Erreur lors du chargement
-          </p>
-          <p className="text-red-700 text-sm mt-1">{error}</p>
-        </div>
-      )}
-
       {!isLoading && (
         <div className="flex-1 overflow-hidden">
           <ScheduleCalendar />

@@ -76,9 +76,6 @@ model Mode {
 
 model AppSettings {
   id               Int      @id @default(autoincrement())
-  standby          Boolean
-  standbyStartTime DateTime
-  standbyEndTime   DateTime
   restartAt        DateTime
   updatedAt        DateTime @updatedAt
   brightness       Int

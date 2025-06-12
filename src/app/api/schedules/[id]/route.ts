@@ -134,7 +134,9 @@ export async function PUT(
           update: {
             type: recurrence.type,
             interval: recurrence.interval,
-            daysOfWeek: recurrence.daysOfWeek,
+            daysOfWeek: recurrence.daysOfWeek
+              ? JSON.stringify(recurrence.daysOfWeek)
+              : null,
             dayOfMonth: recurrence.dayOfMonth,
             weekOfMonth: recurrence.weekOfMonth,
             endDate: recurrence.endDate ? new Date(recurrence.endDate) : null,
@@ -147,7 +149,9 @@ export async function PUT(
           create: {
             type: recurrence.type,
             interval: recurrence.interval,
-            daysOfWeek: recurrence.daysOfWeek,
+            daysOfWeek: recurrence.daysOfWeek
+              ? JSON.stringify(recurrence.daysOfWeek)
+              : null,
             dayOfMonth: recurrence.dayOfMonth,
             weekOfMonth: recurrence.weekOfMonth,
             endDate: recurrence.endDate ? new Date(recurrence.endDate) : null,

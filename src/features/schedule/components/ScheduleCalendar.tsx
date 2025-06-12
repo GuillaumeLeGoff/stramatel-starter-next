@@ -1,35 +1,34 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
-  addMonths,
-  subMonths,
-  addWeeks,
-  subWeeks,
-  addDays,
-  subDays,
-  isToday,
-  isSameDay,
-} from "date-fns";
-import { fr } from "date-fns/locale";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Calendar,
-  Clock,
-  Grid3X3,
-} from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  isToday,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subMonths,
+  subWeeks
+} from "date-fns";
+import { fr } from "date-fns/locale";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Grid3X3,
+  Plus,
+} from "lucide-react";
+import {  useState } from "react";
 import { useScheduleEvents } from "../hooks/useScheduleEvents";
 
 type ViewType = "month" | "week" | "day";
@@ -38,28 +37,14 @@ export function ScheduleCalendar() {
   const {
     getEventsForDate,
     handleEventClick,
-    handleDateClick,
     handleCreateEvent,
   } = useScheduleEvents();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<ViewType>("month");
-  const [currentTime, setCurrentTime] = useState(new Date());
+  
 
-  // Mettre à jour l'heure actuelle chaque minute
-  useEffect(() => {
-    const updateCurrentTime = () => {
-      setCurrentTime(new Date());
-    };
 
-    // Mise à jour immédiate
-    updateCurrentTime();
-
-    // Mise à jour chaque minute
-    const interval = setInterval(updateCurrentTime, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Composant pour la ligne de temps actuelle
   const CurrentTimeLine = ({ day }: { day: Date }) => {
@@ -72,23 +57,34 @@ export function ScheduleCalendar() {
     // Hauteur d'une heure = 48px
     const hourHeight = 48;
 
+
+    // Position de départ en minutes depuis minuit
+    const startTotalMinutes = hours * 60 + minutes;
+    // Position de fin en minutes depuis minuit
+
+
+    // Position en pixels depuis le début de la journée (corrige le décalage !)
+    const topPosition = (startTotalMinutes / 60) * hourHeight;
+    // Hauteur en pixels basée sur la durée
+
+    
     // Position en pixels depuis le début de la journée
-    const topPosition = hours * hourHeight + (minutes / 60) * hourHeight;
+
 
     return (
       <>
         {/* Ligne rouge */}
         <div
-          className="absolute left-0 right-0 z-20 flex items-center"
-          style={{ top: `${topPosition}px` }}
+          className="absolute left-0 right-0 z-50 flex items-center"
+          style={{ top: `${topPosition-2}px` }}
         >
           <div className="h-0.5 bg-red-500 flex-1"></div>
           <div className="bg-red-500 w-3 h-3 rounded-full -mr-1.5"></div>
         </div>
         {/* Heure actuelle dans la colonne de temps */}
         <div
-          className="absolute -left-16 z-20 text-xs text-red-500 font-medium bg-white px-1 rounded"
-          style={{ top: `${topPosition - 8}px` }}
+          className="absolute  z-50 text-xs text-red-500 font-medium px-1 rounded"
+          style={{ top: `${topPosition - 12}px` }}
         >
           {format(now, "HH:mm")}
         </div>
@@ -122,15 +118,149 @@ export function ScheduleCalendar() {
     // Durée en minutes
     const durationMinutes = endTotalMinutes - startTotalMinutes;
 
-    // Position en pixels depuis le début de l'heure
-    const topOffset = (startMinute / 60) * hourHeight;
+    // Position en pixels depuis le début de la journée (corrige le décalage !)
+    const topPosition = (startTotalMinutes / 60) * hourHeight;
     // Hauteur en pixels basée sur la durée
     const height = (durationMinutes / 60) * hourHeight;
 
     return {
-      top: `${topOffset}px`,
+      top: `${topPosition}px`,
       height: `${height}px`,
     };
+  };
+
+  // Fonction pour détecter les conflits d'événements et calculer leur positionnement
+  const getEventLayoutInfo = (events: any[]) => {
+    // Trier les événements par heure de début
+    const sortedEvents = [...events].sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      if (a.allDay && b.allDay) return 0;
+      
+      const aStart = a.startTime.split(':').map(Number);
+      const bStart = b.startTime.split(':').map(Number);
+      return (aStart[0] * 60 + aStart[1]) - (bStart[0] * 60 + bStart[1]);
+    });
+
+    const layoutInfo = [];
+    
+    // Fonction pour vérifier si deux événements se chevauchent
+    const eventsOverlap = (event1: any, event2: any) => {
+      if (event1.allDay || event2.allDay) return false;
+      
+      const event1Start = event1.startTime.split(':').map(Number);
+      const event1End = event1.endTime ? event1.endTime.split(':').map(Number) : [event1Start[0] + 1, 0];
+      const event1StartMinutes = event1Start[0] * 60 + event1Start[1];
+      const event1EndMinutes = event1End[0] * 60 + event1End[1];
+
+      const event2Start = event2.startTime.split(':').map(Number);
+      const event2End = event2.endTime ? event2.endTime.split(':').map(Number) : [event2Start[0] + 1, 0];
+      const event2StartMinutes = event2Start[0] * 60 + event2Start[1];
+      const event2EndMinutes = event2End[0] * 60 + event2End[1];
+
+      // Il y a chevauchement si les événements se croisent temporellement
+      return !(event1EndMinutes <= event2StartMinutes || event1StartMinutes >= event2EndMinutes);
+    };
+
+    // Créer des groupes d'événements qui se chevauchent
+    const conflictGroups: any[][] = [];
+    const processedEvents = new Set();
+
+    for (const event of sortedEvents) {
+      if (processedEvents.has(event.id)) continue;
+
+      if (event.allDay) {
+        layoutInfo.push({
+          event,
+          column: 0,
+          totalColumns: 1,
+          hasConflict: false
+        });
+        processedEvents.add(event.id);
+        continue;
+      }
+
+      // Trouver tous les événements qui se chevauchent avec celui-ci
+      const conflictingEvents = [event];
+      const toCheck = [event];
+      processedEvents.add(event.id);
+
+      while (toCheck.length > 0) {
+        const currentEvent = toCheck.pop();
+        
+        for (const otherEvent of sortedEvents) {
+          if (processedEvents.has(otherEvent.id) || otherEvent.allDay) continue;
+          
+          // Vérifier si cet événement chevauche avec n'importe quel événement du groupe
+          const overlapsWithGroup = conflictingEvents.some(groupEvent => 
+            eventsOverlap(groupEvent, otherEvent)
+          );
+          
+          if (overlapsWithGroup) {
+            conflictingEvents.push(otherEvent);
+            toCheck.push(otherEvent);
+            processedEvents.add(otherEvent.id);
+          }
+        }
+      }
+
+      // Si l'événement n'a aucun conflit, il garde sa largeur normale
+      if (conflictingEvents.length === 1) {
+        layoutInfo.push({
+          event,
+          column: 0,
+          totalColumns: 1,
+          hasConflict: false
+        });
+      } else {
+        // Organiser les événements conflictuels en colonnes
+        conflictGroups.push(conflictingEvents);
+        const columns: any[][] = [];
+
+        for (const conflictEvent of conflictingEvents) {
+          const eventStart = conflictEvent.startTime.split(':').map(Number);
+          const eventEnd = conflictEvent.endTime ? conflictEvent.endTime.split(':').map(Number) : [eventStart[0] + 1, 0];
+          const eventStartMinutes = eventStart[0] * 60 + eventStart[1];
+          const eventEndMinutes = eventEnd[0] * 60 + eventEnd[1];
+
+          // Trouver une colonne libre pour cet événement
+          let targetColumn = -1;
+          for (let i = 0; i < columns.length; i++) {
+            const canFit = columns[i].every(otherEvent => {
+              const otherStart = otherEvent.startTime.split(':').map(Number);
+              const otherEnd = otherEvent.endTime ? otherEvent.endTime.split(':').map(Number) : [otherStart[0] + 1, 0];
+              const otherStartMinutes = otherStart[0] * 60 + otherStart[1];
+              const otherEndMinutes = otherEnd[0] * 60 + otherEnd[1];
+
+              // Pas de conflit si l'un se termine avant que l'autre commence
+              return eventEndMinutes <= otherStartMinutes || eventStartMinutes >= otherEndMinutes;
+            });
+
+            if (canFit) {
+              targetColumn = i;
+              break;
+            }
+          }
+
+          // Si aucune colonne libre trouvée, créer une nouvelle colonne
+          if (targetColumn === -1) {
+            targetColumn = columns.length;
+            columns.push([]);
+          }
+
+          columns[targetColumn].push(conflictEvent);
+
+          layoutInfo.push({
+            event: conflictEvent,
+            column: targetColumn,
+            totalColumns: columns.length,
+            hasConflict: true
+          });
+        }
+      }
+    }
+
+    return layoutInfo;
   };
 
   // Navigation functions
@@ -279,7 +409,11 @@ export function ScheduleCalendar() {
           {weekDays.map((day) => (
             <div
               key={day.toISOString()}
-              className="flex-1 p-2 text-center border-r border-gray-200 last:border-r-0"
+              className={`flex-1 p-2 text-center  ${
+                isToday(day) || isToday(subDays(day, -1))
+                  ? "border-blue-500 border-r"
+                  : "border-gray-100 border-r"
+              } last:border-r-0`}
             >
               <div
                 className={`text-lg font-semibold ${
@@ -301,7 +435,7 @@ export function ScheduleCalendar() {
                 key={hour}
                 className="h-12 border-b border-gray-100 relative"
               >
-                <div className="absolute -bottom-2 right-2 text-xs text-gray-500">
+                <div className="absolute -top-2 right-2 text-xs text-gray-500">
                   {`${hour.toString().padStart(2, "0")}:00`}
                 </div>
               </div>
@@ -313,13 +447,17 @@ export function ScheduleCalendar() {
             {weekDays.map((day) => (
               <div
                 key={day.toISOString()}
-                className="flex-1 border-r border-gray-200 last:border-r-0 relative min-w-0"
+                className={`flex-1 border-r ${
+                  isToday(day) || isToday(subDays(day, -1))
+                    ? "border-blue-500"
+                    : "border-gray-100"
+                } last:border-r-0 relative min-w-0`}
               >
                 {/* Grille des heures */}
                 {hours.map((hour) => (
                   <div
                     key={hour}
-                    className="h-12 border-b border-gray-100 cursor-pointer hover:bg-gray-50 relative"
+                    className="h-12 border-b border-blue-100 cursor-pointer hover:bg-gray-50 relative"
                     onClick={() =>
                       handleCreateEvent?.(
                         day,
@@ -333,56 +471,64 @@ export function ScheduleCalendar() {
                 <CurrentTimeLine day={day} />
 
                 {/* Événements pour ce jour */}
-                {getEventsForDate(day).map((event) => {
-                  const eventStyle = getEventStyle(event);
-                  let topPosition;
+                {(() => {
+                  const dayEvents = getEventsForDate(day);
+                  const layoutInfo = getEventLayoutInfo(dayEvents);
+                  
+                  return layoutInfo.map((info) => {
+                    const { event, column, totalColumns, hasConflict } = info;
+                    const eventStyle = getEventStyle(event);
+                    
+                    // Calculer la largeur et la position horizontale pour les événements en conflit
+                    const widthPercentage = event.allDay ? 100 : (95 );
+                    const leftPercentage = event.allDay ? 0 : (2 + column * (30 / totalColumns));
 
-                  if (event.allDay) {
-                    // Pour les événements "journée entière", commencer en haut
-                    topPosition = parseFloat(eventStyle.top);
-                  } else {
-                    // Pour les événements normaux, calculer selon l'heure de début
-                    const startHour = parseInt(event.startTime.split(":")[0]);
-                    topPosition = startHour * 48 + parseFloat(eventStyle.top);
-                  }
-
-                  return (
-                    <div
-                      key={event.id}
-                      className={`absolute left-1 right-1 p-1 rounded text-xs cursor-pointer z-10 overflow-hidden ${
-                        event.allDay
-                          ? "text-white border-2 border-white border-opacity-30"
-                          : "text-white"
-                      }`}
-                      style={{
-                        top: `${topPosition}px`,
-                        height: eventStyle.height,
-                        backgroundColor: event.allDay
-                          ? `${event.color || "#3B82F6"}40` // Transparence pour les événements journée entière
-                          : event.color || "#3B82F6",
-                        minHeight: "20px",
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEventClick?.(event);
-                      }}
-                    >
-                      <div className="truncate font-medium text-xs">
-                        {event.title}
-                        {event.allDay && (
-                          <span className="ml-1 opacity-75">
-                            (Journée entière)
-                          </span>
+                    return (
+                      <div
+                        key={event.id}
+                        className={`absolute p-1 rounded text-xs cursor-pointer overflow-hidden transition-all duration-200 ${
+                          event.allDay
+                            ? "text-white border-2 border-white border-opacity-30"
+                            : "text-white"
+                        } ${
+                          hasConflict && !event.allDay
+                            ? "ring-2 ring-white ring-opacity-50 shadow-lg z-20"
+                            : "z-10"
+                        }`}
+                        style={{
+                          top: eventStyle.top,
+                          height: eventStyle.height,
+                          left: `${leftPercentage}%`,
+                          width: `${widthPercentage - leftPercentage}%`,
+                          backgroundColor: event.allDay
+                            ? `${event.color || "#3B82F6"}40` // Transparence pour les événements journée entière
+                            : event.color || "#3B82F6",
+                          minHeight: "20px",
+                          opacity: hasConflict && !event.allDay ? 0.95 : 1,
+                         
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEventClick?.(event);
+                        }}
+                      >
+                        <div className="truncate font-medium text-xs">
+                          {event.title}
+                          {event.allDay && (
+                            <span className="ml-1 opacity-75">
+                              (Journée entière)
+                            </span>
+                          )}
+                        </div>
+                        {!event.allDay && (
+                          <div className="truncate opacity-90 text-xs">
+                            {event.startTime} - {event.endTime}
+                          </div>
                         )}
                       </div>
-                      {!event.allDay && (
-                        <div className="truncate opacity-90 text-xs">
-                          {event.startTime} - {event.endTime}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             ))}
           </div>
@@ -407,7 +553,7 @@ export function ScheduleCalendar() {
                 key={hour}
                 className="h-12 border-b border-gray-100 relative"
               >
-                <div className="absolute -bottom-2 right-2 text-xs text-gray-500">
+                <div className="absolute -top-2  right-2 text-xs text-gray-500">
                   {`${hour.toString().padStart(2, "0")}:00`}
                 </div>
               </div>
@@ -434,54 +580,62 @@ export function ScheduleCalendar() {
             <CurrentTimeLine day={currentDate} />
 
             {/* Événements positionnés absolument */}
-            {dayEvents.map((event) => {
-              const eventStyle = getEventStyle(event);
-              let topPosition;
+            {(() => {
+              const layoutInfo = getEventLayoutInfo(dayEvents);
+              
+              return layoutInfo.map((info) => {
+                const { event, column, totalColumns, hasConflict } = info;
+                const eventStyle = getEventStyle(event);
+                
+                // Calculer la largeur et la position horizontale pour les événements en conflit
+                const leftOffset = event.allDay ? 20 : ((column + 10 * (totalColumns))); 
+                const rightOffset = event.allDay ? 20 : (8 + ((totalColumns - column - 1) * (20 / totalColumns)));
 
-              if (event.allDay) {
-                // Pour les événements "journée entière", commencer en haut
-                topPosition = parseFloat(eventStyle.top);
-              } else {
-                // Pour les événements normaux, calculer selon l'heure de début
-                const startHour = parseInt(event.startTime.split(":")[0]);
-                topPosition = startHour * 48 + parseFloat(eventStyle.top);
-              }
-
-              return (
-                <div
-                  key={event.id}
-                  className={`absolute left-2 right-2 p-2 rounded cursor-pointer z-10 overflow-hidden ${
-                    event.allDay
-                      ? "text-white border-2 border-white border-opacity-30"
-                      : "text-white"
-                  }`}
-                  style={{
-                    top: `${topPosition}px`,
-                    height: eventStyle.height,
-                    backgroundColor: event.allDay
-                      ? `${event.color || "#3B82F6"}40` // Transparence pour les événements journée entière
-                      : event.color || "#3B82F6",
-                    minHeight: "20px",
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEventClick?.(event);
-                  }}
-                >
-                  <div className="font-medium text-sm">
-                    {event.title}
-                    {event.allDay && (
-                      <span className="ml-1 opacity-75">(Journée entière)</span>
+                return (
+                  <div
+                    key={event.id}
+                    className={`absolute p-2 rounded cursor-pointer overflow-hidden transition-all duration-200 ${
+                      event.allDay
+                        ? "text-white border-2 border-white border-opacity-30"
+                        : "text-white"
+                    } ${
+                      hasConflict && !event.allDay
+                        ? "ring-2 ring-white ring-opacity-50 shadow-lg z-20"
+                        : "z-10"
+                    }`}
+                    style={{
+                      top: eventStyle.top,
+                      height: eventStyle.height,
+                      left: event.allDay ? "8px" : `${leftOffset}%`,
+                      right: event.allDay ? "8px" : `${rightOffset}%`,
+                      backgroundColor: event.allDay
+                        ? `${event.color || "#3B82F6"}40` // Transparence pour les événements journée entière
+                        : event.color || "#3B82F6",
+                      minHeight: "20px",
+                      opacity: hasConflict && !event.allDay ? 0.95 : 1,
+                     
+                      
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEventClick?.(event);
+                    }}
+                  >
+                    <div className="font-medium text-sm">
+                      {event.title}
+                      {event.allDay && (
+                        <span className="ml-1 opacity-75">(Journée entière)</span>
+                      )}
+                    </div>
+                    {!event.allDay && (
+                      <div className="text-xs opacity-90">
+                        {event.startTime} - {event.endTime}
+                      </div>
                     )}
                   </div>
-                  {!event.allDay && (
-                    <div className="text-xs opacity-90">
-                      {event.startTime} - {event.endTime}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       </div>

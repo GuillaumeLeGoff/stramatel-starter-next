@@ -31,8 +31,18 @@ export async function fetchClient(
   };
   
   // Ajouter le token d'authentification si nécessaire
-  // Vous pouvez récupérer le token depuis les cookies ou le localStorage
-  const token = document.cookie.match(/token=([^;]+)/)?.[1];
+  // Récupérer le token depuis localStorage (utilisé par Zustand)
+  let token = null;
+  try {
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      const parsedAuth = JSON.parse(authStorage);
+      token = parsedAuth.state?.token;
+    }
+  } catch (error) {
+    console.warn('Impossible de récupérer le token depuis localStorage:', error);
+  }
+  
   if (token) {
     finalOptions.headers = {
       ...finalOptions.headers,

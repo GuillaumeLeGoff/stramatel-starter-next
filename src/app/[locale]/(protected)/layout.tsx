@@ -127,7 +127,7 @@ export default function ProtectedLayout({
         </Sidebar>
 
         <div className="flex flex-1 h-full overflow-auto">
-          <div className="p-2 md:p-6 rounded-tl-2xl bg-card text-card-foreground border-l border-t border-border flex flex-col gap-2 flex-1 w-full">
+          <div className="p-2 md:p-12 rounded-tl-2xl bg-card text-card-foreground border-l border-t border-border flex flex-col gap-2 flex-1 w-full">
             {children}
           </div>
         </div>

@@ -10,9 +10,6 @@ export async function GET() {
       // Créer des paramètres par défaut s'ils n'existent pas
       const defaultSettings = await prisma.appSettings.create({
         data: {
-          standby: false,
-          standbyStartTime: new Date("1970-01-01T00:00:00.000Z"),
-          standbyEndTime: new Date("1970-01-01T00:00:00.000Z"),
           restartAt: new Date("1970-01-01T00:00:00.000Z"),
           brightness: 100,
           width: 1920,
@@ -45,9 +42,6 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const {
-      standby,
-      standbyStartTime,
-      standbyEndTime,
       restartAt,
       brightness,
       width,
@@ -59,39 +53,24 @@ export async function PUT(request: Request) {
 
     // Préparer les données de mise à jour avec un typage explicite
     const updateData: {
-      standby?: boolean;
       brightness?: number;
       width?: number;
       height?: number;
-      standbyStartTime?: Date;
-      standbyEndTime?: Date;
       restartAt?: Date;
     } = {
-      standby: standby !== undefined ? standby : currentSettings?.standby,
       brightness:
         brightness !== undefined ? brightness : currentSettings?.brightness,
       ...(width !== undefined && { width }),
       ...(height !== undefined && { height }),
     };
 
-    // Gérer les dates uniquement si elles sont valides
-    if (standbyStartTime && isValidDate(standbyStartTime)) {
-      updateData.standbyStartTime = new Date(standbyStartTime);
-    }
-
-    if (standbyEndTime && isValidDate(standbyEndTime)) {
-      updateData.standbyEndTime = new Date(standbyEndTime);
-    }
-
+    // Gérer la date restartAt uniquement si elle est valide
     if (restartAt && isValidDate(restartAt)) {
       updateData.restartAt = new Date(restartAt);
     }
 
     // Données par défaut pour la création
     const defaultCreateData = {
-      standby: standby !== undefined ? standby : false,
-      standbyStartTime: new Date("1970-01-01T00:00:00.000Z"),
-      standbyEndTime: new Date("1970-01-01T00:00:00.000Z"),
       restartAt: new Date("1970-01-01T00:00:00.000Z"),
       brightness: brightness !== undefined ? brightness : 100,
       width: width || 1920,

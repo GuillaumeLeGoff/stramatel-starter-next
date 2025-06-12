@@ -27,15 +27,14 @@ export const useSettingsStore = create<
   },
 
   updateSettings: async (data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       const updatedSettings = await updateSettings(data);
-      set({ settings: updatedSettings, isLoading: false });
+      set({ settings: updatedSettings });
     } catch (error) {
       set({
         error:
           error instanceof Error ? error.message : "Une erreur est survenue",
-        isLoading: false,
       });
     }
   },
