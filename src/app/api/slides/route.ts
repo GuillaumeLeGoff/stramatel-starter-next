@@ -31,12 +31,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { slideshowId, position, duration, mediaId, dataIds } = body;
 
+    // Créer la slide d'abord
     const slide = await prisma.slide.create({
       data: {
         slideshowId,
         position,
         duration,
-        mediaId,
         ...(Array.isArray(dataIds) && dataIds.length > 0
           ? {
               data: {
@@ -60,7 +60,29 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(slide, { status: 201 });
+    // Si un mediaId est fourni, associer le média à la slide
+    if (mediaId) {
+      await prisma.media.update({
+        where: { id: parseInt(mediaId) },
+        data: { slideId: slide.id },
+      });
+    }
+
+    // Récupérer la slide avec ses médias mis à jour
+    const updatedSlide = await prisma.slide.findUnique({
+      where: { id: slide.id },
+      include: {
+        media: true,
+        slideshow: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(updatedSlide, { status: 201 });
   } catch (error) {
     console.log(error);
     return NextResponse.json(

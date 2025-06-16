@@ -41,7 +41,8 @@ model Media {
   thumbnail        Media?   @relation("MediaToThumbnail", fields: [thumbnailId], references: [id])
   thumbnailId      Int?
   thumbnails       Media[]  @relation("MediaToThumbnail")
-  slides           Slide[]
+  slideId          Int?
+  slide            Slide?   @relation(fields: [slideId], references: [id])
 }
 
 model Slideshow {
@@ -61,9 +62,8 @@ model Slide {
   position    Int
   duration    Int       @default(5)
   konvaData   Json?
-  mediaId     Int?
-  media       Media?    @relation(fields: [mediaId], references: [id])
   slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
+  media       Media[]
 }
 
 model Mode {

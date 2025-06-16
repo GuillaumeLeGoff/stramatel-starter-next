@@ -1,0 +1,11 @@
+import { LiveSlideViewer } from "@/features/panel";
+
+export default function LivePage() {
+  return (
+    <div className="container mx-auto py-8">
+      
+      
+      <LiveSlideViewer />
+    </div>
+  );
+} 

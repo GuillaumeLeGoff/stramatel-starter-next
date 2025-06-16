@@ -59,7 +59,6 @@ export async function PUT(
       data: {
         ...(duration !== undefined && { duration }),
         ...(position !== undefined && { position }),
-        ...(mediaId !== undefined && { mediaId }),
         ...(konvaData && { konvaData }),
       },
       include: {
@@ -73,7 +72,43 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(slide);
+    // Si mediaId est fourni, gérer l'association du média
+    if (mediaId !== undefined) {
+      if (mediaId === null) {
+        // Dissocier tous les médias de cette slide
+        await prisma.media.updateMany({
+          where: { slideId: parseInt(id) },
+          data: { slideId: null },
+        });
+      } else {
+        // D'abord dissocier les anciens médias
+        await prisma.media.updateMany({
+          where: { slideId: parseInt(id) },
+          data: { slideId: null },
+        });
+        // Puis associer le nouveau média
+        await prisma.media.update({
+          where: { id: parseInt(mediaId) },
+          data: { slideId: parseInt(id) },
+        });
+             }
+     }
+
+     // Récupérer la slide mise à jour avec ses médias
+     const updatedSlide = await prisma.slide.findUnique({
+       where: { id: parseInt(id) },
+       include: {
+         media: true,
+         slideshow: {
+           select: {
+             id: true,
+             name: true,
+           },
+         },
+       },
+     });
+
+     return NextResponse.json(updatedSlide);
   } catch (error) {
     console.error("Erreur lors de la mise à jour de la slide:", error);
     return NextResponse.json(

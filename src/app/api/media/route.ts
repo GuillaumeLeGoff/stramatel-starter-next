@@ -17,7 +17,7 @@ export async function GET() {
       include: {
         thumbnail: true,
         thumbnails: true,
-        slides: {
+        slide: {
           include: {
             slideshow: {
               select: {
@@ -31,7 +31,8 @@ export async function GET() {
     });
 
     return NextResponse.json(media);
-  } catch (error) {
+  } catch (err) {
+    console.error('Erreur lors de la récupération des médias:', err);
     return NextResponse.json(
       { error: 'Erreur lors de la récupération des médias' },
       { status: 500 }
@@ -70,7 +71,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(media, { status: 201 });
-  } catch (error) {
+  } catch (err) {
+    console.error('Erreur lors de la création du média:', err);
     return NextResponse.json(
       { error: 'Erreur lors de la création du média' },
       { status: 500 }
