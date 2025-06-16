@@ -23,10 +23,7 @@ export async function POST(
     });
 
     if (!slide) {
-      return NextResponse.json(
-        { error: "Slide introuvable" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Slide introuvable" }, { status: 404 });
     }
 
     // Vérifier que le média existe
@@ -35,20 +32,19 @@ export async function POST(
     });
 
     if (!media) {
-      return NextResponse.json(
-        { error: "Média introuvable" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Média introuvable" }, { status: 404 });
     }
 
-    // Associer le média à la slide (nouvelle logique)
+    // Associer le média à la slide via slideId
     await prisma.media.update({
       where: { id: parseInt(mediaId) },
-      data: { slideId: slideId },
+      data: {
+        slideId: slideId,
+      },
     });
 
-    return NextResponse.json({ 
-      message: "Média associé à la slide avec succès" 
+    return NextResponse.json({
+      message: "Média associé à la slide avec succès",
     });
   } catch (error) {
     console.error("Erreur lors de l'association du média:", error);
@@ -57,4 +53,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

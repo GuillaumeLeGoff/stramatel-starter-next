@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 // GET /api/media
 export async function GET() {
@@ -10,14 +10,14 @@ export async function GET() {
         // Un média est une thumbnail s'il est référencé par un autre média via thumbnailId
         NOT: {
           thumbnails: {
-            some: {}
-          }
-        }
+            some: {},
+          },
+        },
       },
       include: {
         thumbnail: true,
         thumbnails: true,
-        slide: {
+        slides: {
           include: {
             slideshow: {
               select: {
@@ -32,9 +32,9 @@ export async function GET() {
 
     return NextResponse.json(media);
   } catch (err) {
-    console.error('Erreur lors de la récupération des médias:', err);
+    console.error("Erreur lors de la récupération des médias:", err);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération des médias' },
+      { error: "Erreur lors de la récupération des médias" },
       { status: 500 }
     );
   }
@@ -72,10 +72,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json(media, { status: 201 });
   } catch (err) {
-    console.error('Erreur lors de la création du média:', err);
+    console.error("Erreur lors de la création du média:", err);
     return NextResponse.json(
-      { error: 'Erreur lors de la création du média' },
+      { error: "Erreur lors de la création du média" },
       { status: 500 }
     );
   }
-} 
+}

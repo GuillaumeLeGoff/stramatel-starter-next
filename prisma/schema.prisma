@@ -41,8 +41,7 @@ model Media {
   thumbnail        Media?   @relation("MediaToThumbnail", fields: [thumbnailId], references: [id])
   thumbnailId      Int?
   thumbnails       Media[]  @relation("MediaToThumbnail")
-  slideId          Int?
-  slide            Slide?   @relation(fields: [slideId], references: [id])
+  slides           Slide[]  @relation("SlideMedia")
 }
 
 model Slideshow {
@@ -63,7 +62,7 @@ model Slide {
   duration    Int       @default(5)
   konvaData   Json?
   slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
-  media       Media[]
+  media       Media[]   @relation("SlideMedia")
 }
 
 model Mode {
@@ -75,12 +74,12 @@ model Mode {
 }
 
 model AppSettings {
-  id               Int      @id @default(autoincrement())
-  restartAt        DateTime
-  updatedAt        DateTime @updatedAt
-  brightness       Int
-  width            Int      @default(1920)
-  height           Int      @default(1080)
+  id         Int      @id @default(autoincrement())
+  restartAt  DateTime
+  updatedAt  DateTime @updatedAt
+  brightness Int
+  width      Int      @default(1920)
+  height     Int      @default(1080)
 }
 
 // Modèles pour la planification
