@@ -17,7 +17,7 @@ export async function GET(
       include: {
         thumbnail: true,
         thumbnails: true,
-        slides: {
+        slide: {
           include: {
             slideshow: {
               select: {

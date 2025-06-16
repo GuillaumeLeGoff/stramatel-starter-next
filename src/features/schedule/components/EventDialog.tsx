@@ -1,6 +1,6 @@
 "use client";
 
-import { useSlideshowStore } from "@/features/slideshow/store/slideshowStore";
+import { useSlideshow } from "@/features/slideshow/hooks/useSlideshow";
 import { Button } from "@/shared/components/ui/button";
 import { Calendar as CalendarComponent } from "@/shared/components/ui/calendar";
 import {
@@ -80,7 +80,7 @@ export function EventDialog({
   initialDate,
   initialTime,
 }: EventDialogProps) {
-  const { slideshows } = useSlideshowStore();
+  const { slideshows } = useSlideshow();
 
   const [formData, setFormData] = useState<CreateScheduleData>({
     title: slideshows.length > 0 ? slideshows[0].name : "",

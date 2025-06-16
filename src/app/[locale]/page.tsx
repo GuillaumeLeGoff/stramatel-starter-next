@@ -8,7 +8,7 @@ export default function HomePage() {
   const { isInitialized, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
+    useEffect(() => {
     if (isInitialized) {
       if (isAuthenticated) {
         router.push("/dashboard");

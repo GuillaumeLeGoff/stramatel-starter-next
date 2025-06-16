@@ -1,0 +1,112 @@
+"use client";
+
+import { io, Socket } from "socket.io-client";
+
+export interface MediaData {
+  id: number;
+  originalFileName: string;
+  fileName: string;
+  path: string;
+  format: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  updatedAt: string;
+  thumbnailId?: number;
+  slideId?: number;
+}
+
+export interface CurrentSlideData {
+  scheduleId: number;
+  scheduleTitle: string;
+  slideshowId: number;
+  slideshowName: string;
+  slideId: number;
+  slidePosition: number;
+  slideDuration: number;
+  konvaData: any;
+  media: MediaData[];
+  totalSlides: number;
+  elapsedInSlide: number;
+  remainingInSlide: number;
+  
+  // Nouvelles propriétés pour l'enchaînement
+  currentSlideshowIndex: number;
+  totalSlideshows: number;
+  allSlideshows: Array<{
+    id: number;
+    title: string;
+    slideshowName: string;
+    duration: number;
+  }>;
+  totalElapsedSeconds: number;
+  timeInCurrentSlideshow: number;
+}
+
+class SocketClient {
+  private socket: Socket | null = null;
+  private listeners: Map<string, Function[]> = new Map();
+
+  connect() {
+    if (typeof window === "undefined") return;
+
+    if (!this.socket) {
+      this.socket = io();
+      
+      this.socket.on("connect", () => {
+        console.log("Connecté au serveur WebSocket");
+      });
+
+      this.socket.on("disconnect", (reason) => {
+        console.log("Déconnecté du serveur WebSocket:", reason);
+      });
+
+      this.socket.on("currentSlide", (data: CurrentSlideData | null) => {
+        this.emit("currentSlide", data);
+      });
+    }
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+  }
+
+  requestCurrentSlide() {
+    if (this.socket) {
+      this.socket.emit("requestCurrentSlide");
+    }
+  }
+
+  on(event: string, callback: Function) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event)?.push(callback);
+  }
+
+  off(event: string, callback: Function) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      const index = eventListeners.indexOf(callback);
+      if (index > -1) {
+        eventListeners.splice(index, 1);
+      }
+    }
+  }
+
+  private emit(event: string, data: any) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.forEach(callback => callback(data));
+    }
+  }
+
+  isConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+}
+
+export const socketClient = new SocketClient(); 

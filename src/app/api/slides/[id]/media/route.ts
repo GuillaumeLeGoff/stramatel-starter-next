@@ -41,10 +41,10 @@ export async function POST(
       );
     }
 
-    // Associer le média à la slide
-    await prisma.slide.update({
-      where: { id: slideId },
-      data: { mediaId: parseInt(mediaId) },
+    // Associer le média à la slide (nouvelle logique)
+    await prisma.media.update({
+      where: { id: parseInt(mediaId) },
+      data: { slideId: slideId },
     });
 
     return NextResponse.json({ 
