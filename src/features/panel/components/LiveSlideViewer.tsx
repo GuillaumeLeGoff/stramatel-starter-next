@@ -50,7 +50,6 @@ export function LiveSlideViewer() {
       {/* Affichage Konva */}
       {konvaData && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3">Contenu Konva :</h3>
           <KonvaSlideViewer konvaData={konvaData} />
         </div>
       )}

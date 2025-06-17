@@ -35,11 +35,13 @@ export async function POST(
       return NextResponse.json({ error: "Média introuvable" }, { status: 404 });
     }
 
-    // Associer le média à la slide via slideId
+    // Associer le média à la slide via la relation many-to-many
     await prisma.media.update({
       where: { id: parseInt(mediaId) },
       data: {
-        slideId: slideId,
+        slides: {
+          connect: { id: slideId }
+        }
       },
     });
 

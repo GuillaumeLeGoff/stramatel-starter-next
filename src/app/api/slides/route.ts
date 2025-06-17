@@ -64,7 +64,11 @@ export async function POST(request: Request) {
     if (mediaId) {
       await prisma.media.update({
         where: { id: parseInt(mediaId) },
-        data: { slideId: slide.id },
+        data: { 
+          slides: {
+            connect: { id: slide.id }
+          }
+        },
       });
     }
 

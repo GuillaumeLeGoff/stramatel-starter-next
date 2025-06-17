@@ -76,23 +76,26 @@ export async function PUT(
     if (mediaId !== undefined) {
       if (mediaId === null) {
         // Dissocier tous les médias de cette slide
-        await prisma.media.updateMany({
-          where: { slideId: parseInt(id) },
-          data: { slideId: null },
+        await prisma.slide.update({
+          where: { id: parseInt(id) },
+          data: {
+            media: {
+              set: []
+            }
+          }
         });
       } else {
-        // D'abord dissocier les anciens médias
-        await prisma.media.updateMany({
-          where: { slideId: parseInt(id) },
-          data: { slideId: null },
+        // D'abord dissocier les anciens médias, puis associer le nouveau
+        await prisma.slide.update({
+          where: { id: parseInt(id) },
+          data: {
+            media: {
+              set: [{ id: parseInt(mediaId) }]
+            }
+          }
         });
-        // Puis associer le nouveau média
-        await prisma.media.update({
-          where: { id: parseInt(mediaId) },
-          data: { slideId: parseInt(id) },
-        });
-             }
-     }
+      }
+    }
 
      // Récupérer la slide mise à jour avec ses médias
      const updatedSlide = await prisma.slide.findUnique({
