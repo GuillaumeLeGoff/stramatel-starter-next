@@ -15,14 +15,16 @@ datasource db {
 }
 
 model User {
-  id         Int         @id @default(autoincrement())
-  username   String      @unique
-  password   String
-  language   String
-  theme      String
-  role       String      @default("USER")
-  slideshows Slideshow[]
-  schedules  Schedule[]
+  id                 Int                  @id @default(autoincrement())
+  username           String               @unique
+  password           String
+  language           String
+  theme              String
+  role               String               @default("USER")
+  slideshows         Slideshow[]
+  schedules          Schedule[]
+  securityEvents     SecurityEvent[]
+  securityIndicators SecurityIndicators[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,4 +169,62 @@ enum RecurrenceType {
   WEEKLY
   MONTHLY
   YEARLY
+}
+
+// Modèles pour les indicateurs de sécurité
+model SecurityEvent {
+  id           Int               @id @default(autoincrement())
+  type         SecurityEventType
+  date         DateTime
+  description  String?
+  location     String?
+  severity     SecuritySeverity?
+  withWorkStop Boolean           @default(false)
+  createdBy    Int
+  user         User              @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SecurityIndicators {
+  id                                    Int       @id @default(autoincrement())
+  lastAccidentDate                      DateTime?
+  lastAccidentWithStopDate              DateTime?
+  lastAccidentWithoutStopDate           DateTime?
+  recordStartDate                       DateTime?
+  currentDaysWithoutAccident            Int       @default(0)
+  currentDaysWithoutAccidentWithStop    Int       @default(0)
+  currentDaysWithoutAccidentWithoutStop Int       @default(0)
+  recordDaysWithoutAccident             Int       @default(0)
+  recordDaysWithoutAccidentDate         DateTime?
+  yearlyAccidentsCount                  Int       @default(0)
+  yearlyAccidentsWithStopCount          Int       @default(0)
+  yearlyAccidentsWithoutStopCount       Int       @default(0)
+  yearlyMinorCareCount                  Int       @default(0)
+  yearlyNearMissCount                   Int       @default(0)
+  yearlyDangerousSituationCount         Int       @default(0)
+  monthlyAccidentsCount                 Int       @default(0)
+  referenceYear                         Int
+  referenceMonth                        Int
+  updatedAt                             DateTime  @updatedAt
+  updatedBy                             Int
+  user                                  User      @relation(fields: [updatedBy], references: [id])
+}
+
+// Enums pour la sécurité
+enum SecurityEventType {
+  ACCIDENT
+  ACCIDENT_WITH_STOP
+  ACCIDENT_WITHOUT_STOP
+  MINOR_CARE
+  NEAR_MISS
+  DANGEROUS_SITUATION
+}
+
+enum SecuritySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

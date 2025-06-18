@@ -8,7 +8,7 @@ import {
   SidebarBody,
   SidebarLink,
 } from "@/shared/components/ui/sidebar";
-import { Gauge, Settings, LogOut, Image, Calendar } from "lucide-react";
+import { Gauge, Settings, LogOut, Image, Calendar, Shield } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,13 @@ export default function ProtectedLayout({
       href: "/schedule",
       icon: (
         <Calendar className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />
+      ),
+    },
+    {
+      label: "Sécurité",
+      href: "/security",
+      icon: (
+        <Shield className="text-sidebar-foreground h-5 w-5 flex-shrink-0" />
       ),
     },
     {

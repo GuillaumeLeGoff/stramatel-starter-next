@@ -19,7 +19,8 @@
     "messages": "@/shared/messages",
     "features": "@/shared/features",
     "shared": "@/shared",
-    "app": "@/app"
+    "app": "@/app",
+    "prisma": "@/prisma"
   },
   "iconLibrary": "lucide"
 }

@@ -12,7 +12,12 @@
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "create-test-user": "ts-node scripts/create-test-user.ts",
-    "seed": "prisma db seed"
+    "seed": "prisma db seed",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "security:init": "npx ts-node scripts/init-security.ts",
+    "security:clean": "npx ts-node scripts/init-security.ts clean"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -38,6 +43,7 @@
     "@tailwindcss/postcss": "^4.1.7",
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/node-cron": "^3.0.11",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "canvas": "3.0.0-rc3",
@@ -51,6 +57,7 @@
     "next": "15.2.3",
     "next-intl": "^4.1.0",
     "next-themes": "^0.4.6",
+    "node-cron": "^4.1.0",
     "prisma": "^6.8.2",
     "react": "^19.1.0",
     "react-color": "^2.19.3",
