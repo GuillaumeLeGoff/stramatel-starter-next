@@ -191,8 +191,7 @@ export default function KonvaSlideViewerClient({
   };
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <div className="relative border-2 border-gray-300 rounded-lg overflow-auto bg-white shadow-lg">
+   
         <Stage width={VIEWPORT_WIDTH} height={VIEWPORT_HEIGHT}>
           {konvaData.children.map((layer, layerIndex) => (
             <Layer key={layerIndex}>
@@ -202,7 +201,6 @@ export default function KonvaSlideViewerClient({
             </Layer>
           ))}
         </Stage>
-      </div>
-    </div>
+    
   );
 }

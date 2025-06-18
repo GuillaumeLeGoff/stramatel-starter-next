@@ -11,7 +11,7 @@ export function LiveSlideViewer() {
   const { currentSlide, isLoading, remainingTime } = useCurrentSlide();
 
   if (isLoading) {
-    return <div className="p-4">Connexion...</div>;
+    return <div className="bg-black"></div>;
   }
 
   if (!currentSlide) {
@@ -36,22 +36,11 @@ export function LiveSlideViewer() {
   }
 
   return (
-    <div className="p-6 border rounded-lg">
-      {/* Nom du slideshow */}
-      <h1 className="text-2xl font-bold mb-4">{currentSlide.slideshowName}</h1>
-
-      {/* Slide actuelle */}
-      <div className="mb-4">
-        <p className="text-lg">
-          Slide {currentSlide.slidePosition + 1} / {currentSlide.totalSlides}
-        </p>
-      </div>
-
-      {/* Affichage Konva */}
+   <div>
       {konvaData && (
-        <div className="mb-6">
+        
           <KonvaSlideViewer konvaData={konvaData} />
-        </div>
+      
       )}
     </div>
   );
