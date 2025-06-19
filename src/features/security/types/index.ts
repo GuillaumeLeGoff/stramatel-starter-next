@@ -1,12 +1,3 @@
-export enum SecurityEventType {
-  ACCIDENT = 'ACCIDENT',
-  ACCIDENT_WITH_STOP = 'ACCIDENT_WITH_STOP',
-  ACCIDENT_WITHOUT_STOP = 'ACCIDENT_WITHOUT_STOP',
-  MINOR_CARE = 'MINOR_CARE',
-  NEAR_MISS = 'NEAR_MISS',
-  DANGEROUS_SITUATION = 'DANGEROUS_SITUATION'
-}
-
 export enum SecuritySeverity {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
@@ -16,12 +7,12 @@ export enum SecuritySeverity {
 
 export interface SecurityEvent {
   id: number;
-  type: SecurityEventType;
   date: Date;
   description?: string;
   location?: string;
   severity?: SecuritySeverity;
   withWorkStop: boolean;
+  isReference: boolean;
   createdBy: number;
   createdAt: Date;
   updatedAt: Date;
@@ -82,7 +73,6 @@ export interface DigitalDisplayData {
 }
 
 export interface SecurityEventFilters {
-  type?: SecurityEventType;
   startDate?: Date;
   endDate?: Date;
   location?: string;
@@ -90,17 +80,16 @@ export interface SecurityEventFilters {
 }
 
 export interface CreateSecurityEventRequest {
-  type: SecurityEventType;
   date: string; // ISO date string
   description?: string;
   location?: string;
   severity?: SecuritySeverity;
   withWorkStop?: boolean;
+  isReference?: boolean;
 }
 
 export interface SecurityStatsResponse {
   totalEvents: number;
-  accidentsByType: Record<SecurityEventType, number>;
   accidentsBySeverity: Record<SecuritySeverity, number>;
   monthlyTrend: Array<{
     month: string;

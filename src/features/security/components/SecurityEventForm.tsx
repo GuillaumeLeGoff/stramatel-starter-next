@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -15,7 +15,7 @@ import { Switch } from "@/shared/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Calendar } from "@/shared/components/ui/calendar";
-import { SecurityEventType, SecuritySeverity, SecurityEvent, CreateSecurityEventRequest } from "../types";
+import { SecuritySeverity, SecurityEvent, CreateSecurityEventRequest } from "../types";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -51,16 +51,7 @@ export function SecurityEventForm({
     reset,
     formState: { errors }
   } = useForm<CreateSecurityEventRequest>({
-    defaultValues: event ? {
-      type: event.type,
-      date: event.date.toISOString().slice(0, 16),
-      description: event.description || '',
-      location: event.location || '',
-      severity: event.severity || undefined,
-      withWorkStop: event.withWorkStop
-    } : {
-      type: SecurityEventType.ACCIDENT,
-      date: new Date().toISOString().slice(0, 16),
+    defaultValues: {
       description: '',
       location: '',
       severity: SecuritySeverity.MEDIUM,
@@ -68,7 +59,6 @@ export function SecurityEventForm({
     }
   });
 
-  const watchedType = watch("type");
   const watchedWithWorkStop = watch("withWorkStop");
 
   const handleFormSubmit = async (data: CreateSecurityEventRequest) => {
@@ -97,7 +87,28 @@ export function SecurityEventForm({
     }
   };
 
-
+  // Mettre à jour les valeurs du formulaire quand l'événement change
+  useEffect(() => {
+    if (event) {
+      // Mettre à jour les états locaux
+      setSelectedDate(new Date(event.date));
+      setSelectedTime(format(new Date(event.date), 'HH:mm'));
+      
+      // Mettre à jour les valeurs du formulaire
+      setValue("description", event.description || '');
+      setValue("location", event.location || '');
+      setValue("severity", event.severity || undefined);
+      setValue("withWorkStop", event.withWorkStop);
+    } else {
+      // Réinitialiser pour un nouvel événement
+      setSelectedDate(new Date());
+      setSelectedTime(format(new Date(), 'HH:mm'));
+      setValue("description", '');
+      setValue("location", '');
+      setValue("severity", SecuritySeverity.MEDIUM);
+      setValue("withWorkStop", false);
+    }
+  }, [event, setValue]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,27 +123,6 @@ export function SecurityEventForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          {/* Type d'événement */}
-          <div className="space-y-2">
-            <Label htmlFor="type">Type d'événement *</Label>
-            <Select
-              value={watchedType}
-              onValueChange={(value) => setValue("type", value as SecurityEventType)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionnez un type" />
-              </SelectTrigger>
-                             <SelectContent>
-                <SelectItem value="ACCIDENT">Accident</SelectItem>
-                <SelectItem value="ACCIDENT_WITH_STOP">Accident avec arrêt</SelectItem>
-                <SelectItem value="ACCIDENT_WITHOUT_STOP">Accident sans arrêt</SelectItem>
-                <SelectItem value="MINOR_CARE">Soin bénin</SelectItem>
-                <SelectItem value="NEAR_MISS">Presqu'accident</SelectItem>
-                <SelectItem value="DANGEROUS_SITUATION">Situation dangereuse</SelectItem>
-               </SelectContent>
-            </Select>
-          </div>
-
           {/* Date */}
           <div className="space-y-2">
             <Label>Date *</Label>

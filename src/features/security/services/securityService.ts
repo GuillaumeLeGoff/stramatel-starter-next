@@ -1,15 +1,15 @@
 import { PrismaClient } from '../../../../prisma/generated/client';
-import { SecurityEventType, SecuritySeverity } from '../types';
+import { SecuritySeverity } from '../types';
 
 const prisma = new PrismaClient();
 
 export interface SecurityEventData {
-  type: SecurityEventType;
   date: Date;
   description?: string;
   location?: string;
   severity?: SecuritySeverity;
   withWorkStop?: boolean;
+  isReference?: boolean;
   createdBy: number;
 }
 
@@ -118,13 +118,7 @@ export class SecurityService {
           gte: startDate,
           lte: endDate
         },
-        type: {
-          in: [
-            SecurityEventType.ACCIDENT,
-            SecurityEventType.ACCIDENT_WITH_STOP,
-            SecurityEventType.ACCIDENT_WITHOUT_STOP
-          ]
-        }
+        isReference: false
       }
     });
   }
@@ -182,45 +176,54 @@ export class SecurityService {
   private static async calculateAllCounters(year: number, month: number) {
     const today = new Date();
 
-    // Trouver le dernier accident de chaque type
-    const lastAccident = await this.getLastEventByType([
-      SecurityEventType.ACCIDENT,
-      SecurityEventType.ACCIDENT_WITH_STOP,
-      SecurityEventType.ACCIDENT_WITHOUT_STOP
-    ]);
+    // Trouver le dernier accident
+    const lastAccident = await this.getLastEvent();
 
-    const lastAccidentWithStop = await this.getLastEventByType([
-      SecurityEventType.ACCIDENT,
-      SecurityEventType.ACCIDENT_WITH_STOP
-    ]);
+    const lastAccidentWithStop = await this.getLastEventWithStop();
 
-    const lastAccidentWithoutStop = await this.getLastEventByType([
-      SecurityEventType.ACCIDENT,
-      SecurityEventType.ACCIDENT_WITHOUT_STOP
-    ]);
+    const lastAccidentWithoutStop = await this.getLastEventWithoutStop();
 
     // Calculer les jours sans accident
-    const daysWithoutAccident = lastAccident 
-      ? Math.floor((today.getTime() - lastAccident.date.getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
+    let daysWithoutAccident = 0;
+    if (lastAccident) {
+      daysWithoutAccident = Math.floor((today.getTime() - lastAccident.date.getTime()) / (1000 * 60 * 60 * 24));
+    } else {
+      // Aucun accident : calculer depuis la date de début de suivi
+      const indicators = await prisma.securityIndicators.findFirst({ orderBy: { updatedAt: 'desc' }, select: { monitoringStartDate: true } });
+      if (indicators?.monitoringStartDate) {
+        daysWithoutAccident = Math.floor((today.getTime() - indicators.monitoringStartDate.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        daysWithoutAccident = 0;
+      }
+    }
 
-    const daysWithoutAccidentWithStop = lastAccidentWithStop
-      ? Math.floor((today.getTime() - lastAccidentWithStop.date.getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
+    let daysWithoutAccidentWithStop = 0;
+    if (lastAccidentWithStop) {
+      daysWithoutAccidentWithStop = Math.floor((today.getTime() - lastAccidentWithStop.date.getTime()) / (1000 * 60 * 60 * 24));
+    } else {
+      const indicators = await prisma.securityIndicators.findFirst({ orderBy: { updatedAt: 'desc' }, select: { monitoringStartDate: true } });
+      if (indicators?.monitoringStartDate) {
+        daysWithoutAccidentWithStop = Math.floor((today.getTime() - indicators.monitoringStartDate.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        daysWithoutAccidentWithStop = 0;
+      }
+    }
 
-    const daysWithoutAccidentWithoutStop = lastAccidentWithoutStop
-      ? Math.floor((today.getTime() - lastAccidentWithoutStop.date.getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
+    let daysWithoutAccidentWithoutStop = 0;
+    if (lastAccidentWithoutStop) {
+      daysWithoutAccidentWithoutStop = Math.floor((today.getTime() - lastAccidentWithoutStop.date.getTime()) / (1000 * 60 * 60 * 24));
+    } else {
+      const indicators = await prisma.securityIndicators.findFirst({ orderBy: { updatedAt: 'desc' }, select: { monitoringStartDate: true } });
+      if (indicators?.monitoringStartDate) {
+        daysWithoutAccidentWithoutStop = Math.floor((today.getTime() - indicators.monitoringStartDate.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        daysWithoutAccidentWithoutStop = 0;
+      }
+    }
 
-    // Calculer le record
-    const existingRecord = await prisma.securityIndicators.findFirst({
-      orderBy: { recordDaysWithoutAccident: 'desc' }
-    });
-
-    const recordDaysWithoutAccident = Math.max(
-      daysWithoutAccident,
-      existingRecord?.recordDaysWithoutAccident || 0
-    );
+    // Calculer le record en analysant l'historique complet
+    const { record: recordDaysWithoutAccident, recordDate: recordDaysWithoutAccidentDate } = 
+      await this.calculateRecordDaysWithoutAccident();
 
     // Compteurs annuels
     const yearStart = new Date(year, 0, 1);
@@ -235,13 +238,7 @@ export class SecurityService {
     const monthlyAccidents = await prisma.securityEvent.count({
       where: {
         date: { gte: monthStart, lte: monthEnd },
-        type: {
-          in: [
-            SecurityEventType.ACCIDENT,
-            SecurityEventType.ACCIDENT_WITH_STOP,
-            SecurityEventType.ACCIDENT_WITHOUT_STOP
-          ]
-        }
+        isReference: false
       }
     });
 
@@ -254,24 +251,49 @@ export class SecurityService {
       currentDaysWithoutAccidentWithStop: daysWithoutAccidentWithStop,
       currentDaysWithoutAccidentWithoutStop: daysWithoutAccidentWithoutStop,
       recordDaysWithoutAccident,
-      recordDaysWithoutAccidentDate: recordDaysWithoutAccident > (existingRecord?.recordDaysWithoutAccident || 0) 
-        ? today : existingRecord?.recordDaysWithoutAccidentDate,
+      recordDaysWithoutAccidentDate,
       yearlyAccidentsCount: yearlyCounters.accidents,
       yearlyAccidentsWithStopCount: yearlyCounters.accidentsWithStop,
       yearlyAccidentsWithoutStopCount: yearlyCounters.accidentsWithoutStop,
-      yearlyMinorCareCount: yearlyCounters.minorCare,
-      yearlyNearMissCount: yearlyCounters.nearMiss,
-      yearlyDangerousSituationCount: yearlyCounters.dangerousSituations,
+      yearlyMinorCareCount: 0,
+      yearlyNearMissCount: 0,
+      yearlyDangerousSituationCount: 0,
       monthlyAccidentsCount: monthlyAccidents
     };
   }
 
   /**
-   * Obtenir le dernier événement d'un type donné
+   * Obtenir le dernier événement
    */
-  private static async getLastEventByType(types: SecurityEventType[]) {
+  private static async getLastEvent() {
     return await prisma.securityEvent.findFirst({
-      where: { type: { in: types } },
+      where: { isReference: false },
+      orderBy: { date: 'desc' }
+    });
+  }
+
+  /**
+   * Obtenir le dernier événement avec arrêt
+   */
+  private static async getLastEventWithStop() {
+    return await prisma.securityEvent.findFirst({
+      where: { 
+        withWorkStop: true,
+        isReference: false
+      },
+      orderBy: { date: 'desc' }
+    });
+  }
+
+  /**
+   * Obtenir le dernier événement sans arrêt
+   */
+  private static async getLastEventWithoutStop() {
+    return await prisma.securityEvent.findFirst({
+      where: { 
+        withWorkStop: false,
+        isReference: false
+      },
       orderBy: { date: 'desc' }
     });
   }
@@ -280,42 +302,26 @@ export class SecurityService {
    * Compter les événements par type sur une période
    */
   private static async getEventCountsByPeriod(startDate: Date, endDate: Date) {
-    const [accidents, accidentsWithStop, accidentsWithoutStop, minorCare, nearMiss, dangerousSituations] = 
+    const [accidents, accidentsWithStop, accidentsWithoutStop] = 
       await Promise.all([
         prisma.securityEvent.count({
           where: {
             date: { gte: startDate, lte: endDate },
-            type: { in: [SecurityEventType.ACCIDENT, SecurityEventType.ACCIDENT_WITH_STOP, SecurityEventType.ACCIDENT_WITHOUT_STOP] }
+            isReference: false
           }
         }),
         prisma.securityEvent.count({
           where: {
             date: { gte: startDate, lte: endDate },
-            type: { in: [SecurityEventType.ACCIDENT, SecurityEventType.ACCIDENT_WITH_STOP] }
+            withWorkStop: true,
+            isReference: false
           }
         }),
         prisma.securityEvent.count({
           where: {
             date: { gte: startDate, lte: endDate },
-            type: { in: [SecurityEventType.ACCIDENT, SecurityEventType.ACCIDENT_WITHOUT_STOP] }
-          }
-        }),
-        prisma.securityEvent.count({
-          where: {
-            date: { gte: startDate, lte: endDate },
-            type: SecurityEventType.MINOR_CARE
-          }
-        }),
-        prisma.securityEvent.count({
-          where: {
-            date: { gte: startDate, lte: endDate },
-            type: SecurityEventType.NEAR_MISS
-          }
-        }),
-        prisma.securityEvent.count({
-          where: {
-            date: { gte: startDate, lte: endDate },
-            type: SecurityEventType.DANGEROUS_SITUATION
+            withWorkStop: false,
+            isReference: false
           }
         })
       ]);
@@ -323,10 +329,7 @@ export class SecurityService {
     return {
       accidents,
       accidentsWithStop,
-      accidentsWithoutStop,
-      minorCare,
-      nearMiss,
-      dangerousSituations
+      accidentsWithoutStop
     };
   }
 
@@ -356,15 +359,15 @@ export class SecurityService {
    * Récupérer l'historique des événements avec filtres
    */
   static async getSecurityEvents(filters?: {
-    type?: SecurityEventType;
     startDate?: Date;
     endDate?: Date;
     location?: string;
     severity?: SecuritySeverity;
   }) {
-    const where: any = {};
+    const where: any = {
+      isReference: false // Exclure les événements de référence de l'affichage
+    };
 
-    if (filters?.type) where.type = filters.type;
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
       if (filters.startDate) where.date.gte = filters.startDate;
@@ -385,5 +388,66 @@ export class SecurityService {
       },
       orderBy: { date: 'desc' }
     });
+  }
+
+  /**
+   * Calculer le record de jours sans accident en analysant l'historique
+   */
+  private static async calculateRecordDaysWithoutAccident(): Promise<{ record: number; recordDate: Date | null }> {
+    // Récupérer tous les événements (sauf référence) triés par date
+    const events = await prisma.securityEvent.findMany({
+      where: { isReference: false },
+      orderBy: { date: 'asc' },
+      select: { date: true }
+    });
+
+    // Récupérer la date de début de suivi
+    const indicators = await prisma.securityIndicators.findFirst({
+      orderBy: { updatedAt: 'desc' },
+      select: { monitoringStartDate: true }
+    });
+
+    const monitoringStartDate = indicators?.monitoringStartDate;
+
+    if (events.length === 0) {
+      // Aucun événement, le record est depuis la date de début de suivi
+      if (monitoringStartDate) {
+        const today = new Date();
+        const daysSinceMonitoringStart = Math.floor((today.getTime() - monitoringStartDate.getTime()) / (1000 * 60 * 60 * 24));
+        return { record: daysSinceMonitoringStart, recordDate: monitoringStartDate };
+      }
+      return { record: 0, recordDate: null };
+    }
+
+    let maxDaysWithoutAccident = 0;
+    let recordStartDate: Date | null = null;
+
+    // Vérifier la période depuis la date de début de suivi jusqu'au premier événement
+    if (monitoringStartDate && events.length > 0) {
+      const daysFromMonitoringStartToFirst = Math.floor((events[0].date.getTime() - monitoringStartDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysFromMonitoringStartToFirst > maxDaysWithoutAccident) {
+        maxDaysWithoutAccident = daysFromMonitoringStartToFirst;
+        recordStartDate = monitoringStartDate;
+      }
+    }
+
+    // Vérifier les périodes entre les événements
+    for (let i = 0; i < events.length - 1; i++) {
+      const daysBetween = Math.floor((events[i + 1].date.getTime() - events[i].date.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysBetween > maxDaysWithoutAccident) {
+        maxDaysWithoutAccident = daysBetween;
+        recordStartDate = events[i].date;
+      }
+    }
+
+    // Vérifier la période depuis le dernier événement jusqu'à aujourd'hui
+    const today = new Date();
+    const daysSinceLastEvent = Math.floor((today.getTime() - events[events.length - 1].date.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysSinceLastEvent > maxDaysWithoutAccident) {
+      maxDaysWithoutAccident = daysSinceLastEvent;
+      recordStartDate = events[events.length - 1].date;
+    }
+
+    return { record: maxDaysWithoutAccident, recordDate: recordStartDate };
   }
 } 

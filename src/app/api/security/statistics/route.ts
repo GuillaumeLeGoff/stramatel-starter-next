@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '../../../../../prisma/generated/client';
-import { SecurityEventType } from '@/features/security/types';
+import { SecuritySeverity } from '@/features/security/types';
 
 const prisma = new PrismaClient();
 
@@ -9,114 +9,90 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : new Date().getFullYear();
-    
-    // Compter tous les événements
-    const totalEvents = await prisma.securityEvent.count();
-    
-    // Événements par type
-    const eventsByType = await Promise.all(
-      Object.values(SecurityEventType).map(async (type) => ({
-        type,
-        count: await prisma.securityEvent.count({ where: { type } })
+
+    // Calculer les statistiques pour l'année spécifiée
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+
+    // Compter les événements par sévérité
+    const severityCounts = await Promise.all(
+      Object.values(SecuritySeverity).map(async (severity) => ({
+        severity,
+        count: await prisma.securityEvent.count({
+          where: {
+            date: { gte: yearStart, lte: yearEnd },
+            severity
+          }
+        })
       }))
     );
-    
-    const accidentsByType = eventsByType.reduce((acc, { type, count }) => {
-      acc[type] = count;
+
+    const accidentsBySeverity = severityCounts.reduce((acc, { severity, count }) => {
+      acc[severity] = count;
       return acc;
-    }, {} as Record<SecurityEventType, number>);
-    
-    // Événements par sévérité
-    const eventsBySeverity = await prisma.securityEvent.groupBy({
-      by: ['severity'],
-      _count: {
-        severity: true
+    }, {} as Record<SecuritySeverity, number>);
+
+    // Compter le total des événements
+    const totalEvents = await prisma.securityEvent.count({
+      where: {
+        date: { gte: yearStart, lte: yearEnd }
       }
     });
-    
-    const accidentsBySeverity = eventsBySeverity.reduce((acc, { severity, _count }) => {
-      if (severity) {
-        acc[severity] = _count.severity;
-      }
-      return acc;
-    }, {} as any);
-    
-    // Tendance mensuelle pour l'année
-    const monthlyTrend = [];
-    for (let month = 1; month <= 12; month++) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
-      
-      const count = await prisma.securityEvent.count({
-        where: {
-          date: {
-            gte: startDate,
-            lte: endDate
-          },
-          type: {
-            in: [
-              SecurityEventType.ACCIDENT,
-              SecurityEventType.ACCIDENT_WITH_STOP,
-              SecurityEventType.ACCIDENT_WITHOUT_STOP
-            ]
+
+    // Calculer la tendance mensuelle
+    const monthlyTrend = await Promise.all(
+      Array.from({ length: 12 }, (_, i) => i).map(async (month) => {
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+        
+        const count = await prisma.securityEvent.count({
+          where: {
+            date: { gte: monthStart, lte: monthEnd }
           }
-        }
-      });
-      
-      monthlyTrend.push({
-        month: new Date(year, month - 1, 1).toLocaleDateString('fr-FR', { month: 'long' }),
-        count
-      });
-    }
-    
-    // Calcul de la moyenne de jours entre accidents
+        });
+
+        return {
+          month: monthStart.toLocaleDateString('fr-FR', { month: 'long' }),
+          count
+        };
+      })
+    );
+
+    // Calculer la moyenne des jours entre les accidents
     const accidents = await prisma.securityEvent.findMany({
       where: {
-        type: {
-          in: [
-            SecurityEventType.ACCIDENT,
-            SecurityEventType.ACCIDENT_WITH_STOP,
-            SecurityEventType.ACCIDENT_WITHOUT_STOP
-          ]
-        }
+        date: { gte: yearStart, lte: yearEnd }
       },
-      orderBy: { date: 'asc' },
-      select: { date: true }
+      orderBy: { date: 'asc' }
     });
-    
+
     let averageDaysBetweenAccidents = 0;
     if (accidents.length > 1) {
-      const daysBetween = [];
+      let totalDays = 0;
       for (let i = 1; i < accidents.length; i++) {
-        const days = Math.floor(
+        const daysDiff = Math.floor(
           (accidents[i].date.getTime() - accidents[i - 1].date.getTime()) / (1000 * 60 * 60 * 24)
         );
-        daysBetween.push(days);
+        totalDays += daysDiff;
       }
-      averageDaysBetweenAccidents = Math.round(
-        daysBetween.reduce((sum, days) => sum + days, 0) / daysBetween.length
-      );
+      averageDaysBetweenAccidents = Math.round(totalDays / (accidents.length - 1));
     }
-    
-    const response = {
-      totalEvents,
-      accidentsByType,
-      accidentsBySeverity,
-      monthlyTrend,
-      averageDaysBetweenAccidents,
-      year
-    };
-    
+
     return NextResponse.json({
       success: true,
-      data: response
+      data: {
+        totalEvents,
+        accidentsBySeverity,
+        monthlyTrend,
+        averageDaysBetweenAccidents
+      }
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error);
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Erreur lors de la récupération des statistiques de sécurité' 
+        error: 'Erreur lors de la récupération des statistiques' 
       },
       { status: 500 }
     );

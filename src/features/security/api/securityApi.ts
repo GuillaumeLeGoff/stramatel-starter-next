@@ -8,6 +8,25 @@ import {
 
 const API_BASE = '/api/security';
 
+// Fonction utilitaire pour convertir les dates dans les objets SecurityEvent
+function convertDatesInSecurityEvent(event: any): SecurityEvent {
+  return {
+    ...event,
+    date: new Date(event.date),
+    createdAt: new Date(event.createdAt),
+    updatedAt: new Date(event.updatedAt)
+  };
+}
+
+// Fonction utilitaire pour convertir les dates dans les indicateurs
+function convertDatesInIndicators(indicators: any): DigitalDisplayData {
+  return {
+    ...indicators,
+    // Ne pas convertir currentDate et lastAccidentDate car ils sont destinés à l'affichage
+    // et doivent rester des chaînes selon l'interface DigitalDisplayData
+  };
+}
+
 export class SecurityApi {
   /**
    * Récupérer les indicateurs digitaux de sécurité
@@ -24,7 +43,7 @@ export class SecurityApi {
       throw new Error(data.error || 'Erreur lors de la récupération des indicateurs');
     }
     
-    return data.data;
+    return convertDatesInIndicators(data.data);
   }
 
   /**
@@ -64,7 +83,7 @@ export class SecurityApi {
       throw new Error(data.error || 'Erreur lors de la création de l\'événement');
     }
     
-    return data.data;
+    return convertDatesInSecurityEvent(data.data);
   }
 
   /**
@@ -73,7 +92,6 @@ export class SecurityApi {
   static async getSecurityEvents(filters?: SecurityEventFilters): Promise<SecurityEvent[]> {
     const searchParams = new URLSearchParams();
     
-    if (filters?.type) searchParams.append('type', filters.type);
     if (filters?.startDate) searchParams.append('startDate', filters.startDate.toISOString());
     if (filters?.endDate) searchParams.append('endDate', filters.endDate.toISOString());
     if (filters?.location) searchParams.append('location', filters.location);
@@ -88,7 +106,7 @@ export class SecurityApi {
       throw new Error(data.error || 'Erreur lors de la récupération des événements');
     }
     
-    return data.data;
+    return data.data.map(convertDatesInSecurityEvent);
   }
 
   /**
@@ -102,7 +120,7 @@ export class SecurityApi {
       throw new Error(data.error || 'Erreur lors de la récupération de l\'événement');
     }
     
-    return data.data;
+    return convertDatesInSecurityEvent(data.data);
   }
 
   /**
@@ -123,7 +141,7 @@ export class SecurityApi {
       throw new Error(data.error || 'Erreur lors de la mise à jour de l\'événement');
     }
     
-    return data.data;
+    return convertDatesInSecurityEvent(data.data);
   }
 
   /**
@@ -165,16 +183,10 @@ export class SecurityApi {
   static async getAccidentsForPeriod(startDate: Date, endDate: Date): Promise<number> {
     const events = await this.getSecurityEvents({
       startDate,
-      endDate,
-      type: undefined // Tous les types d'accidents
+      endDate
     });
     
-    // Filtrer seulement les accidents
-    return events.filter(event => 
-      event.type === 'ACCIDENT' || 
-      event.type === 'ACCIDENT_WITH_STOP' || 
-      event.type === 'ACCIDENT_WITHOUT_STOP'
-    ).length;
+    return events.length;
   }
 
   /**

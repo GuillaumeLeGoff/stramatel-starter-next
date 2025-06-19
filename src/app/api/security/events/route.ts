@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SecurityService } from '@/features/security/services/securityService';
-import { SecurityEventType, SecuritySeverity } from '@/features/security/types';
+import { SecuritySeverity } from '@/features/security/types';
 
 // GET - Récupérer les événements de sécurité avec filtres
 export async function GET(request: NextRequest) {
@@ -10,15 +10,10 @@ export async function GET(request: NextRequest) {
     const filters: any = {};
     
     // Filtres depuis les paramètres URL
-    const type = searchParams.get('type');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const location = searchParams.get('location');
     const severity = searchParams.get('severity');
-
-    if (type && Object.values(SecurityEventType).includes(type as SecurityEventType)) {
-      filters.type = type as SecurityEventType;
-    }
     
     if (startDate) {
       filters.startDate = new Date(startDate);
@@ -60,13 +55,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validation des données
-    if (!body.type || !Object.values(SecurityEventType).includes(body.type)) {
-      return NextResponse.json(
-        { success: false, error: 'Type d\'événement requis et valide' },
-        { status: 400 }
-      );
-    }
-    
     if (!body.date) {
       return NextResponse.json(
         { success: false, error: 'Date de l\'événement requise' },
@@ -90,7 +78,6 @@ export async function POST(request: NextRequest) {
     }
 
     const eventData = {
-      type: body.type,
       date: new Date(body.date),
       description: body.description,
       location: body.location,

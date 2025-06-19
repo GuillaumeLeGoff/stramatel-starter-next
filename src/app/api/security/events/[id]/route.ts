@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '../../../../../../prisma/generated/client';
 import { SecurityService } from '@/features/security/services/securityService';
-import { SecurityEventType, SecuritySeverity } from '@/features/security/types';
+import { SecuritySeverity } from '@/features/security/types';
 
 const prisma = new PrismaClient();
 
 // GET - Récupérer un événement spécifique
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const eventId = parseInt(params.id);
+    const { id } = await params;
+    const eventId = parseInt(id);
     
     if (isNaN(eventId)) {
       return NextResponse.json(
@@ -58,10 +59,11 @@ export async function GET(
 // PUT - Modifier un événement existant
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const eventId = parseInt(params.id);
+    const { id } = await params;
+    const eventId = parseInt(id);
     
     if (isNaN(eventId)) {
       return NextResponse.json(
@@ -86,10 +88,6 @@ export async function PUT(
 
     // Validation des données
     const updateData: any = {};
-    
-    if (body.type && Object.values(SecurityEventType).includes(body.type)) {
-      updateData.type = body.type;
-    }
     
     if (body.date) {
       updateData.date = new Date(body.date);
@@ -126,7 +124,7 @@ export async function PUT(
     });
 
     // Recalculer les indicateurs si nécessaire
-    if (body.type || body.date) {
+    if (body.date) {
       await SecurityService.updateSecurityIndicators(existingEvent.createdBy);
     }
 
@@ -150,10 +148,11 @@ export async function PUT(
 // DELETE - Supprimer un événement
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const eventId = parseInt(params.id);
+    const { id } = await params;
+    const eventId = parseInt(id);
     
     if (isNaN(eventId)) {
       return NextResponse.json(

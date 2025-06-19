@@ -174,12 +174,12 @@ enum RecurrenceType {
 // Modèles pour les indicateurs de sécurité
 model SecurityEvent {
   id           Int               @id @default(autoincrement())
-  type         SecurityEventType
   date         DateTime
   description  String?
   location     String?
   severity     SecuritySeverity?
   withWorkStop Boolean           @default(false)
+  isReference  Boolean           @default(false)
   createdBy    Int
   user         User              @relation(fields: [createdBy], references: [id])
 
@@ -193,6 +193,7 @@ model SecurityIndicators {
   lastAccidentWithStopDate              DateTime?
   lastAccidentWithoutStopDate           DateTime?
   recordStartDate                       DateTime?
+  monitoringStartDate                   DateTime? // Date de début du suivi des accidents
   currentDaysWithoutAccident            Int       @default(0)
   currentDaysWithoutAccidentWithStop    Int       @default(0)
   currentDaysWithoutAccidentWithoutStop Int       @default(0)
@@ -213,15 +214,6 @@ model SecurityIndicators {
 }
 
 // Enums pour la sécurité
-enum SecurityEventType {
-  ACCIDENT
-  ACCIDENT_WITH_STOP
-  ACCIDENT_WITHOUT_STOP
-  MINOR_CARE
-  NEAR_MISS
-  DANGEROUS_SITUATION
-}
-
 enum SecuritySeverity {
   LOW
   MEDIUM

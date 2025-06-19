@@ -8,7 +8,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Plus, Edit, Trash2, Search, Filter } from "lucide-react";
-import { SecurityEvent, SecurityEventType, SecuritySeverity, SecurityEventFilters } from "../types";
+import { SecurityEvent, SecurityEventFilters, SecuritySeverity } from "../types";
 import { useSecurityEvents } from "../hooks/useSecurityEvents";
 import { SecurityEventForm } from "./SecurityEventForm";
 
@@ -42,32 +42,6 @@ export function SecurityEventsList() {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
       await deleteEvent(id);
     }
-  };
-
-  const getEventTypeBadge = (type: SecurityEventType) => {
-    const variants = {
-      [SecurityEventType.ACCIDENT]: "destructive",
-      [SecurityEventType.ACCIDENT_WITH_STOP]: "destructive",
-      [SecurityEventType.ACCIDENT_WITHOUT_STOP]: "secondary",
-      [SecurityEventType.MINOR_CARE]: "outline",
-      [SecurityEventType.NEAR_MISS]: "secondary",
-      [SecurityEventType.DANGEROUS_SITUATION]: "outline"
-    } as const;
-
-    const labels = {
-      [SecurityEventType.ACCIDENT]: "Accident",
-      [SecurityEventType.ACCIDENT_WITH_STOP]: "Accident avec arrêt",
-      [SecurityEventType.ACCIDENT_WITHOUT_STOP]: "Accident sans arrêt",
-      [SecurityEventType.MINOR_CARE]: "Soin bénin",
-      [SecurityEventType.NEAR_MISS]: "Presqu'accident",
-      [SecurityEventType.DANGEROUS_SITUATION]: "Situation dangereuse"
-    };
-
-    return (
-      <Badge variant={variants[type] as any}>
-        {labels[type]}
-      </Badge>
-    );
   };
 
   const getSeverityBadge = (severity?: SecuritySeverity) => {
@@ -138,28 +112,6 @@ export function SecurityEventsList() {
               </div>
             </div>
 
-            {/* Type */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type</label>
-              <Select 
-                value={filters.type || "all"} 
-                onValueChange={(value) => applyFilters({ type: (value && value !== "all") ? value as SecurityEventType : undefined })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous types</SelectItem>
-                  <SelectItem value="ACCIDENT">Accident</SelectItem>
-                  <SelectItem value="ACCIDENT_WITH_STOP">Accident avec arrêt</SelectItem>
-                  <SelectItem value="ACCIDENT_WITHOUT_STOP">Accident sans arrêt</SelectItem>
-                  <SelectItem value="MINOR_CARE">Soin bénin</SelectItem>
-                  <SelectItem value="NEAR_MISS">Presqu'accident</SelectItem>
-                  <SelectItem value="DANGEROUS_SITUATION">Situation dangereuse</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Sévérité */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Sévérité</label>
@@ -207,7 +159,6 @@ export function SecurityEventsList() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Lieu</TableHead>
                   <TableHead>Sévérité</TableHead>
@@ -220,9 +171,6 @@ export function SecurityEventsList() {
                   <TableRow key={event.id}>
                     <TableCell>
                       {new Date(event.date).toLocaleDateString('fr-FR')}
-                    </TableCell>
-                    <TableCell>
-                      {getEventTypeBadge(event.type)}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {event.description || '-'}
@@ -263,7 +211,7 @@ export function SecurityEventsList() {
                 ))}
                 {filteredEvents.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Aucun événement trouvé
                     </TableCell>
                   </TableRow>
