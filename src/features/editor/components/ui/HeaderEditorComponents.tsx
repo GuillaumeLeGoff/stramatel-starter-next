@@ -66,13 +66,63 @@ export function HeaderEditorComponents() {
     return selectedType !== "Line" && selectedType !== "Arrow";
   }, [selectedType, selectedShapes, editingTextId, editingTextShape]);
 
-  // Vérifie si l'élément sélectionné est un texte
+  // Liste des types de données de sécurité
+  const securityDataTypes = [
+    "currentDaysWithoutAccident",
+    "currentDaysWithoutAccidentWithStop", 
+    "currentDaysWithoutAccidentWithoutStop",
+    "recordDaysWithoutAccident",
+    "yearlyAccidentsCount",
+    "yearlyAccidentsWithStopCount",
+    "yearlyAccidentsWithoutStopCount",
+    "monthlyAccidentsCount",
+    "lastAccidentDate",
+    "monitoringStartDate"
+  ];
+
+  // Vérifie si l'élément sélectionné est un texte (incluant les données de sécurité)
   const isText = useMemo(() => {
     return selectedType === "Text" || 
            selectedType === "liveDate" || 
            selectedType === "liveTime" || 
-           selectedType === "liveDateTime";
+           selectedType === "liveDateTime" ||
+           securityDataTypes.includes(selectedType || "");
   }, [selectedType]);
+
+  // Vérifie si l'élément sélectionné est une donnée de sécurité
+  const isSecurityData = useMemo(() => {
+    return securityDataTypes.includes(selectedType || "");
+  }, [selectedType]);
+
+  // Fonction pour obtenir le nom d'affichage d'un type de donnée
+  const getDisplayName = (type: string | null): string => {
+    if (!type) return "";
+    
+    const displayNames: Record<string, string> = {
+      "Text": "Texte",
+      "liveDate": "Date en direct",
+      "liveTime": "Heure en direct", 
+      "liveDateTime": "Date/heure en direct",
+      "currentDaysWithoutAccident": "Jours sans accident",
+      "currentDaysWithoutAccidentWithStop": "Jours sans arrêt",
+      "currentDaysWithoutAccidentWithoutStop": "Jours sans arrêt léger",
+      "recordDaysWithoutAccident": "Record jours sans accident",
+      "yearlyAccidentsCount": "Accidents cette année",
+      "yearlyAccidentsWithStopCount": "Accidents avec arrêt",
+      "yearlyAccidentsWithoutStopCount": "Accidents sans arrêt",
+      "monthlyAccidentsCount": "Accidents ce mois",
+      "lastAccidentDate": "Dernier accident",
+      "monitoringStartDate": "Début de suivi",
+      "Circle": "Cercle",
+      "Rect": "Rectangle",
+      "Line": "Ligne",
+      "Arrow": "Flèche",
+      "Image": "Image",
+      "Video": "Vidéo"
+    };
+    
+    return displayNames[type] || type;
+  };
 
   // Vérifie si l'élément sélectionné a des propriétés de contour (pas pour les textes)
   const hasStroke = useMemo(() => {
@@ -374,10 +424,21 @@ export function HeaderEditorComponents() {
 
   return (
     <div className="flex items-center space-x-4 px-4">
-      {selectedShapes.length === 0 && !editingTextId && ""}
+      {selectedShapes.length === 0 && !editingTextId && (
+        <span className="text-sm text-gray-500">Aucun élément sélectionné</span>
+      )}
 
       {(selectedShapes.length > 0 || editingTextId) && (
         <>
+          {/* Affichage du nom de l'élément sélectionné */}
+          <div className="flex items-center flex-shrink-0">
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              {getDisplayName(selectedType)}
+            </span>
+          </div>
+
+          {/* Séparateur vertical */}
+          <div className="h-6 w-px bg-gray-300"></div>
           {/* Contrôles spécifiques au texte */}
           {isText && (
             <>

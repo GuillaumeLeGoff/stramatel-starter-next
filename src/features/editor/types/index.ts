@@ -135,7 +135,17 @@ export type ShapeType =
   | "video"
   | "liveDate"
   | "liveTime"
-  | "liveDateTime";
+  | "liveDateTime"
+  | "currentDaysWithoutAccident"
+  | "currentDaysWithoutAccidentWithStop"
+  | "currentDaysWithoutAccidentWithoutStop"
+  | "recordDaysWithoutAccident"
+  | "yearlyAccidentsCount"
+  | "yearlyAccidentsWithStopCount"
+  | "yearlyAccidentsWithoutStopCount"
+  | "monthlyAccidentsCount"
+  | "lastAccidentDate"
+  | "monitoringStartDate";
 
 export interface EditorState {
   zoom: number;

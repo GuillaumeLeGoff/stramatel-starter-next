@@ -1,10 +1,11 @@
+"use client";
+
 import React, { useEffect, useState, useRef } from "react";
 import { Text } from "react-konva";
-import Konva from "konva";
 import { DigitalDisplayData } from "@/features/security/types";
-import { securityDataCache } from "../../utils/securityDataCache";
+import { securityDataCache } from "../../editor/utils/securityDataCache";
 
-interface KonvaLiveTextProps {
+interface PanelLiveTextProps {
   x: number;
   y: number;
   width?: number;
@@ -22,15 +23,9 @@ interface KonvaLiveTextProps {
   fill?: string;
   fontStyle?: string;
   align?: string;
-  draggable?: boolean;
-  onTransform?: (e: Konva.KonvaEventObject<Event>) => void;
-  onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
-  onDragEnd?: (e: Konva.KonvaEventObject<Event>) => void;
-  onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
-  ref?: (node: Konva.Text | null) => void;
 }
 
-export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
+export const PanelLiveText: React.FC<PanelLiveTextProps> = ({
   x,
   y,
   width = 200,
@@ -43,29 +38,26 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
   fill = "black",
   fontStyle,
   align,
-  draggable = true,
-  onTransform,
-  onTransformEnd,
-  onDragEnd,
-  onClick,
-  ref,
 }) => {
   const [currentText, setCurrentText] = useState("");
   const [securityData, setSecurityData] = useState<DigitalDisplayData | null>(null);
-  const textRef = useRef<Konva.Text | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Transmettre la référence au parent
-  useEffect(() => {
-    if (ref && textRef.current) {
-      ref(textRef.current);
-    }
-    return () => {
-      if (ref) {
-        ref(null);
-      }
-    };
-  }, [ref]);
+  // Déterminer si le type nécessite des données de sécurité
+  const isSecurityType = (type: string) => {
+    return [
+      "currentDaysWithoutAccident", 
+      "currentDaysWithoutAccidentWithStop",
+      "currentDaysWithoutAccidentWithoutStop", 
+      "recordDaysWithoutAccident",
+      "yearlyAccidentsCount", 
+      "yearlyAccidentsWithStopCount",
+      "yearlyAccidentsWithoutStopCount", 
+      "monthlyAccidentsCount",
+      "lastAccidentDate", 
+      "monitoringStartDate"
+    ].includes(type);
+  };
 
   // Récupérer les données de sécurité depuis le cache
   const fetchSecurityData = async () => {
@@ -104,7 +96,7 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
           minute: '2-digit'
         });
       
-      // Données de sécurité depuis l'API
+      // Données de sécurité depuis l'API - nombres uniquement
       case "currentDaysWithoutAccident":
         return securityData ? `${securityData.daysWithoutAccident}` : "--";
       case "currentDaysWithoutAccidentWithStop":
@@ -129,22 +121,6 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
       default:
         return "";
     }
-  };
-
-  // Déterminer si le type nécessite des données de sécurité
-  const isSecurityType = (type: string) => {
-    return [
-      "currentDaysWithoutAccident", 
-      "currentDaysWithoutAccidentWithStop",
-      "currentDaysWithoutAccidentWithoutStop", 
-      "recordDaysWithoutAccident",
-      "yearlyAccidentsCount", 
-      "yearlyAccidentsWithStopCount",
-      "yearlyAccidentsWithoutStopCount", 
-      "monthlyAccidentsCount",
-      "lastAccidentDate", 
-      "monitoringStartDate"
-    ].includes(type);
   };
 
   // Mettre à jour le texte
@@ -193,7 +169,6 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
 
   return (
     <Text
-      ref={textRef}
       text={currentText}
       x={x}
       y={y}
@@ -206,11 +181,6 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
       fill={fill}
       align={align}
       id={id}
-      draggable={draggable}
-      onTransform={onTransform}
-      onTransformEnd={onTransformEnd}
-      onDragEnd={onDragEnd}
-      onClick={onClick}
     />
   );
 }; 

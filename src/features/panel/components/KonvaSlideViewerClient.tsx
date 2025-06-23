@@ -12,6 +12,7 @@ import {
   Image,
 } from "react-konva";
 import { KonvaStage } from "@/features/editor/types";
+import { PanelLiveText } from "./PanelLiveText";
 
 interface KonvaSlideViewerProps {
   konvaData: KonvaStage;
@@ -147,6 +148,26 @@ export default function KonvaSlideViewerClient({
 
     switch (className) {
       case "Text":
+        // Vérifier si c'est un texte live avec les nouvelles données
+        if (attrs.type && attrs.type !== "text") {
+          return (
+            <PanelLiveText
+              key={shapeId}
+              x={adjustedAttrs.x}
+              y={adjustedAttrs.y}
+              width={attrs.width}
+              height={attrs.height}
+              rotation={attrs.rotation}
+              id={shapeId}
+              type={attrs.type}
+              fontSize={attrs.fontSize}
+              fontFamily={attrs.fontFamily}
+              fill={attrs.fill}
+              fontStyle={attrs.fontStyle}
+              align={attrs.align}
+            />
+          );
+        }
         return <Text key={shapeId} {...adjustedAttrs} draggable={false} />;
       case "Circle":
         return <Circle key={shapeId} {...adjustedAttrs} draggable={false} />;
@@ -183,6 +204,34 @@ export default function KonvaSlideViewerClient({
             height={attrs.height || 150}
             rotation={attrs.rotation || 0}
             id={shapeId}
+          />
+        );
+      // Gérer tous les nouveaux types de données de sécurité comme des Text
+      case "currentDaysWithoutAccident":
+      case "currentDaysWithoutAccidentWithStop":
+      case "currentDaysWithoutAccidentWithoutStop":
+      case "recordDaysWithoutAccident":
+      case "yearlyAccidentsCount":
+      case "yearlyAccidentsWithStopCount":
+      case "yearlyAccidentsWithoutStopCount":
+      case "monthlyAccidentsCount":
+      case "lastAccidentDate":
+      case "monitoringStartDate":
+        return (
+          <PanelLiveText
+            key={shapeId}
+            x={adjustedAttrs.x}
+            y={adjustedAttrs.y}
+            width={attrs.width}
+            height={attrs.height}
+            rotation={attrs.rotation}
+            id={shapeId}
+            type={className as any}
+            fontSize={attrs.fontSize}
+            fontFamily={attrs.fontFamily}
+            fill={attrs.fill}
+            fontStyle={attrs.fontStyle}
+            align={attrs.align}
           />
         );
       default:

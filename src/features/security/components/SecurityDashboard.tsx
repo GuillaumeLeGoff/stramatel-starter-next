@@ -144,7 +144,7 @@ function StatCard({ title, value, subtitle }: { title: string; value: string | n
       <CardContent className="p-6">
         <div className="flex flex-col space-y-1">
           <span className="text-neutral-500 text-sm">{title}</span>
-          <span className="text-3xl font-bold">{value}</span>
+          <span className="text-xl font-bold">{value}</span>
           {subtitle && (
             <p className="text-xs text-muted-foreground">
               {subtitle}

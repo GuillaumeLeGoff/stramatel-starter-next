@@ -194,6 +194,189 @@ export const createShape = (
       };
     }
 
+    // Données de sécurité - Compteurs de jours
+    case "currentDaysWithoutAccident": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 20,
+          width: 200,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#22c55e",
+          align: "center",
+        },
+        className: "currentDaysWithoutAccident",
+      };
+    }
+
+    case "currentDaysWithoutAccidentWithStop": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 20,
+          width: 200,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#22c55e",
+          align: "center",
+        },
+        className: "currentDaysWithoutAccidentWithStop",
+      };
+    }
+
+    case "currentDaysWithoutAccidentWithoutStop": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 20,
+          width: 200,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#22c55e",
+          align: "center",
+        },
+        className: "currentDaysWithoutAccidentWithoutStop",
+      };
+    }
+
+    case "recordDaysWithoutAccident": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 20,
+          width: 200,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#f59e0b",
+          align: "center",
+        },
+        className: "recordDaysWithoutAccident",
+      };
+    }
+
+    // Données de sécurité - Compteurs d'accidents
+    case "yearlyAccidentsCount": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 75,
+          y: centerY - 20,
+          width: 150,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#ef4444",
+          align: "center",
+        },
+        className: "yearlyAccidentsCount",
+      };
+    }
+
+    case "yearlyAccidentsWithStopCount": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 75,
+          y: centerY - 20,
+          width: 150,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#ef4444",
+          align: "center",
+        },
+        className: "yearlyAccidentsWithStopCount",
+      };
+    }
+
+    case "yearlyAccidentsWithoutStopCount": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 75,
+          y: centerY - 20,
+          width: 150,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#f97316",
+          align: "center",
+        },
+        className: "yearlyAccidentsWithoutStopCount",
+      };
+    }
+
+    case "monthlyAccidentsCount": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 75,
+          y: centerY - 20,
+          width: 150,
+          height: 40,
+          fontSize: 24,
+          fontFamily: "Arial",
+          fontStyle: "bold",
+          fill: "#ef4444",
+          align: "center",
+        },
+        className: "monthlyAccidentsCount",
+      };
+    }
+
+    // Données de sécurité - Dates
+    case "lastAccidentDate": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 15,
+          width: 200,
+          height: 30,
+          fontSize: 16,
+          fontFamily: "Arial",
+          fontStyle: "normal",
+          fill: "#6b7280",
+          align: "center",
+        },
+        className: "lastAccidentDate",
+      };
+    }
+
+    case "monitoringStartDate": {
+      return {
+        attrs: {
+          ...baseAttrs,
+          x: centerX - 100,
+          y: centerY - 15,
+          width: 200,
+          height: 30,
+          fontSize: 16,
+          fontFamily: "Arial",
+          fontStyle: "normal",
+          fill: "#6b7280",
+          align: "center",
+        },
+        className: "monitoringStartDate",
+      };
+    }
+
     default:
       throw new Error(`Type de forme non supporté: ${shapeType}`);
   }
@@ -214,6 +397,16 @@ export const getShapeDisplayName = (shapeType: ShapeType): string => {
     liveDate: "Date en direct",
     liveTime: "Heure en direct",
     liveDateTime: "Date/heure en direct",
+    currentDaysWithoutAccident: "Jours sans accident",
+    currentDaysWithoutAccidentWithStop: "Jours sans arrêt",
+    currentDaysWithoutAccidentWithoutStop: "Jours sans arrêt léger",
+    recordDaysWithoutAccident: "Record jours sans accident",
+    yearlyAccidentsCount: "Accidents cette année",
+    yearlyAccidentsWithStopCount: "Accidents avec arrêt",
+    yearlyAccidentsWithoutStopCount: "Accidents sans arrêt",
+    monthlyAccidentsCount: "Accidents ce mois",
+    lastAccidentDate: "Dernier accident",
+    monitoringStartDate: "Début de suivi",
   };
 
   return displayNames[shapeType];

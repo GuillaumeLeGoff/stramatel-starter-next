@@ -122,12 +122,22 @@ export function useSlide({ stageData, containerRef}: UseSlideProps) {
 
       let newShape;
 
-      // Utiliser createShape pour les types standards
-      if (["rectangle", "circle", "text", "line", "arrow", "liveDate", "liveTime", "liveDateTime"].includes(shapeType)) {
+      // Utiliser createShape pour les types standards et les données de sécurité
+      const supportedTypes = [
+        "rectangle", "circle", "text", "line", "arrow", 
+        "liveDate", "liveTime", "liveDateTime",
+        "currentDaysWithoutAccident", "currentDaysWithoutAccidentWithStop", 
+        "currentDaysWithoutAccidentWithoutStop", "recordDaysWithoutAccident",
+        "yearlyAccidentsCount", "yearlyAccidentsWithStopCount", 
+        "yearlyAccidentsWithoutStopCount", "monthlyAccidentsCount",
+        "lastAccidentDate", "monitoringStartDate"
+      ];
+      
+      if (supportedTypes.includes(shapeType)) {
         newShape = createShape(shapeType as ShapeType, centerX, centerY);
         
-        // Pour les types live, ajuster la position si fournie dans les options
-        if (shapeType.startsWith("live") && options?.x !== undefined && options?.y !== undefined) {
+        // Pour les types live et données de sécurité, ajuster la position si fournie dans les options
+        if ((shapeType.startsWith("live") || shapeType.includes("Days") || shapeType.includes("Accidents") || shapeType.includes("Date")) && options?.x !== undefined && options?.y !== undefined) {
           newShape.attrs.x = options.x;
           newShape.attrs.y = options.y;
         }
