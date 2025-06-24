@@ -80,6 +80,7 @@ export async function PUT(
       },
     });
 
+    // Le serveur WebSocket détectera automatiquement le changement via updatedAt
     return NextResponse.json(slideshow);
   } catch (error) {
     console.error("Erreur lors de la mise à jour du slideshow:", error);
@@ -105,6 +106,7 @@ export async function DELETE(
       },
     });
 
+    // Le serveur WebSocket détectera automatiquement la suppression
     return NextResponse.json(
       { message: "Slideshow supprimé avec succès" },
       { status: 200 }

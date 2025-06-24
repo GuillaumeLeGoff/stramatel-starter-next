@@ -13,6 +13,7 @@ import {
 } from "react-konva";
 import { KonvaStage } from "@/features/editor/types";
 import { PanelLiveText } from "./PanelLiveText";
+import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 interface KonvaSlideViewerProps {
   konvaData: KonvaStage;
@@ -102,24 +103,22 @@ const SimpleKonvaImage: React.FC<{
   );
 };
 
-// Dimensions par défaut pour le viewport (1920x1080)
-const VIEWPORT_WIDTH = 1920;
-const VIEWPORT_HEIGHT = 1080;
-
-// Dimensions du canvas complet
-const CANVAS_WIDTH = 10000;
-const CANVAS_HEIGHT = 10000;
-
 export default function KonvaSlideViewerClient({
   konvaData,
 }: KonvaSlideViewerProps) {
+  const { width, height } = useAppSettings();
+  
   if (!konvaData || !konvaData.children) {
     return null;
   }
 
+  // Utiliser les dimensions depuis AppSettings avec fallback par défaut
+  const VIEWPORT_WIDTH = width;
+  const VIEWPORT_HEIGHT = height;
+
   // Calculer l'offset pour centrer le viewport
-  const offsetX = (CANVAS_WIDTH - VIEWPORT_WIDTH) / 2;
-  const offsetY = (CANVAS_HEIGHT - VIEWPORT_HEIGHT) / 2;
+  const offsetX = (konvaData.attrs.width - VIEWPORT_WIDTH) / 2;
+  const offsetY = (konvaData.attrs.height - VIEWPORT_HEIGHT) / 2;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderShape = (

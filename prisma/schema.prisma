@@ -55,6 +55,9 @@ model Slideshow {
   slides      Slide[]
   modes       Mode[]
   schedules   Schedule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Slide {
@@ -65,6 +68,9 @@ model Slide {
   konvaData   Json?
   slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
   media       Media[]   @relation("SlideMedia")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Mode {

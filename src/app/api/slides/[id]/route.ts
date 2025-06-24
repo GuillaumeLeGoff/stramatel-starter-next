@@ -111,6 +111,7 @@ export async function PUT(
        },
      });
 
+     // Le serveur WebSocket détectera automatiquement le changement via updatedAt
      return NextResponse.json(updatedSlide);
   } catch (error) {
     console.error("Erreur lors de la mise à jour de la slide:", error);
@@ -130,12 +131,19 @@ export async function DELETE(
     // Attendre les paramètres avant de les utiliser
     const { id } = await params;
 
+    // Récupérer les infos de la slide avant suppression
+    const slideToDelete = await prisma.slide.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, slideshowId: true }
+    });
+
     await prisma.slide.delete({
       where: {
         id: parseInt(id),
       },
     });
 
+    // Le serveur WebSocket détectera automatiquement la suppression
     return NextResponse.json(
       { message: "Slide supprimée avec succès" },
       { status: 200 }

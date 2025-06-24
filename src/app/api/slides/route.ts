@@ -86,6 +86,7 @@ export async function POST(request: Request) {
       },
     });
 
+    // Le serveur WebSocket détectera automatiquement le changement via updatedAt
     return NextResponse.json(updatedSlide, { status: 201 });
   } catch (error) {
     console.log(error);

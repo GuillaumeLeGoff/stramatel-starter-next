@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       },
     });
 
+    // Le serveur WebSocket détectera automatiquement le changement via updatedAt
     return NextResponse.json(slideshow, { status: 201 });
   } catch (error) {
     console.error("Erreur création diaporama:", error);

@@ -109,4 +109,38 @@ class SocketClient {
   }
 }
 
-export const socketClient = new SocketClient(); 
+export const socketClient = new SocketClient();
+
+let socketClientForApis: any = null;
+
+// Initialiser la connexion socket côté serveur (pour les APIs)
+function getSocketClientForApis() {
+  if (!socketClientForApis) {
+    socketClientForApis = io(`http://localhost:3000`, {
+      transports: ['websocket', 'polling']
+    });
+  }
+  return socketClientForApis;
+}
+
+// Fonction pour notifier les changements de contenu
+export function notifyContentChange(type: 'slide' | 'slideshow', id: number, slideshowId?: number) {
+  try {
+    const client = getSocketClientForApis();
+    
+    // Déclencher une vérification immédiate des changements
+    client.emit("checkContentChanges");
+    
+    console.log(`Notification de changement: ${type} ${id}${slideshowId ? ` (slideshow ${slideshowId})` : ''}`);
+  } catch (error) {
+    console.error('Erreur lors de la notification de changement:', error);
+  }
+}
+
+// Fonction pour fermer la connexion socket (utile pour les tests)
+export function closeSocketConnection() {
+  if (socketClientForApis) {
+    socketClientForApis.close();
+    socketClientForApis = null;
+  }
+} 
