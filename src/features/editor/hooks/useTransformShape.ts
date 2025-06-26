@@ -1,9 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { KonvaShape } from "../types";
 import { slideStore } from "../store/slideStore";
 import Konva from "konva";
 
-interface UseKonvaEventsProps {
+interface UseKonvaEditorProps {
   selectedShapes: KonvaShape[];
   getAllShapes: () => KonvaShape[];
   saveChanges: (
@@ -11,20 +11,52 @@ interface UseKonvaEventsProps {
       | { nodeId: string; attrs: Record<string, unknown> }
       | Record<string, Record<string, unknown>>
   ) => Promise<void>;
-  updateTransformer: () => void;
-  shapeRefs: Record<string, Konva.Node>;
   isPreview?: boolean;
 }
 
-export function useKonvaEvents({
+export function useKonvaEditor({
   selectedShapes,
   getAllShapes,
   saveChanges,
-  updateTransformer,
-  shapeRefs,
   isPreview = false,
-}: UseKonvaEventsProps) {
+}: UseKonvaEditorProps) {
+  const transformerRef = useRef<Konva.Transformer | null>(null);
+  const shapeRefs = useRef<Record<string, Konva.Node>>({});
   const { setSelectedShapes, editingTextId } = slideStore();
+
+  // Mettre à jour le transformer
+  const updateTransformer = useCallback(() => {
+    if (!transformerRef.current) {
+      return;
+    }
+
+    const selectedIds = selectedShapes.map((shape) => shape.attrs.id);
+    const selectedNodes = selectedIds
+      .map((id) => shapeRefs.current[id as string])
+      .filter(Boolean);
+
+    if (selectedNodes.length > 0) {
+      transformerRef.current.nodes(selectedNodes);
+      transformerRef.current.getLayer()?.batchDraw();
+    } else {
+      transformerRef.current.nodes([]);
+      transformerRef.current.getLayer()?.batchDraw();
+    }
+  }, [selectedShapes]);
+
+  // Fonction pour enregistrer une référence à un nœud
+  const registerNodeRef = useCallback(
+    (nodeId: string, node: Konva.Node | null) => {
+      if (node) {
+        shapeRefs.current[nodeId] = node;
+        // Ne pas appeler updateTransformer ici pour éviter les conflits de timing
+        // Il sera appelé par useEffect quand selectedShapes change
+      } else {
+        delete shapeRefs.current[nodeId];
+      }
+    },
+    [] // Pas de dépendance à updateTransformer
+  );
 
   // Fonction pour gérer les événements de transformation de plusieurs formes
   const handleMultiTransformEnd = useCallback(
@@ -38,7 +70,7 @@ export function useKonvaEvents({
       const selectedIds = selectedShapes.map((shape) => shape.attrs.id);
 
       selectedIds.forEach((id) => {
-        const node = shapeRefs[id as string];
+        const node = shapeRefs.current[id as string];
         const shape = selectedShapes.find((s) => s.attrs.id === id);
         if (!node || !shape) return;
 
@@ -68,7 +100,7 @@ export function useKonvaEvents({
         updateTransformer();
       }, 1);
     },
-    [selectedShapes, shapeRefs, saveChanges, updateTransformer]
+    [selectedShapes, saveChanges, updateTransformer]
   );
 
   // Fonction pour gérer les événements de transformation d'une forme
@@ -151,6 +183,7 @@ export function useKonvaEvents({
       setSelectedShapes,
       saveChanges,
       updateTransformer,
+      editingTextId,
     ]
   );
 
@@ -170,10 +203,26 @@ export function useKonvaEvents({
     [isPreview]
   );
 
+  // Mettre à jour le transformer lorsque la sélection change
+  useEffect(() => {
+    // Utiliser un petit délai pour s'assurer que toutes les références sont prêtes
+    const timer = setTimeout(() => {
+      updateTransformer();
+    }, 5);
+
+    return () => clearTimeout(timer);
+  }, [selectedShapes, updateTransformer]);
+
   return {
+    // Transformer et références
+    transformerRef,
+    shapeRefs: shapeRefs.current,
+    registerNodeRef,
+    updateTransformer,
+    // Gestionnaires d'événements
     handleTransformEnd,
     handleDragEnd,
     handleShapeClick,
     handleMultiTransformEnd,
   };
-}
+} 

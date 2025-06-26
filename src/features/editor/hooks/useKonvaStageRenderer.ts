@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import { KonvaStage, KonvaShape } from "../types";
 import { useKonvaSelection } from "./useKonvaSelection";
-import { useKonvaTransformer } from "./useKonvaTransformer";
+import { useKonvaEditor } from "./useTransformShape";
 import { useKonvaSave } from "./useKonvaSave";
-import { useKonvaEvents } from "./useKonvaEvents";
 import { useTextEditor } from "./useTextEditor";
 import { useSlide } from "./useSlide";
 import Konva from "konva";
@@ -44,9 +43,6 @@ export function useKonvaStageRenderer({
 
   // Hooks spécialisés
   const selection = useKonvaSelection({ getAllShapes, isPreview });
-  const transformer = useKonvaTransformer({
-    selectedShapes: selection.selectedShapes,
-  });
 
   // Récupérer la fonction de sauvegarde depuis useSlide (seulement si pas en preview)
   const { saveCurrentSlideKonvaData } = useSlide({
@@ -61,27 +57,27 @@ export function useKonvaStageRenderer({
       : saveCurrentSlideKonvaData,
   });
 
-  const textEditor = useTextEditor({
-    shapeRefs: transformer.shapeRefs,
-    getAllShapes,
-    saveChanges: save.saveChanges,
-  });
-
-  const events = useKonvaEvents({
+  // Hook unifié pour la gestion Konva
+  const editor = useKonvaEditor({
     selectedShapes: selection.selectedShapes,
     getAllShapes,
     saveChanges: save.saveChanges,
-    updateTransformer: transformer.updateTransformer,
-    shapeRefs: transformer.shapeRefs,
     isPreview,
+  });
+
+  // Hook pour l'édition de texte
+  const textEditor = useTextEditor({
+    shapeRefs: editor.shapeRefs,
+    getAllShapes,
+    saveChanges: save.saveChanges,
   });
 
   // Fonction pour gérer le mouseUp avec les références des formes
   const handleMouseUp = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
-      selection.handleMouseUp(e, transformer.shapeRefs);
+      selection.handleMouseUp(e, editor.shapeRefs);
     },
-    [selection, transformer.shapeRefs]
+    [selection, editor.shapeRefs]
   );
 
   return {
@@ -101,14 +97,16 @@ export function useKonvaStageRenderer({
     handleMouseMove: selection.handleMouseMove,
     handleMouseUp,
 
-    // Transformer
-    transformerRef: transformer.transformerRef,
-    registerNodeRef: transformer.registerNodeRef,
+    // Transformer et références
+    transformerRef: editor.transformerRef,
+    registerNodeRef: editor.registerNodeRef,
+    shapeRefs: editor.shapeRefs,
+    updateTransformer: editor.updateTransformer,
 
     // Événements des formes
-    handleTransformEnd: events.handleTransformEnd,
-    handleDragEnd: events.handleDragEnd,
-    handleShapeClick: events.handleShapeClick,
+    handleTransformEnd: editor.handleTransformEnd,
+    handleDragEnd: editor.handleDragEnd,
+    handleShapeClick: editor.handleShapeClick,
 
     // Sauvegarde
     saveChanges: save.saveChanges,

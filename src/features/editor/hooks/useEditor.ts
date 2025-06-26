@@ -1,6 +1,7 @@
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { useCallback, useMemo, useRef } from "react";
 import { slideStore } from "../store/slideStore";
+import { useEditorStore } from "../store/editorStore";
 import { KonvaStage } from "../types";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
@@ -8,14 +9,22 @@ export function useEditor() {
   const {
     currentSlide,
     setCurrentSlide,
-    isLoading,
-    setLoading,
-    error,
-    setError,
-    selectedShapes,
-    setSelectedShapes,
-    editingTextId,
   } = slideStore();
+
+  const {
+    isLoading,
+    error,
+    selectedShapes,
+    editingTextId,
+    stageScale,
+    stagePosition,
+    setLoading,
+    setError,
+    setSelectedShapes,
+    setEditingTextId,
+    setStageScale,
+    setStagePosition,
+  } = useEditorStore();
 
   const { currentSlideshow } = useSlideshow();
   const { width, height } = useAppSettings();
@@ -34,8 +43,6 @@ export function useEditor() {
 
     const slide = currentSlideshow.slides[currentSlide];
     if (!slide) return null;
-
-    // Si le slide a des données Konva, les retourner avec les dimensions des settings
     if (slide.konvaData) {
       const konvaData = slide.konvaData as unknown as KonvaStage;
       return {
@@ -46,16 +53,8 @@ export function useEditor() {
       };
     }
 
-    // Sinon, créer un stage Konva par défaut avec les dimensions des settings
-    return {
-      attrs: {
-        width: 10000,
-        height: 10000,
-      },
-      className: "Stage",
-      children: [],
-    } as KonvaStage;
-  }, [currentSlideshow, currentSlide,]);
+    return null;
+  }, [currentSlideshow, currentSlide]);
 
   // Obtenir le konvaData actuel (mémorisé)
   const currentKonvaData = useMemo(
@@ -63,21 +62,18 @@ export function useEditor() {
     [getCurrentSlideKonvaData]
   );
 
-  // Changer de slide
-  const changeSlide = useCallback(
-    (slideIndex: number) => {
-      if (!currentSlideshow || !currentSlideshow.slides) return;
+  // Actions métier implémentées dans le hook
 
-      if (slideIndex >= 0 && slideIndex < currentSlideshow.slides.length) {
-        // Réinitialiser les formes sélectionnées lors d'un changement de slide (sauf si on édite un texte)
-        if (!editingTextId) {
-          setSelectedShapes([]);
-        }
-        setCurrentSlide(slideIndex);
-      }
-    },
-    [currentSlideshow, setCurrentSlide, setSelectedShapes, editingTextId]
-  );
+  // Effacer la sélection
+  const clearSelection = useCallback(() => {
+    setSelectedShapes([]);
+  }, [setSelectedShapes]);
+
+  // Réinitialiser la transformation du canvas
+  const resetCanvasTransform = useCallback(() => {
+    setStageScale(1);
+    setStagePosition({ x: 0, y: 0 });
+  }, [setStageScale, setStagePosition]);
 
   // Mettre à jour une forme sélectionnée
   const updateSelectedShape = useCallback(
@@ -91,13 +87,38 @@ export function useEditor() {
           ...shape.attrs,
           ...updatedAttrs,
         },
-      })) as typeof selectedShapes;
+      }));
 
       setSelectedShapes(updatedSelectedShapes);
-
       console.log("Formes mises à jour avec les attributs:", updatedAttrs);
     },
     [selectedShapes, setSelectedShapes]
+  );
+
+  // Réinitialiser l'éditeur
+  const resetEditor = useCallback(() => {
+    setLoading(false);
+    setError(null);
+    setSelectedShapes([]);
+    setEditingTextId(null);
+    setStageScale(1);
+    setStagePosition({ x: 0, y: 0 });
+  }, [setLoading, setError, setSelectedShapes, setEditingTextId, setStageScale, setStagePosition]);
+
+  // Changer de slide
+  const changeSlide = useCallback(
+    (slideIndex: number) => {
+      if (!currentSlideshow || !currentSlideshow.slides) return;
+
+      if (slideIndex >= 0 && slideIndex < currentSlideshow.slides.length) {
+        // Réinitialiser les formes sélectionnées lors d'un changement de slide (sauf si on édite un texte)
+        if (!editingTextId) {
+          clearSelection();
+        }
+        setCurrentSlide(slideIndex);
+      }
+    },
+    [currentSlideshow, setCurrentSlide, clearSelection, editingTextId]
   );
 
   return {
@@ -107,6 +128,11 @@ export function useEditor() {
     error,
     containerRef,
     selectedShapes,
+    editingTextId,
+
+    // État du canvas
+    stageScale,
+    stagePosition,
 
     // Dimensions depuis AppSettings
     width,
@@ -119,12 +145,18 @@ export function useEditor() {
     // Actions de navigation
     changeSlide,
 
-    // Actions d'état
+    // Actions d'état (setters simples)
     setLoading,
     setError,
     setSelectedShapes,
+    setEditingTextId,
+    setStageScale,
+    setStagePosition,
 
-    // Actions sur les formes
+    // Actions métier (logique implémentée dans le hook)
+    clearSelection,
+    resetCanvasTransform,
     updateSelectedShape,
+    resetEditor,
   };
 }
