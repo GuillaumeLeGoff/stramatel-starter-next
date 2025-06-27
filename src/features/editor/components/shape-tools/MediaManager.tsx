@@ -39,7 +39,7 @@ import {
   type SortOption,
 } from "@/features/editor/hooks";
 
-interface MediaListProps {
+interface MediaManagerProps {
   onMediaSelect?: (media: Media) => void;
   addShape?: (
     shapeType: string,
@@ -105,7 +105,7 @@ const MediaGridSkeleton = ({ count = 4 }: { count?: number }) => (
   </>
 );
 
-export function MediaList({ onMediaSelect, addShape, onMediaDeleted }: MediaListProps) {
+export function MediaManager({ onMediaSelect, addShape, onMediaDeleted }: MediaManagerProps) {
   const [mediaToDelete, setMediaToDelete] = useState<{ id: string; name: string } | null>(null);
   
   const {

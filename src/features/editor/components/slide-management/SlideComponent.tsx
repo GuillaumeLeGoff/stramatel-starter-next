@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { KonvaStageRenderer } from "../konva/KonvaStageRenderer";
+import { KonvaStageRenderer } from "../canvas-editor/KonvaStageRenderer";
 import { KonvaStage, SlidePreviewProps } from "../../types";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { useSlide } from "../../hooks/useSlide";
 import { Button } from "@/shared/components/ui/button";
 import { Trash2, Clock } from "lucide-react";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
+import { createDefaultKonvaStage } from "../../utils";
 
 export function SlidePreview({
   slide,
@@ -17,23 +18,13 @@ export function SlidePreview({
   const { width, height } = useAppSettings();
 
   // Convertir le konvaData du slide en KonvaStage
-  let stageData: KonvaStage | null = null;
+  let stageData: KonvaStage;
 
   if (slide.konvaData) {
     stageData = slide.konvaData as unknown as KonvaStage;
   } else {
     // Créer des données par défaut si aucune donnée Konva n'existe
-    stageData = {
-      attrs: { width, height },
-      className: "Stage",
-      children: [
-        {
-          attrs: {},
-          className: "Layer",
-          children: [],
-        },
-      ],
-    } as KonvaStage;
+    stageData = createDefaultKonvaStage();
   }
 
   const { previewScale, viewportStageData, deleteSlide } = useSlide({
@@ -124,10 +115,12 @@ export function SlidePreview({
                 backgroundColor: "white",
               }}
             >
-              <KonvaStageRenderer
-                stageData={viewportStageData}
-                isPreview={true}
-              />
+              {viewportStageData && (
+                <KonvaStageRenderer
+                  stageData={viewportStageData}
+                  isPreview={true}
+                />
+              )}
             </div>
           </div>
         </div>

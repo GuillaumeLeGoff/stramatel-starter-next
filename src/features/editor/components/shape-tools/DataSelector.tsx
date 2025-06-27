@@ -13,11 +13,11 @@ import {
 } from "lucide-react";
 import { KonvaStage } from "../../types";
 
-interface DataViewerProps {
+interface DataSelectorProps {
   konvaData?: KonvaStage;
   addShape?: (
     shapeType: string,
-    options?: { text?: string; x?: number; y?: number }
+    options?: { src?: string; name?: string; mediaId?: string }
   ) => Promise<void>;
 }
 
@@ -28,7 +28,7 @@ interface DateTimeAction {
   action: () => void;
 }
 
-export function DataViewer({ addShape }: DataViewerProps) {
+export function DataSelector({ addShape }: DataSelectorProps) {
   const addDateToCanvas = async () => {
     if (addShape) {
       try {

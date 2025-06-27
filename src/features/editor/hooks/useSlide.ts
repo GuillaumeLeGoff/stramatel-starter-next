@@ -11,7 +11,7 @@ import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
-import { cleanMediaFromKonvaData, createShape, getStageCenter } from "../utils";
+import { cleanMediaFromKonvaData, createShape, getStageCenter, calculateImageDimensions, loadImageDimensions, createDefaultKonvaStage } from "../utils";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 interface UseSlideProps {
@@ -147,12 +147,36 @@ export function useSlide({ stageData, containerRef}: UseSlideProps) {
         
         switch (shapeType) {
           case "image":
+            // Calculer les dimensions basées sur l'image réelle et les appSettings
+            let imageWidth = 200;
+            let imageHeight = 150;
+            
+            try {
+              if (options?.src) {
+                const imageDimensions = await loadImageDimensions(options.src);
+                const calculatedDimensions = calculateImageDimensions(
+                  imageDimensions.width,
+                  imageDimensions.height,
+                  width,
+                  height
+                );
+                imageWidth = calculatedDimensions.width;
+                imageHeight = calculatedDimensions.height;
+              }
+            } catch (error) {
+              console.warn("Impossible de charger les dimensions de l'image, utilisation des dimensions par défaut:", error);
+              // Utiliser les dimensions par défaut proportionnelles aux appSettings
+              const defaultDimensions = calculateImageDimensions(200, 150, width, height);
+              imageWidth = defaultDimensions.width;
+              imageHeight = defaultDimensions.height;
+            }
+            
             newShape = {
               attrs: {
-                x: centerX - 100,
-                y: centerY - 75,
-                width: 200,
-                height: 150,
+                x: centerX - imageWidth / 2,
+                y: centerY - imageHeight / 2,
+                width: imageWidth,
+                height: imageHeight,
                 src: options?.src || "/placeholder-image.jpg",
                 id: shapeId,
                 name: options?.name || "Image",
@@ -163,12 +187,15 @@ export function useSlide({ stageData, containerRef}: UseSlideProps) {
             break;
 
           case "video":
+            // Pour les vidéos, utiliser des dimensions par défaut proportionnelles aux appSettings
+            const videoDimensions = calculateImageDimensions(200, 150, width, height);
+            
             newShape = {
               attrs: {
-                x: centerX - 100,
-                y: centerY - 75,
-                width: 200,
-                height: 150,
+                x: centerX - videoDimensions.width / 2,
+                y: centerY - videoDimensions.height / 2,
+                width: videoDimensions.width,
+                height: videoDimensions.height,
                 src: options?.src || "/placeholder-video.mp4",
                 id: shapeId,
                 name: options?.name || "Vidéo",
@@ -304,10 +331,16 @@ export function useSlide({ stageData, containerRef}: UseSlideProps) {
    */
   const addSlide = async (slideData: Partial<Slide>) => {
     try {
-      // 1. Créer la slide dans la base de données via l'API
-      const newSlide = await createSlide(slideData);
+      // 1. Créer des données Konva par défaut si elles ne sont pas fournies
+      const konvaData = slideData.konvaData || createDefaultKonvaStage(width, height);
+      
+      // 2. Créer la slide dans la base de données via l'API avec les données Konva
+      const newSlide = await createSlide({
+        ...slideData,
+        konvaData
+      });
 
-      // 2. Mettre à jour le slideshow actuel avec la nouvelle slide
+      // 3. Mettre à jour le slideshow actuel avec la nouvelle slide
       if (currentSlideshow && updateCurrentSlideshow) {
         updateCurrentSlideshow((prev) => ({
           ...prev,
@@ -315,7 +348,7 @@ export function useSlide({ stageData, containerRef}: UseSlideProps) {
         }));
       }
 
-      // 3. Mettre à jour la slide courante dans le store pour qu'elle soit active
+      // 4. Mettre à jour la slide courante dans le store pour qu'elle soit active
       setCurrentSlide(currentSlideshow?.slides?.length || 0);
 
       return newSlide;

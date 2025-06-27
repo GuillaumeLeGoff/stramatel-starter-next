@@ -4,24 +4,25 @@ import { slideStore } from "../store/slideStore";
 import { useEditorStore } from "../store/editorStore";
 import { KonvaStage } from "../types";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
+import { createDefaultKonvaStage } from "../utils";
 
 export function useEditor() {
   const {
     currentSlide,
     setCurrentSlide,
+    selectedShapes,
+    editingTextId,
+    setSelectedShapes,
+    setEditingTextId,
   } = slideStore();
 
   const {
     isLoading,
     error,
-    selectedShapes,
-    editingTextId,
     stageScale,
     stagePosition,
     setLoading,
     setError,
-    setSelectedShapes,
-    setEditingTextId,
     setStageScale,
     setStagePosition,
   } = useEditorStore();
@@ -43,6 +44,7 @@ export function useEditor() {
 
     const slide = currentSlideshow.slides[currentSlide];
     if (!slide) return null;
+    
     if (slide.konvaData) {
       const konvaData = slide.konvaData as unknown as KonvaStage;
       return {
@@ -53,8 +55,9 @@ export function useEditor() {
       };
     }
 
-    return null;
-  }, [currentSlideshow, currentSlide]);
+    // Si pas de konvaData, créer des données par défaut
+    return createDefaultKonvaStage(width, height);
+  }, [currentSlideshow, currentSlide, width, height]);
 
   // Obtenir le konvaData actuel (mémorisé)
   const currentKonvaData = useMemo(

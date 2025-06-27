@@ -11,17 +11,15 @@ export const generateShapeId = (prefix: string = "shape"): string => {
 };
 
 /**
- * Crée un stage Konva par défaut
+ * Crée un stage Konva par défaut avec une couche vide
  */
 export const createDefaultKonvaStage = (
 
 ): KonvaStage => {
-
-
   return {
     attrs: {
-      width: 10000,
-      height: 10000,
+      width: 10000, // Canvas large pour permettre le déplacement
+      height: 10000, // Canvas large pour permettre le déplacement
     },
     className: "Stage",
     children: [
@@ -524,4 +522,65 @@ export const findMediasInKonvaData = (konvaData: KonvaStage): string[] => {
   });
 
   return [...new Set(mediaUrls)]; // Supprimer les doublons
+};
+
+/**
+ * Calcule les dimensions d'une image en conservant son ratio
+ * et en s'adaptant aux dimensions de l'éditeur (appSettings)
+ */
+export const calculateImageDimensions = (
+  imageWidth: number,
+  imageHeight: number,
+  editorWidth: number,
+  editorHeight: number,
+  maxPercent: number = 0.4 // Maximum 40% de la taille de l'éditeur par défaut
+): { width: number; height: number } => {
+  // Calculer le ratio de l'image
+  const imageRatio = imageWidth / imageHeight;
+  
+  // Calculer les dimensions maximales (pourcentage de l'éditeur)
+  const maxWidth = editorWidth * maxPercent;
+  const maxHeight = editorHeight * maxPercent;
+  
+  let finalWidth: number;
+  let finalHeight: number;
+  
+  // Déterminer quelle dimension limite en premier
+  if (imageWidth / imageHeight > maxWidth / maxHeight) {
+    // L'image est plus large proportionnellement, limiter par la largeur
+    finalWidth = maxWidth;
+    finalHeight = maxWidth / imageRatio;
+  } else {
+    // L'image est plus haute proportionnellement, limiter par la hauteur
+    finalHeight = maxHeight;
+    finalWidth = maxHeight * imageRatio;
+  }
+  
+  return {
+    width: Math.round(finalWidth),
+    height: Math.round(finalHeight)
+  };
+};
+
+/**
+ * Charge une image et retourne ses dimensions naturelles
+ */
+export const loadImageDimensions = (src: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    
+    img.onload = () => {
+      resolve({
+        width: img.naturalWidth,
+        height: img.naturalHeight
+      });
+    };
+    
+    img.onerror = () => {
+      reject(new Error(`Impossible de charger l'image: ${src}`));
+    };
+    
+    img.src = src;
+  });
 };

@@ -48,10 +48,12 @@ export const DEFAULT_SHAPE_STYLES = {
   image: {
     width: 200,
     height: 150,
+    // Ces valeurs seront remplacées dynamiquement par les appSettings
   },
   video: {
     width: 200,
     height: 150,
+    // Ces valeurs seront remplacées dynamiquement par les appSettings
   },
 } as const;
 
