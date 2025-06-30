@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { KonvaStageRenderer } from "../canvas-editor/KonvaStageRenderer";
+import { KonvaStageRenderer } from "../editor/KonvaStageRenderer";
 import { KonvaStage, SlidePreviewProps } from "../../types";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { useSlide } from "../../hooks/useSlide";
+import { useSlideManager } from "@/features/editor/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Trash2, Clock } from "lucide-react";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
@@ -27,7 +27,7 @@ export function SlidePreview({
     stageData = createDefaultKonvaStage();
   }
 
-  const { previewScale, viewportStageData, deleteSlide } = useSlide({
+  const { previewScale, viewportStageData, deleteSlide } = useSlideManager({
     stageData,
     containerRef,
   });

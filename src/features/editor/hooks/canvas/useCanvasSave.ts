@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { KonvaStage, KonvaShape } from "../types";
+import { KonvaStage, KonvaShape } from "../../types";
 
 type ExtendedKonvaShape = KonvaShape & {
   attrs: Record<string, unknown>;
@@ -15,7 +15,7 @@ type SaveData =
   | { nodeId: string; attrs: Record<string, unknown> } // Un seul nœud
   | Record<string, Record<string, unknown>>; // Plusieurs nœuds
 
-export function useKonvaSave({
+export function useCanvasSave({
   stageData,
   saveCurrentSlideKonvaData,
 }: UseKonvaSaveProps) {

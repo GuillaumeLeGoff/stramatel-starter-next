@@ -1,22 +1,37 @@
-import React from "react";
-import { useEditor, useSlide, useZoom } from "@/features/editor/hooks";
+import React, { useEffect } from "react";
+import { useEditor, useSlideManager, useZoom } from "@/features/editor/hooks";
 import { useSlideshow } from "@/features/slideshow/hooks";
+import { useAppSettingsStore } from "@/store/appSettingsStore";
 import { ResizableHandle, ResizablePanelGroup } from "@/shared/components/ui/resizable";
 
 // Nouveaux composants modulaires
-import { SlideManager } from "./slide-management";
-import { EditorCanvas } from "./canvas-editor";
-import { ToolsPanel } from "./shape-tools";
+import { SlideManager } from "./slide";
+import { EditorCanvas } from "./editor";
+import { ToolsPanel } from "./shape";
 
 export function EditorPage() {
   const { currentSlideshow } = useSlideshow();
-  const { currentSlide, getCurrentSlideKonvaData, changeSlide, width, height } =
-    useEditor();
+  const { currentSlide, getCurrentSlideKonvaData, changeSlide } = useEditor();
+  const { settings, fetchSettings } = useAppSettingsStore();
+  
+  // Charger les settings au montage si pas déjà chargées
+  useEffect(() => {
+    if (!settings) {
+      fetchSettings();
+    }
+  }, [settings, fetchSettings]);
+  
+  // Récupérer les dimensions depuis appSettings avec des valeurs par défaut
+  const width = settings?.width || 1920;
+  const height = settings?.height || 1080;
 
   const konvaData = getCurrentSlideKonvaData();
-  const { scale, normalizedScale, zoomIn, zoomOut, containerRef } = useZoom();
+  const { scale, normalizedScale, zoomPercentage, zoomIn, zoomOut, fitToContainer, containerRef } = useZoom({
+    stageWidth: width,
+    stageHeight: height,
+  });
 
-  const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides } = useSlide({
+  const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides } = useSlideManager({
     stageData: konvaData,
     containerRef,
     scale,
@@ -75,11 +90,13 @@ export function EditorPage() {
             konvaData={konvaData}
             scale={scale}
             normalizedScale={normalizedScale}
+            zoomPercentage={zoomPercentage}
             containerRef={containerRef}
             width={width}
             height={height}
             zoomIn={zoomIn}
             zoomOut={zoomOut}
+            fitToContainer={fitToContainer}
             currentSlideDuration={currentSlideData?.duration}
             onDurationChange={handleDurationChange}
           />

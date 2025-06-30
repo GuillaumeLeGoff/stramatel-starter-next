@@ -1,12 +1,12 @@
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { useCallback, useMemo, useRef } from "react";
-import { slideStore } from "../store/slideStore";
-import { useEditorStore } from "../store/editorStore";
-import { KonvaStage } from "../types";
+import { slideStore } from "../../store/slideStore";
+import { useEditorStore } from "../../store/editorStore";
+import { KonvaStage, KonvaShape } from "../../types";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
-import { createDefaultKonvaStage } from "../utils";
+import { createDefaultKonvaStage } from "../../utils";
 
-export function useEditor() {
+export function useEditorCore() {
   const {
     currentSlide,
     setCurrentSlide,
@@ -56,8 +56,8 @@ export function useEditor() {
     }
 
     // Si pas de konvaData, créer des données par défaut
-    return createDefaultKonvaStage(width, height);
-  }, [currentSlideshow, currentSlide, width, height]);
+    return createDefaultKonvaStage();
+  }, [currentSlideshow, currentSlide]);
 
   // Obtenir le konvaData actuel (mémorisé)
   const currentKonvaData = useMemo(
@@ -90,7 +90,7 @@ export function useEditor() {
           ...shape.attrs,
           ...updatedAttrs,
         },
-      }));
+      })) as KonvaShape[];
 
       setSelectedShapes(updatedSelectedShapes);
       console.log("Formes mises à jour avec les attributs:", updatedAttrs);
@@ -137,10 +137,6 @@ export function useEditor() {
     stageScale,
     stagePosition,
 
-    // Dimensions depuis AppSettings
-    width,
-    height,
-
     // Données Konva
     getCurrentSlideKonvaData,
     currentKonvaData,
@@ -162,4 +158,4 @@ export function useEditor() {
     updateSelectedShape,
     resetEditor,
   };
-}
+} 

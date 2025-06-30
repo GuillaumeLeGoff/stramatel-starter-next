@@ -2,14 +2,13 @@
   "name": "stramatel-starter-next",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node server.mjs",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
+    "start": "NODE_ENV=production node server.mjs",
     "lint": "next lint",
     "create-test-user": "ts-node scripts/create-test-user.ts",
     "seed": "prisma db seed",

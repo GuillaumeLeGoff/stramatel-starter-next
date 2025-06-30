@@ -9,11 +9,13 @@ interface EditorCanvasProps {
   konvaData: KonvaStage | null;
   scale: number;
   normalizedScale: number;
+  zoomPercentage: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
   width: number;
   height: number;
   zoomIn: () => void;
   zoomOut: () => void;
+  fitToContainer?: () => void;
   currentSlideDuration?: number;
   onDurationChange: (duration: number) => void;
 }
@@ -22,11 +24,13 @@ export function EditorCanvas({
   konvaData,
   scale,
   normalizedScale,
+  zoomPercentage,
   containerRef,
   width,
   height,
   zoomIn,
   zoomOut,
+  fitToContainer,
   currentSlideDuration,
   onDurationChange,
 }: EditorCanvasProps) {
@@ -127,9 +131,10 @@ export function EditorCanvas({
           className="flex justify-end items-center border-t border"
         >
           <FooterEditorComponents
-            scale={normalizedScale}
+            scale={zoomPercentage}
             zoomIn={zoomIn}
             zoomOut={zoomOut}
+            fitToContainer={fitToContainer}
             currentSlideDuration={currentSlideDuration}
             onDurationChange={onDurationChange}
           />

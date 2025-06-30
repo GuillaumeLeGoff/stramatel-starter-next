@@ -33,11 +33,8 @@ import {
   FileType,
   ChevronDown,
 } from "lucide-react";
-import {
-  useMedias,
-  type Media,
-  type SortOption,
-} from "@/features/editor/hooks";
+import { useMedias } from "@/features/editor/hooks";
+import type { Media, SortOption } from "../../hooks/shape/useShapeMedia";
 
 interface MediaManagerProps {
   onMediaSelect?: (media: Media) => void;

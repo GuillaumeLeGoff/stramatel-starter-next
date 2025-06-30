@@ -1,4 +1,4 @@
-import { useEditor, useSlide } from "@/features/editor/hooks";
+import { useEditor, useSlideManager } from "@/features/editor/hooks";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Button } from "@/shared/components/ui/button";
@@ -26,7 +26,7 @@ export function HeaderEditorComponents() {
   const { editingTextId, editingTextShape } = slideStore();
 
   const konvaData = getCurrentSlideKonvaData();
-  const { saveCurrentSlideKonvaData } = useSlide({
+  const { saveCurrentSlideKonvaData } = useSlideManager({
     stageData: konvaData,
     containerRef: { current: null },
   });

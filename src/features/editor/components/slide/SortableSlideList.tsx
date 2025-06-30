@@ -21,7 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { GripVertical } from "lucide-react";
-import { useSlide } from "../../hooks/useSlide";
+import { useSlideManager } from "@/features/editor/hooks";
 
 interface SortableItemProps {
   slide: SlideshowSlide;
@@ -86,8 +86,8 @@ export function SortableSlideList({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Utiliser le hook useSlide pour accéder à handleDragEnd
-  const { handleDragEnd } = useSlide({
+  // Utiliser le hook useSlideManager pour accéder à handleDragEnd
+  const { handleDragEnd } = useSlideManager({
     stageData: null,
     containerRef: { current: null },
   });

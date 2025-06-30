@@ -4,14 +4,14 @@ import {
   deleteSlide as deleteSlideAPI,
   updateSlide,
   associateMediaToSlide,
-} from "../api/slideApi";
-import { KonvaStage, Slide, ShapeType } from "../types";
-import { slideStore } from "../store/slideStore";
+} from "../../api/slideApi";
+import { KonvaStage, Slide, ShapeType } from "../../types";
+import { slideStore } from "../../store/slideStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
-import { cleanMediaFromKonvaData, createShape, getStageCenter, calculateImageDimensions, loadImageDimensions, createDefaultKonvaStage } from "../utils";
+import { cleanMediaFromKonvaData, createShape, getStageCenter, calculateImageDimensions, loadImageDimensions, createDefaultKonvaStage } from "../../utils";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 interface UseSlideProps {
@@ -20,7 +20,7 @@ interface UseSlideProps {
   scale?: number;
 }
 
-export function useSlide({ stageData, containerRef}: UseSlideProps) {
+export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
   const [previewScale, setPreviewScale] = useState(0.2);
   const { setCurrentSlide, currentSlide } = slideStore();
   const { updateCurrentSlideshow, currentSlideshow } = useSlideshow();
@@ -332,7 +332,7 @@ export function useSlide({ stageData, containerRef}: UseSlideProps) {
   const addSlide = async (slideData: Partial<Slide>) => {
     try {
       // 1. Créer des données Konva par défaut si elles ne sont pas fournies
-      const konvaData = slideData.konvaData || createDefaultKonvaStage(width, height);
+      const konvaData = slideData.konvaData || createDefaultKonvaStage();
       
       // 2. Créer la slide dans la base de données via l'API avec les données Konva
       const newSlide = await createSlide({

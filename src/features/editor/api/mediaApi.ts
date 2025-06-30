@@ -1,4 +1,4 @@
-import { Media } from "../hooks/useMedias";
+import { Media } from "../hooks/shape/useShapeMedia";
 
 export interface MediaResponse {
   id: number;

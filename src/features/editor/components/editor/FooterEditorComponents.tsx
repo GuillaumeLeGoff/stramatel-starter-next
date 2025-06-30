@@ -4,12 +4,13 @@ import { Input } from "@/shared/components/ui/input";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Separator } from "@/shared/components/ui/separator";
-import { ZoomIn, ZoomOut, Clock, Minus, Plus } from "lucide-react";
+import { ZoomIn, ZoomOut, Clock, Minus, Plus, Maximize } from "lucide-react";
 
 interface FooterEditorComponentsProps {
   scale: number;
   zoomIn: () => void;
   zoomOut: () => void;
+  fitToContainer?: () => void;
   currentSlideDuration?: number;
   onDurationChange?: (duration: number) => void;
 }
@@ -18,6 +19,7 @@ export function FooterEditorComponents({
   scale,
   zoomIn,
   zoomOut,
+  fitToContainer,
   currentSlideDuration = 5,
   onDurationChange,
 }: FooterEditorComponentsProps) {
@@ -84,8 +86,20 @@ export function FooterEditorComponents({
               <ZoomOut className="h-3 w-3" />
             </Button>
 
+            {fitToContainer && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fitToContainer}
+                className="h-8 w-8 p-0"
+                title="Ajuster à l'écran"
+              >
+                <Maximize className="h-3 w-3" />
+              </Button>
+            )}
+
             <Badge variant="secondary" className="px-3 py-1 font-mono">
-              {Math.round(scale * 100)}%
+              {Math.round(scale)}%
             </Badge>
 
             <Button

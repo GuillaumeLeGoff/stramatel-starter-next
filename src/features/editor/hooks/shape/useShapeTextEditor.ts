@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { slideStore } from "../store/slideStore";
-import { KonvaShape } from "../types";
+import { slideStore } from "../../store/slideStore";
+import { KonvaShape } from "../../types";
 import Konva from "konva";
 
 interface UseTextEditorProps {
@@ -12,7 +12,7 @@ interface UseTextEditorProps {
   }) => Promise<void>;
 }
 
-export function useTextEditor({
+export function useShapeTextEditor({
   shapeRefs,
   getAllShapes,
   saveChanges,

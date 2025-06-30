@@ -3,8 +3,8 @@ import {
   fetchMedias,
   uploadFiles,
   deleteMedia as deleteMediaApi,
-} from "../api/mediaApi";
-import { cleanSlidesFromMedia } from "../api/slideApi";
+} from "../../api/mediaApi";
+import { cleanSlidesFromMedia } from "../../api/slideApi";
 
 // Types pour les médias
 export interface Media {
@@ -24,7 +24,7 @@ export type SortOption = "name" | "date" | "size" | "type";
 export type ViewMode = "list" | "grid";
 export type SortDirection = "asc" | "desc";
 
-export function useMedias() {
+export function useShapeMedia() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
