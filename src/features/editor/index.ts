@@ -12,7 +12,7 @@ export * from "./hooks";
 export * from "./types";
 
 // ===== STORE =====
-export * from "./store/slideStore";
+export * from "./store/editorStore";
 
 // ===== API =====
 export * from "./api/slideApi";

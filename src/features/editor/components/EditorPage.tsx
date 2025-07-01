@@ -1,7 +1,5 @@
-import React, { useEffect } from "react";
-import { useEditor, useSlideManager, useZoom } from "@/features/editor/hooks";
-import { useSlideshow } from "@/features/slideshow/hooks";
-import { useAppSettingsStore } from "@/store/appSettingsStore";
+import React from "react";
+import { useEditorPage } from "@/features/editor/hooks";
 import { ResizableHandle, ResizablePanelGroup } from "@/shared/components/ui/resizable";
 
 // Nouveaux composants modulaires
@@ -10,47 +8,38 @@ import { EditorCanvas } from "./editor";
 import { ToolsPanel } from "./shape";
 
 export function EditorPage() {
-  const { currentSlideshow } = useSlideshow();
-  const { currentSlide, getCurrentSlideKonvaData, changeSlide } = useEditor();
-  const { settings, fetchSettings } = useAppSettingsStore();
-  
-  // Charger les settings au montage si pas déjà chargées
-  useEffect(() => {
-    if (!settings) {
-      fetchSettings();
-    }
-  }, [settings, fetchSettings]);
-  
-  // Récupérer les dimensions depuis appSettings avec des valeurs par défaut
-  const width = settings?.width || 1920;
-  const height = settings?.height || 1080;
-
-  const konvaData = getCurrentSlideKonvaData();
-  const { scale, normalizedScale, zoomPercentage, zoomIn, zoomOut, fitToContainer, containerRef } = useZoom({
-    stageWidth: width,
-    stageHeight: height,
-  });
-
-  const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides } = useSlideManager({
-    stageData: konvaData,
-    containerRef,
+  const {
+    // Données
+    currentSlideshow,
+    currentSlide,
+    currentSlideData,
+    konvaData,
+    dimensions,
+    
+    // Zoom et container
     scale,
-  });
-
-  // Récupérer la slide actuelle
-  const currentSlideData = currentSlideshow?.slides?.[currentSlide];
-
-  // Fonction pour gérer l'ajout d'une slide
-  const handleAddSlide = () => {
-    if (!currentSlideshow) return;
-    addSlide({
-      slideshowId: currentSlideshow.id,
-      position: currentSlideshow.slides?.length || 0,
-      duration: 5,
-      width,
-      height,
-    });
-  };
+    normalizedScale,
+    zoomPercentage,
+    containerRef,
+    
+    // Actions zoom
+    zoomIn,
+    zoomOut,
+    fitToContainer,
+    
+    // Actions slides
+    handleAddSlide,
+    handleChangeSlide,
+    
+    // Actions shapes
+    addShape,
+    
+    // Actions média
+    handleCleanMediaFromAllSlides,
+    
+    // Actions durée
+    updateSlideDuration,
+  } = useEditorPage();
 
   // Fonction pour gérer le changement de durée
   const handleDurationChange = async (duration: number) => {
@@ -78,9 +67,9 @@ export function EditorPage() {
           {/* Gestionnaire de slides - Panneau de gauche */}
           <SlideManager
             currentSlide={currentSlide}
-            onChangeSlide={changeSlide}
+            onChangeSlide={handleChangeSlide}
             onAddSlide={handleAddSlide}
-            slides={currentSlideshow.slides}
+            slides={currentSlideshow?.slides}
           />
 
           <ResizableHandle />
@@ -92,8 +81,8 @@ export function EditorPage() {
             normalizedScale={normalizedScale}
             zoomPercentage={zoomPercentage}
             containerRef={containerRef}
-            width={width}
-            height={height}
+            width={dimensions.width}
+            height={dimensions.height}
             zoomIn={zoomIn}
             zoomOut={zoomOut}
             fitToContainer={fitToContainer}
@@ -106,7 +95,7 @@ export function EditorPage() {
           {/* Panneau d'outils - Panneau de droite */}
           <ToolsPanel
             addShape={addShape}
-            onMediaDeleted={cleanMediaFromAllSlides}
+            onMediaDeleted={handleCleanMediaFromAllSlides}
             konvaData={konvaData}
           />
         </ResizablePanelGroup>

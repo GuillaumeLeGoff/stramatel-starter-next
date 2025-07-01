@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { slideStore } from "../../store/slideStore";
+import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import { KonvaShape } from "../../types";
 import Konva from "konva";
 
@@ -18,13 +18,11 @@ export function useShapeTextEditor({
   saveChanges,
 }: UseTextEditorProps) {
   const [editingTextContent, setEditingTextContent] = useState<string>("");
-  const {
-    selectedShapes,
-    editingTextId,
-    editingTextShape,
-    setEditingTextId,
-    setEditingTextShape,
-  } = slideStore();
+  const selectedShapes = useEditorStore(editorSelectors.selectedShapes);
+  const editingTextId = useEditorStore(editorSelectors.editingTextId);
+  const editingTextShape = useEditorStore(editorSelectors.editingTextShape);
+  const setEditingTextId = useEditorStore((state) => state.setEditingTextId);
+  const setEditingTextShape = useEditorStore((state) => state.setEditingTextShape);
 
   // Démarrer l'édition d'un texte
   const startTextEditing = useCallback(
@@ -64,7 +62,7 @@ export function useShapeTextEditor({
   const handleTextDoubleClick = useCallback(
     (shapeId: string) => {
       // Chercher d'abord dans les formes sélectionnées
-      let shape = selectedShapes.find((s) => s.attrs.id === shapeId);
+      let shape = selectedShapes.find((s: KonvaShape) => s.attrs.id === shapeId);
 
       // Si pas trouvé dans la sélection, chercher dans toutes les formes
       if (!shape) {

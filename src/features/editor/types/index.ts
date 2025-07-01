@@ -114,14 +114,7 @@ export interface SlidePreviewProps {
 
 // ===== TYPES STORE =====
 
-export interface SlideStore {
-  currentSlide: number;
-  isLoading: boolean;
-  error: string | null;
-  selectedShapes: KonvaShape[];
-  editingTextId: string | null;
-  editingTextShape: KonvaShape | null;
-}
+
 
 // ===== TYPES UTILITAIRES =====
 

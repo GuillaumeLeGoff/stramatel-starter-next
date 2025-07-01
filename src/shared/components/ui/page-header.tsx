@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
@@ -12,10 +13,13 @@ export function PageHeader({
   className = "",
 }: PageHeaderProps) {
   return (
-    <div className={`flex items-center justify-between ${className}`}>
-      <h1 className="text-2xl font-bold">{title}</h1>
+    <div className={cn(
+      "flex items-center justify-between py-4 px-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      className
+    )}>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
       {rightContent && (
-        <div className="text-sm text-neutral-500">{rightContent}</div>
+        <div className="text-sm text-muted-foreground">{rightContent}</div>
       )}
     </div>
   );

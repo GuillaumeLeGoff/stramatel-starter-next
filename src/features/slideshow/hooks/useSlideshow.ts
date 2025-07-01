@@ -7,7 +7,7 @@ import {
 } from "@/features/slideshow/types";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useParams, useRouter } from "next/navigation";
-import { slideStore } from "@/features/editor/store/slideStore";
+import { useEditorStore } from "@/features/editor/store/editorStore";
 
 export function useSlideshow() {
   // États du store avec actions API intégrées
@@ -89,7 +89,7 @@ export function useSlideshow() {
   // Fonction pour fermer l'éditeur
   const handleCloseEditor = useCallback(() => {
     // Déselectionner toutes les formes avant de fermer l'éditeur
-    slideStore.getState().setSelectedShapes([]);
+    useEditorStore.getState().clearSelection();
     setEditorOpen(false);
   }, [setEditorOpen]);
 

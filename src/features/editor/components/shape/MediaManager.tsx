@@ -33,7 +33,7 @@ import {
   FileType,
   ChevronDown,
 } from "lucide-react";
-import { useMedias } from "@/features/editor/hooks";
+import { useShapeMediaManager } from "@/features/editor/hooks";
 import type { Media, SortOption } from "../../hooks/shape/useShapeMedia";
 
 interface MediaManagerProps {
@@ -103,9 +103,11 @@ const MediaGridSkeleton = ({ count = 4 }: { count?: number }) => (
 );
 
 export function MediaManager({ onMediaSelect, addShape, onMediaDeleted }: MediaManagerProps) {
-  const [mediaToDelete, setMediaToDelete] = useState<{ id: string; name: string } | null>(null);
-  
   const {
+    // État
+    mediaToDelete,
+    
+    // État du hook useShapeMedia
     viewMode,
     sortBy,
     sortDirection,
@@ -113,108 +115,27 @@ export function MediaManager({ onMediaSelect, addShape, onMediaDeleted }: MediaM
     loading,
     error,
     deletingMediaIds,
+    
+    // Actions
     setViewMode,
     setSortBy,
-    selectMedia,
     getMediaTypeColor,
-    uploadMedia,
-    deleteMedia,
-  } = useMedias();
-
-  const handleMediaSelect = async (media: Media) => {
-    selectMedia(media);
-    onMediaSelect?.(media);
-
-    // Ajouter le média au canvas Konva
-    if (addShape) {
-      if (media.type === "image") {
-        try {
-          await addShape("image", {
-            src: media.url,
-            name: media.name,
-            mediaId: media.id,
-          });
-        } catch (error) {
-          console.error("Erreur lors de l'ajout du média au canvas:", error);
-        }
-      } else if (media.type === "video") {
-        try {
-          await addShape("video", {
-            src: media.url,
-            name: media.name,
-            mediaId: media.id,
-          });
-        } catch (error) {
-          console.error("Erreur lors de l'ajout de la vidéo au canvas:", error);
-        }
-      }
-    }
-  };
-
-  const handleDeleteMedia = async (mediaId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
     
-    // Trouver le média pour afficher son nom dans le dialog
-    const media = medias.find((m) => m.id === mediaId);
-    if (media) {
-      setMediaToDelete({ id: mediaId, name: media.name });
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!mediaToDelete) return;
-
-    try {
-      // Trouver le média pour récupérer son URL avant suppression
-      const mediaToDeleteData = medias.find((media) => media.id === mediaToDelete.id);
-      if (!mediaToDeleteData) {
-        throw new Error("Média introuvable");
-      }
-
-      // Supprimer le média (côté serveur et nettoyage global de toutes les slides)
-      await deleteMedia(mediaToDelete.id);
-      
-      // Nettoyer les données Konva localement pour le slideshow actuel (mise à jour immédiate de l'interface)
-      if (onMediaDeleted) {
-        await onMediaDeleted(mediaToDeleteData.url);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
-    } finally {
-      setMediaToDelete(null);
-    }
-  };
-
-  const cancelDelete = () => {
-    setMediaToDelete(null);
-  };
-
-  const handleUpload = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.accept = "image/*,video/*";
-
-    input.onchange = async (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        try {
-          await uploadMedia(files);
-        } catch (error) {
-          console.error("Erreur lors de l'upload:", error);
-        }
-      }
-    };
-
-    input.click();
-  };
-
-  // Fonction pour obtenir l'icône de tri appropriée
-  const getSortIcon = () => {
-    return sortDirection === "asc" ? 
-      <ArrowUp className="h-3 w-3" /> : 
-      <ArrowDown className="h-3 w-3" />;
-  };
+    // Gestionnaires d'événements
+    handleMediaSelect,
+    handleDeleteMedia,
+    handleUpload,
+    confirmDelete,
+    cancelDelete,
+    
+    // Fonctions utilitaires
+    getSortIcon,
+    getSortLabel,
+  } = useShapeMediaManager({
+    onMediaSelect,
+    addShape,
+    onMediaDeleted,
+  });
 
   // Fonction pour obtenir l'icône du critère de tri
   const getSortCriteriaIcon = (criteria: SortOption) => {
@@ -230,17 +151,6 @@ export function MediaManager({ onMediaSelect, addShape, onMediaDeleted }: MediaM
       default:
         return <Calendar className="h-3 w-3" />;
     }
-  };
-
-  // Fonction pour obtenir le label du tri
-  const getSortLabel = (criteria: SortOption) => {
-    const labels = {
-      date: "Date",
-      name: "Nom", 
-      size: "Taille",
-      type: "Type"
-    };
-    return labels[criteria];
   };
 
   return (
@@ -278,7 +188,6 @@ export function MediaManager({ onMediaSelect, addShape, onMediaDeleted }: MediaM
                 {getSortIcon()}
                 {getSortCriteriaIcon(sortBy)}
                 {getSortLabel(sortBy)}
-
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </PopoverTrigger>

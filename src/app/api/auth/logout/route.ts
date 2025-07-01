@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { logoutUser } from '@/lib/auth';
 
 export async function POST() {
   try {
-    await logoutUser();
+    // Logique de déconnexion côté serveur si nécessaire
+    // (invalidation de token, session, etc.)
+    
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Logout error:', error);

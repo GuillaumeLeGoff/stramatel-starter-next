@@ -17,6 +17,7 @@ import { KonvaImage } from "./KonvaImage";
 import { KonvaVideo } from "./KonvaVideo";
 import { KonvaLiveText } from "./KonvaLiveText";
 import Konva from "konva";
+import { fixShapeProperties } from "../../utils";
 
 interface KonvaStageRendererProps {
   stageData: KonvaStage;
@@ -67,7 +68,9 @@ export function KonvaStageRenderer({
   if (!stageData) return null;
 
   const renderShape = (shape: ExtendedKonvaShape) => {
-    const { className, attrs, children } = shape;
+    // Corriger les propriétés manquantes de la forme
+    const correctedShape = fixShapeProperties(shape as KonvaShape) as ExtendedKonvaShape;
+    const { className, attrs, children } = correctedShape;
     const shapeId = attrs.id || `shape_${Math.random()}`;
 
     // Propriétés communes à tous les composants

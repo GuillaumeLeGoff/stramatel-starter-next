@@ -6,7 +6,7 @@ import {
   associateMediaToSlide,
 } from "../../api/slideApi";
 import { KonvaStage, Slide, ShapeType } from "../../types";
-import { slideStore } from "../../store/slideStore";
+import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -22,7 +22,9 @@ interface UseSlideProps {
 
 export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
   const [previewScale, setPreviewScale] = useState(0.2);
-  const { setCurrentSlide, currentSlide } = slideStore();
+  const currentSlide = useEditorStore(editorSelectors.currentSlide);
+  const setCurrentSlide = useEditorStore((state) => state.setCurrentSlide);
+  const setSaveFunction = useEditorStore((state) => state.setSaveFunction);
   const { updateCurrentSlideshow, currentSlideshow } = useSlideshow();
   const { width, height } = useAppSettings();
   // ===== SAUVEGARDE KONVA =====
@@ -32,6 +34,11 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
     async (updatedKonvaData: KonvaStage) => {
       if (!currentSlideshow || !updateCurrentSlideshow) return;
 
+      // 1. Mettre à jour le cache Konva du store d'édition IMMÉDIATEMENT pour l'affichage
+      const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
+      cacheKonvaData(currentSlide, updatedKonvaData);
+
+      // 2. Mettre à jour le slideshow local
       updateCurrentSlideshow((prev) => {
         const updatedSlides = [...(prev.slides || [])];
         if (updatedSlides[currentSlide]) {
@@ -43,7 +50,7 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
         };
       });
 
-      // Enregistrer dans l'API après mise à jour du state local
+      // 3. Enregistrer dans l'API après mise à jour du state local
       try {
         const slideId = currentSlideshow.slides?.[currentSlide]?.id;
         if (slideId) {
@@ -55,6 +62,14 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
     },
     [currentSlideshow, currentSlide, updateCurrentSlideshow]
   );
+
+  // Configurer la fonction de sauvegarde dans le store
+  useEffect(() => {
+    setSaveFunction(saveCurrentSlideKonvaData);
+    
+    // Nettoyer en cas de démontage
+    return () => setSaveFunction(null);
+  }, [setSaveFunction, saveCurrentSlideKonvaData]);
 
   // ===== NETTOYAGE DES MÉDIAS =====
 
@@ -83,6 +98,13 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
           slides: updatedSlides,
         }));
 
+        // *** CORRECTION : Mettre à jour le cache Konva pour le slide courant ***
+        const currentSlideData = updatedSlides[currentSlide];
+        if (currentSlideData?.konvaData) {
+          const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
+          cacheKonvaData(currentSlide, currentSlideData.konvaData as KonvaStage);
+        }
+
         // Sauvegarder chaque slide modifiée dans l'API
         const updatePromises = updatedSlides.map(async (slide) => {
           if (slide.konvaData) {
@@ -101,7 +123,7 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
         console.error("Erreur lors du nettoyage du média de toutes les slides:", error);
       }
     },
-    [currentSlideshow, updateCurrentSlideshow]
+    [currentSlideshow, updateCurrentSlideshow, currentSlide]
   );
 
   // ===== AJOUT DE FORMES =====
@@ -378,7 +400,7 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
 
       // 3. Si nous avons des slides restantes et que l'index actuel est hors limites, ajustez-le
       if (currentSlideshow.slides && currentSlideshow.slides.length > 0) {
-        const currentIndex = slideStore.getState().currentSlide;
+        const currentIndex = useEditorStore.getState().currentSlide;
         const newLength = currentSlideshow.slides.length - 1;
 
         if (currentIndex >= newLength) {

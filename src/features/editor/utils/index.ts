@@ -1,5 +1,5 @@
 import { DEFAULT_SHAPE_STYLES } from "../constants";
-import { KonvaShape, KonvaStage, ShapeType } from "../types";
+import { KonvaShape, KonvaStage, ShapeType, KonvaShapeAttrs, KonvaTextNodeAttrs } from "../types";
 
 // ===== UTILITAIRES KONVA =====
 
@@ -583,4 +583,88 @@ export const loadImageDimensions = (src: string): Promise<{ width: number; heigh
     
     img.src = src;
   });
+};
+
+/**
+ * Corrige les propriétés manquantes d'une forme
+ */
+export const fixShapeProperties = (shape: KonvaShape): KonvaShape => {
+  const { className, attrs } = shape;
+  
+  switch (className) {
+    case "Rect": {
+      const defaultRect = DEFAULT_SHAPE_STYLES.rectangle;
+      const rectAttrs = attrs as KonvaShapeAttrs;
+      return {
+        ...shape,
+        attrs: {
+          ...rectAttrs,
+          fill: rectAttrs.fill || defaultRect.fill,
+          stroke: rectAttrs.stroke || defaultRect.stroke,
+          strokeWidth: rectAttrs.strokeWidth || defaultRect.strokeWidth,
+          width: rectAttrs.width || defaultRect.width,
+          height: rectAttrs.height || defaultRect.height,
+        },
+      };
+    }
+    
+    case "Circle": {
+      const defaultCircle = DEFAULT_SHAPE_STYLES.circle;
+      const circleAttrs = attrs as KonvaShapeAttrs;
+      return {
+        ...shape,
+        attrs: {
+          ...circleAttrs,
+          fill: circleAttrs.fill || defaultCircle.fill,
+          stroke: circleAttrs.stroke || defaultCircle.stroke,
+          strokeWidth: circleAttrs.strokeWidth || defaultCircle.strokeWidth,
+          radius: circleAttrs.radius || defaultCircle.radius,
+        },
+      };
+    }
+    
+    case "Text": {
+      const defaultText = DEFAULT_SHAPE_STYLES.text;
+      const textAttrs = attrs as KonvaTextNodeAttrs;
+      return {
+        ...shape,
+        attrs: {
+          ...textAttrs,
+          fill: textAttrs.fill || defaultText.fill,
+          fontSize: textAttrs.fontSize || defaultText.fontSize,
+          fontFamily: textAttrs.fontFamily || defaultText.fontFamily,
+          align: textAttrs.align || defaultText.align,
+        },
+      };
+    }
+    
+    default:
+      return shape;
+  }
+};
+
+/**
+ * Corrige récursivement toutes les formes dans un stage
+ */
+export const fixStageShapes = (stage: KonvaStage): KonvaStage => {
+  const fixShapesRecursively = (shapes: KonvaShape[]): KonvaShape[] => {
+    return shapes.map(shape => {
+      const fixedShape = fixShapeProperties(shape);
+      if (fixedShape.children) {
+        return {
+          ...fixedShape,
+          children: fixShapesRecursively(fixedShape.children),
+        };
+      }
+      return fixedShape;
+    });
+  };
+
+  return {
+    ...stage,
+    children: stage.children.map(layer => ({
+      ...layer,
+      children: layer.children ? fixShapesRecursively(layer.children) : [],
+    })),
+  };
 };

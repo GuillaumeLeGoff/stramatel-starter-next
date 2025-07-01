@@ -3,7 +3,7 @@ import { KonvaStage, KonvaShape } from "../../types";
 import { useCanvasSave } from "./useCanvasSave";
 import { useShapeTextEditor } from "../shape/useShapeTextEditor";
 import { useSlideManager } from "../slide/useSlideManager";
-import { slideStore } from "../../store/slideStore";
+import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import Konva from "konva";
 
 interface SelectionRect {
@@ -34,7 +34,10 @@ export function useCanvasRenderer({
 
   const transformerRef = useRef<Konva.Transformer>(null);
   const shapeRefs = useRef<Record<string, Konva.Node>>({});
-  const { selectedShapes, setSelectedShapes } = slideStore();
+  
+  // Utilisation du nouveau store unifié
+  const selectedShapes = useEditorStore(editorSelectors.selectedShapes);
+  const setSelectedShapes = useEditorStore((state) => state.setSelectedShapes);
 
   // Fonction pour collecter toutes les formes dans le stage
   const getAllShapes = useCallback(() => {
@@ -179,9 +182,9 @@ export function useCanvasRenderer({
 
       if (e.evt.ctrlKey || e.evt.metaKey) {
         // Ajout à la sélection existante
-        const currentIds = selectedShapes.map((s) => s.attrs.id as string);
+        const currentIds = selectedShapes.map((s: KonvaShape) => s.attrs.id as string);
         if (currentIds.includes(shapeId)) {
-          handleSelect(currentIds.filter((id) => id !== shapeId));
+          handleSelect(currentIds.filter((id: string) => id !== shapeId));
         } else {
           handleSelect([...currentIds, shapeId]);
         }
@@ -251,7 +254,7 @@ export function useCanvasRenderer({
     if (!transformerRef.current || isPreview) return;
 
     const selectedNodes = selectedShapes
-      .map((shape) => shapeRefs.current[shape.attrs.id as string])
+      .map((shape: KonvaShape) => shapeRefs.current[shape.attrs.id as string])
       .filter(Boolean);
 
     transformerRef.current.nodes(selectedNodes);
