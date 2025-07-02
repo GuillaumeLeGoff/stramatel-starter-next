@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Separator } from "@/shared/components/ui/separator";
-import { ZoomIn, ZoomOut, Clock, Minus, Plus, Maximize } from "lucide-react";
+import { ZoomIn, ZoomOut, Clock, Minus, Plus, Maximize, Palette } from "lucide-react";
 
 interface FooterEditorComponentsProps {
   scale: number;
@@ -13,6 +13,8 @@ interface FooterEditorComponentsProps {
   fitToContainer?: () => void;
   currentSlideDuration?: number;
   onDurationChange?: (duration: number) => void;
+  backgroundColor?: string;
+  onBackgroundColorChange?: (color: string) => void;
 }
 
 export function FooterEditorComponents({
@@ -22,15 +24,35 @@ export function FooterEditorComponents({
   fitToContainer,
   currentSlideDuration = 5,
   onDurationChange,
+  backgroundColor = "#ffffff",
+  onBackgroundColorChange,
 }: FooterEditorComponentsProps) {
   const [durationValue, setDurationValue] = useState(
     currentSlideDuration.toString()
   );
 
+  // State local pour la couleur (mise à jour immédiate)
+  const [localBackgroundColor, setLocalBackgroundColor] = useState(backgroundColor);
+  const colorDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Synchroniser la valeur locale avec la prop
   useEffect(() => {
     setDurationValue(currentSlideDuration.toString());
   }, [currentSlideDuration]);
+
+  // Synchroniser la couleur locale avec la prop externe
+  useEffect(() => {
+    setLocalBackgroundColor(backgroundColor);
+  }, [backgroundColor]);
+
+  // Nettoyage du timeout au démontage
+  useEffect(() => {
+    return () => {
+      if (colorDebounceTimeoutRef.current) {
+        clearTimeout(colorDebounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDurationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +90,26 @@ export function FooterEditorComponents({
     if (onDurationChange) {
       onDurationChange(duration);
     }
+  };
+
+  // Gestionnaire optimisé pour le changement de couleur
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    
+    // Mise à jour immédiate de l'UI locale
+    setLocalBackgroundColor(newColor);
+    
+    // Annuler le timeout précédent
+    if (colorDebounceTimeoutRef.current) {
+      clearTimeout(colorDebounceTimeoutRef.current);
+    }
+    
+    // Programmer la sauvegarde avec debounce de 300ms
+    colorDebounceTimeoutRef.current = setTimeout(() => {
+      if (onBackgroundColorChange) {
+        onBackgroundColorChange(newColor);
+      }
+    }, 300);
   };
 
   return (
@@ -164,6 +206,41 @@ export function FooterEditorComponents({
               </Button>
 
               <span className="text-xs text-muted-foreground">s</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator orientation="vertical" className="h-8" />
+
+      {/* Contrôle de couleur de fond */}
+      <Card className="border-0 shadow-none">
+        <CardContent className="p-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Palette className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Fond:</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Input
+                type="color"
+                value={localBackgroundColor}
+                onChange={handleColorChange}
+                className="w-12 h-8 p-1 border cursor-pointer"
+                title="Couleur de fond de l'éditeur"
+              />
+              
+              <Badge 
+                variant="outline" 
+                className="px-2 py-1 text-xs font-mono"
+                style={{ 
+                  backgroundColor: localBackgroundColor, 
+                  color: localBackgroundColor === '#ffffff' ? '#000000' : '#ffffff' 
+                }}
+              >
+                {localBackgroundColor.toUpperCase()}
+              </Badge>
             </div>
           </div>
         </CardContent>

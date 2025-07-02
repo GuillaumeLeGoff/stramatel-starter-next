@@ -59,6 +59,7 @@ export interface KonvaLayerAttrs {
 export interface KonvaStageAttrs {
   width: number;
   height: number;
+  backgroundColor?: string;
   [key: string]: string | number | boolean | undefined;
 }
 

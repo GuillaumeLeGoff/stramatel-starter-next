@@ -25,6 +25,9 @@ interface EditorState {
   
   // Fonction de sauvegarde configurable
   saveFunction: ((updatedKonvaData: KonvaStage) => Promise<void>) | null;
+  
+  // Clipboard pour copier/coller
+  clipboard: KonvaShape[];
 }
 
 interface EditorActions {
@@ -63,6 +66,16 @@ interface EditorActions {
   // Nouvelle action pour sauvegarder les changements de style
   saveShapeChanges: (attrs: Record<string, unknown>) => Promise<void>;
   setSaveFunction: (saveFunction: ((updatedKonvaData: KonvaStage) => Promise<void>) | null) => void;
+  
+  // Action pour supprimer les shapes sélectionnées
+  deleteSelectedShapes: () => Promise<void>;
+  
+  // Clipboard actions
+  copySelectedShapes: () => void;
+  pasteShapes: () => Promise<void>;
+  
+  // Layer management
+  updateLayerOrder: (newOrder: string[]) => Promise<void>;
 }
 
 type EditorStore = EditorState & EditorActions;
@@ -80,6 +93,7 @@ const initialState: EditorState = {
   stagePosition: { x: 0, y: 0 },
   konvaDataCache: new Map(),
   saveFunction: null,
+  clipboard: [],
 };
 
 // ===== STORE PRINCIPAL =====
@@ -154,7 +168,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((state) => {
       const newCache = new Map(state.konvaDataCache);
       newCache.set(slideIndex, data);
-      return { konvaDataCache: newCache };
+      
+      return { 
+        konvaDataCache: newCache,
+      };
     }),
   
   getCachedKonvaData: (slideIndex: number) => {
@@ -229,6 +246,182 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   
   setSaveFunction: (saveFunction: ((updatedKonvaData: KonvaStage) => Promise<void>) | null) => 
     set({ saveFunction }),
+  
+  // Action pour supprimer les shapes sélectionnées
+  deleteSelectedShapes: async () => {
+    const state = get();
+    if (!state.saveFunction || state.selectedShapes.length === 0) return;
+    
+    const currentKonvaData = state.konvaDataCache.get(state.currentSlide);
+    if (!currentKonvaData) return;
+    
+    // Créer une copie profonde des données Konva
+    const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData)) as KonvaStage;
+    
+    // IDs des shapes à supprimer
+    const shapeIdsToDelete = state.selectedShapes
+      .map(shape => shape.attrs?.id)
+      .filter(Boolean) as string[];
+    
+    // Fonction récursive pour supprimer les shapes
+    const removeShapesFromNodes = (nodes: any[]): any[] => {
+      return nodes.filter(node => {
+        // Si c'est une forme à supprimer, l'exclure
+        const shouldDelete = shapeIdsToDelete.includes(node.attrs?.id);
+        if (shouldDelete) {
+          return false;
+        }
+        
+        // Récursivement supprimer des enfants si ils existent
+        if (node.children && Array.isArray(node.children)) {
+          node.children = removeShapesFromNodes(node.children);
+        }
+        
+        return true;
+      });
+    };
+    
+    // Appliquer les suppressions aux children du stage
+    if (updatedKonvaData.children && Array.isArray(updatedKonvaData.children)) {
+      updatedKonvaData.children = updatedKonvaData.children.map(layer => ({
+        ...layer,
+        children: removeShapesFromNodes(layer.children || [])
+      }));
+    }
+    
+    // Mettre à jour le cache
+    set((prevState) => {
+      const newCache = new Map(prevState.konvaDataCache);
+      newCache.set(prevState.currentSlide, updatedKonvaData);
+      return { 
+        konvaDataCache: newCache,
+        selectedShapes: [], // Vider la sélection après suppression
+      };
+    });
+    
+    // Sauvegarder via la fonction configurée
+    await state.saveFunction(updatedKonvaData);
+  },
+  
+  // Clipboard actions
+  copySelectedShapes: () => {
+    const state = get();
+    if (state.selectedShapes.length === 0) return;
+    
+    // Copier les shapes sélectionnées dans le clipboard
+    const copiedShapes = JSON.parse(JSON.stringify(state.selectedShapes)) as KonvaShape[];
+    set({ clipboard: copiedShapes });
+    console.log(`📋 Copié ${copiedShapes.length} shape(s)`);
+  },
+  
+  pasteShapes: async () => {
+    const state = get();
+    if (state.clipboard.length === 0 || !state.saveFunction) return;
+    
+    const currentKonvaData = state.konvaDataCache.get(state.currentSlide);
+    if (!currentKonvaData) return;
+    
+    // Créer une copie profonde des données Konva
+    const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData)) as KonvaStage;
+    
+    // Générer de nouveaux IDs et décaler les positions pour les shapes collées
+    const pastedShapes = state.clipboard.map((shape, index) => {
+      const newId = `shape_${Date.now()}_${index}`;
+      const offset = 20; // Décalage pour éviter la superposition
+      
+      return {
+        ...shape,
+        attrs: {
+          ...shape.attrs,
+          id: newId,
+          x: (shape.attrs.x as number) + offset,
+          y: (shape.attrs.y as number) + offset,
+        }
+      };
+    });
+    
+    // Ajouter les nouvelles shapes au layer principal (premier layer)
+    if (updatedKonvaData.children && updatedKonvaData.children.length > 0) {
+      const mainLayer = updatedKonvaData.children[0];
+      if (mainLayer.children) {
+        mainLayer.children.push(...pastedShapes);
+      } else {
+        mainLayer.children = [...pastedShapes];
+      }
+    }
+    
+    // Mettre à jour le cache et sélectionner les nouvelles shapes
+    set((prevState) => {
+      const newCache = new Map(prevState.konvaDataCache);
+      newCache.set(prevState.currentSlide, updatedKonvaData);
+      return { 
+        konvaDataCache: newCache,
+        selectedShapes: pastedShapes // Sélectionner les shapes collées
+      };
+    });
+    
+    // Sauvegarder via la fonction configurée
+    await state.saveFunction(updatedKonvaData);
+    console.log(`📌 Collé ${pastedShapes.length} shape(s)`);
+  },
+  
+  // Layer management
+  updateLayerOrder: async (newOrder: string[]) => {
+    const state = get();
+    if (!state.saveFunction) return;
+    
+    const currentKonvaData = state.konvaDataCache.get(state.currentSlide);
+    if (!currentKonvaData) return;
+    
+    // Créer une copie profonde des données Konva
+    const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData)) as KonvaStage;
+    
+    // Fonction pour réorganiser les shapes dans le layer principal
+    const reorderShapes = (nodes: any[]): any[] => {
+      return nodes.map(node => {
+        if (node.children && Array.isArray(node.children)) {
+          // Extraire les shapes qui sont dans le newOrder
+          const shapesToReorder = node.children.filter((child: any) => 
+            child.attrs?.id && newOrder.includes(child.attrs.id)
+          );
+          
+          // Extraire les autres shapes (qui ne sont pas dans newOrder)
+          const otherShapes = node.children.filter((child: any) => 
+            !child.attrs?.id || !newOrder.includes(child.attrs.id)
+          );
+          
+          // Créer un nouveau tableau ordonné
+          const reorderedShapes = newOrder
+            .reverse() // Inverser car le dernier dans la liste doit être au-dessus
+            .map(id => shapesToReorder.find((shape: any) => shape.attrs.id === id))
+            .filter(Boolean);
+          
+          return {
+            ...node,
+            children: [...otherShapes, ...reorderedShapes]
+          };
+        }
+        
+        return node;
+      });
+    };
+    
+    // Appliquer les mises à jour aux children du stage
+    if (updatedKonvaData.children && Array.isArray(updatedKonvaData.children)) {
+      updatedKonvaData.children = reorderShapes(updatedKonvaData.children);
+    }
+    
+    // Mettre à jour le cache
+    set((prevState) => {
+      const newCache = new Map(prevState.konvaDataCache);
+      newCache.set(prevState.currentSlide, updatedKonvaData);
+      return { konvaDataCache: newCache };
+    });
+    
+    // Sauvegarder via la fonction configurée
+    await state.saveFunction(updatedKonvaData);
+    console.log('🔄 Ordre des calques mis à jour');
+  },
 }));
 
 // ===== SÉLECTEURS OPTIMISÉS =====
@@ -258,10 +451,6 @@ export const editorSelectors = {
   
   // Cache Konva - NOUVEAU pour la réactivité
   konvaDataCache: (state: EditorStore) => state.konvaDataCache,
-  
-  // Sélecteurs composés
-  canUndo: (state: EditorStore) => false, // À implémenter avec l'historique
-  canRedo: (state: EditorStore) => false, // À implémenter avec l'historique
   
   // Sélecteurs dérivés avec mémoisation
   selectedShapeIds: (state: EditorStore) => 

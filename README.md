@@ -1,4 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# stramatel-starter-next
+
+## Raccourcis Clavier de l'Éditeur
+
+L'éditeur Konva supporte maintenant les raccourcis clavier suivants :
+
+### 📋 Copier/Coller
+- **Ctrl+C** : Copier les éléments sélectionnés
+- **Ctrl+V** : Coller les éléments copiés (décalés de 20px)
+
+
+
+### 🗑️ Suppression
+- **Delete** ou **Backspace** : Supprimer les éléments sélectionnés
+
+### 🎯 Sélection
+- **Escape** : Désélectionner tous les éléments
+- **Clic + Ctrl/Cmd/Shift** : Sélection multiple
+
+### 📊 Indicateurs Visuels
+
+Dans le header de l'éditeur, vous verrez des indicateurs colorés :
+- 📋 **Bleu** : Éléments sélectionnés
+- 📄 **Vert** : Nombre d'éléments dans le clipboard
+
+### 🔧 Fonctionnalités Techniques
+
+- **Clipboard persistant** : Les éléments copiés restent disponibles jusqu'à la prochaine copie
+- **Sélection préservée** : Les éléments collés sont automatiquement sélectionnés
+- **IDs uniques** : Chaque élément collé reçoit un nouvel ID unique
+- **Décalage automatique** : Les éléments collés sont décalés pour éviter la superposition
+
+### 🚫 Limitations Actuelles
+
+- Le clipboard est local à la session (non persistant entre rechargements)
+
+---
 
 ## Getting Started
 

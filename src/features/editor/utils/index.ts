@@ -13,13 +13,12 @@ export const generateShapeId = (prefix: string = "shape"): string => {
 /**
  * Crée un stage Konva par défaut avec une couche vide
  */
-export const createDefaultKonvaStage = (
-
-): KonvaStage => {
+export const createDefaultKonvaStage = (): KonvaStage => {
   return {
     attrs: {
       width: 10000, // Canvas large pour permettre le déplacement
       height: 10000, // Canvas large pour permettre le déplacement
+      backgroundColor: "#000000", // Couleur de fond par défaut (noir)
     },
     className: "Stage",
     children: [
@@ -38,9 +37,25 @@ export const createDefaultKonvaStage = (
 export const createShape = (
   shapeType: ShapeType,
   centerX: number,
-  centerY: number
+  centerY: number,
+  stageWidth: number = 1920,
+  stageHeight: number = 1080
 ): KonvaShape => {
   const shapeId = generateShapeId(shapeType);
+
+  // Calculer les tailles de police proportionnelles aux dimensions de l'écran
+  // Utiliser la plus petite dimension comme référence pour éviter les écarts trop importants
+  const baseSize = Math.min(stageWidth, stageHeight);
+  
+  // Tailles de police proportionnelles (plus grosses que l'actuel)
+  const smallFontSize = Math.round(baseSize * 0.05); // ~27px pour 1080p (plus gros que 16px)
+  const mediumFontSize = Math.round(baseSize * 0.08); // ~38px pour 1080p (plus gros que 24px)
+
+  // Dimensions proportionnelles pour les conteneurs de texte
+  const textWidth = Math.round(stageWidth * 0.15); // 15% de la largeur
+  const textHeight = Math.round(stageHeight * 0.05); // 5% de la hauteur
+  const dateTimeWidth = Math.round(stageWidth * 0.2); // 20% pour les dates/heures
+  const largeTextWidth = Math.round(stageWidth * 0.25); // 25% pour les gros textes
 
   const baseAttrs = {
     id: shapeId,
@@ -83,6 +98,9 @@ export const createShape = (
           x: centerX - textStyle.width / 2,
           y: centerY - textStyle.height / 2,
           ...textStyle,
+          fontSize: smallFontSize,
+          width: textWidth,
+          height: textHeight,
         },
         className: "Text",
       };
@@ -142,14 +160,14 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 15,
-          width: 200,
-          height: 30,
-          fontSize: 16,
+          x: centerX - dateTimeWidth / 2,
+          y: centerY - textHeight / 2,
+          width: dateTimeWidth,
+          height: textHeight,
+          fontSize: smallFontSize,
           fontFamily: "Arial",
           fontStyle: "normal",
-          fill: "#000000",
+          fill: "#ffffff",
           align: "left",
         },
         className: "liveDate",
@@ -160,14 +178,14 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 15,
-          width: 200,
-          height: 30,
-          fontSize: 16,
+          x: centerX - dateTimeWidth / 2,
+          y: centerY - textHeight / 2,
+          width: dateTimeWidth,
+          height: textHeight,
+          fontSize: smallFontSize,
           fontFamily: "Arial",
           fontStyle: "normal",
-          fill: "#000000",
+          fill: "#ffffff",
           align: "left",
         },
         className: "liveTime",
@@ -178,14 +196,14 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 150,
-          y: centerY - 15,
-          width: 300,
-          height: 30,
-          fontSize: 16,
+          x: centerX - largeTextWidth / 2,
+          y: centerY - textHeight / 2,
+          width: largeTextWidth,
+          height: textHeight,
+          fontSize: smallFontSize,
           fontFamily: "Arial",
           fontStyle: "normal",
-          fill: "#000000",
+          fill: "#ffffff",
           align: "left",
         },
         className: "liveDateTime",
@@ -197,11 +215,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 20,
-          width: 200,
-          height: 40,
-          fontSize: 24,
+          x: centerX - textWidth / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: textWidth,
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#22c55e",
@@ -215,11 +233,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 20,
-          width: 200,
-          height: 40,
-          fontSize: 24,
+          x: centerX - textWidth / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: textWidth,
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#22c55e",
@@ -233,11 +251,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 20,
-          width: 200,
-          height: 40,
-          fontSize: 24,
+          x: centerX - textWidth / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: textWidth,
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#22c55e",
@@ -251,11 +269,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 20,
-          width: 200,
-          height: 40,
-          fontSize: 24,
+          x: centerX - textWidth / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: textWidth,
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#f59e0b",
@@ -270,11 +288,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 75,
-          y: centerY - 20,
-          width: 150,
-          height: 40,
-          fontSize: 24,
+          x: centerX - Math.round(textWidth * 0.8) / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: Math.round(textWidth * 0.8),
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#ef4444",
@@ -288,11 +306,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 75,
-          y: centerY - 20,
-          width: 150,
-          height: 40,
-          fontSize: 24,
+          x: centerX - Math.round(textWidth * 0.8) / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: Math.round(textWidth * 0.8),
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#ef4444",
@@ -306,11 +324,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 75,
-          y: centerY - 20,
-          width: 150,
-          height: 40,
-          fontSize: 24,
+          x: centerX - Math.round(textWidth * 0.8) / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: Math.round(textWidth * 0.8),
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#f97316",
@@ -324,11 +342,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 75,
-          y: centerY - 20,
-          width: 150,
-          height: 40,
-          fontSize: 24,
+          x: centerX - Math.round(textWidth * 0.8) / 2,
+          y: centerY - Math.round(textHeight * 1.2) / 2,
+          width: Math.round(textWidth * 0.8),
+          height: Math.round(textHeight * 1.2),
+          fontSize: mediumFontSize,
           fontFamily: "Arial",
           fontStyle: "bold",
           fill: "#ef4444",
@@ -343,11 +361,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 15,
-          width: 200,
-          height: 30,
-          fontSize: 16,
+          x: centerX - textWidth / 2,
+          y: centerY - textHeight / 2,
+          width: textWidth,
+          height: textHeight,
+          fontSize: smallFontSize,
           fontFamily: "Arial",
           fontStyle: "normal",
           fill: "#6b7280",
@@ -361,11 +379,11 @@ export const createShape = (
       return {
         attrs: {
           ...baseAttrs,
-          x: centerX - 100,
-          y: centerY - 15,
-          width: 200,
-          height: 30,
-          fontSize: 16,
+          x: centerX - textWidth / 2,
+          y: centerY - textHeight / 2,
+          width: textWidth,
+          height: textHeight,
+          fontSize: smallFontSize,
           fontFamily: "Arial",
           fontStyle: "normal",
           fill: "#6b7280",
@@ -667,4 +685,51 @@ export const fixStageShapes = (stage: KonvaStage): KonvaStage => {
       children: layer.children ? fixShapesRecursively(layer.children) : [],
     })),
   };
+};
+
+/**
+ * Convertit une couleur hex en valeurs RGB
+ */
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+};
+
+/**
+ * Calcule la luminosité d'une couleur selon la formule W3C
+ */
+const getLuminance = (r: number, g: number, b: number): number => {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    c = c / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+};
+
+/**
+ * Détermine si une couleur est sombre ou claire
+ */
+const isColorDark = (hex: string): boolean => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return false;
+  
+  const luminance = getLuminance(rgb.r, rgb.g, rgb.b);
+  return luminance < 0.5;
+};
+
+/**
+ * Retourne la couleur appropriée pour les zones de délimitation
+ * selon la luminosité de la couleur de fond
+ */
+export const getOverlayColor = (backgroundColor: string): string => {
+  const isDark = isColorDark(backgroundColor);
+  // Si le fond est sombre, utiliser du blanc avec transparence
+  // Si le fond est clair, utiliser du noir avec transparence
+  return isDark ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.3)";
 };

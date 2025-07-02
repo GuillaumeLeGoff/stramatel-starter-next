@@ -48,8 +48,10 @@ export function KonvaStageRenderer({
     transformerRef,
     registerNodeRef,
     handleTransformEnd,
+    handleDragStart,
     handleDragEnd,
     handleShapeClick,
+    createTransformHandlerWithRatio,
     textEditor,
   } = useKonvaStageRenderer({ stageData, isPreview });
 
@@ -82,6 +84,9 @@ export function KonvaStageRenderer({
         ? undefined
         : (e: Konva.KonvaEventObject<Event>) =>
             handleTransformEnd(e, shapeId, className),
+      onDragStart: isPreview
+        ? undefined
+        : (e: Konva.KonvaEventObject<Event>) => handleDragStart(e, shapeId),
       onDragEnd: isPreview
         ? undefined
         : (e: Konva.KonvaEventObject<Event>) => handleDragEnd(e, shapeId),
@@ -109,33 +114,49 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : (e) => {
-                    const node = e.target;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    const newWidth = node.width() * scaleX;
-                    const newHeight = node.height() * scaleY;
-
-                    // Appliquer immédiatement les nouvelles dimensions
-                    node.setAttrs({
-                      width: newWidth,
-                      height: newHeight,
-                      scaleX: 1,
-                      scaleY: 1,
-                    });
-                  }
+                : createTransformHandlerWithRatio()
             }
           />
         );
         break;
       case "Circle":
-        shapeElement = <Circle key={shapeId} {...commonProps} />;
+        shapeElement = (
+          <Circle 
+            key={shapeId} 
+            {...commonProps}
+            onTransform={
+              isPreview
+                ? undefined
+                : createTransformHandlerWithRatio()
+            }
+          />
+        );
         break;
       case "Rect":
-        shapeElement = <Rect key={shapeId} {...commonProps} />;
+        shapeElement = (
+          <Rect 
+            key={shapeId} 
+            {...commonProps}
+            onTransform={
+              isPreview
+                ? undefined
+                : createTransformHandlerWithRatio()
+            }
+          />
+        );
         break;
       case "Line":
-        shapeElement = <Line key={shapeId} {...commonProps} />;
+        shapeElement = (
+          <Line 
+            key={shapeId} 
+            {...commonProps}
+            onTransform={
+              isPreview
+                ? undefined
+                : createTransformHandlerWithRatio()
+            }
+          />
+        );
         break;
       case "Arrow":
         if (!attrs.points) {
@@ -147,6 +168,11 @@ export function KonvaStageRenderer({
             key={shapeId}
             {...commonProps}
             points={attrs.points as number[]}
+            onTransform={
+              isPreview
+                ? undefined
+                : createTransformHandlerWithRatio()
+            }
           />
         );
         break;
@@ -170,23 +196,10 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : (e) => {
-                    const node = e.target;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    const newWidth = node.width() * scaleX;
-                    const newHeight = node.height() * scaleY;
-
-                    // Appliquer immédiatement les nouvelles dimensions
-                    node.setAttrs({
-                      width: newWidth,
-                      height: newHeight,
-                      scaleX: 1,
-                      scaleY: 1,
-                    });
-                  }
+                : createTransformHandlerWithRatio()
             }
             onTransformEnd={commonProps.onTransformEnd}
+            onDragStart={commonProps.onDragStart}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -212,23 +225,10 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : (e) => {
-                    const node = e.target;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    const newWidth = node.width() * scaleX;
-                    const newHeight = node.height() * scaleY;
-
-                    // Appliquer immédiatement les nouvelles dimensions
-                    node.setAttrs({
-                      width: newWidth,
-                      height: newHeight,
-                      scaleX: 1,
-                      scaleY: 1,
-                    });
-                  }
+                : createTransformHandlerWithRatio()
             }
             onTransformEnd={commonProps.onTransformEnd}
+            onDragStart={commonProps.onDragStart}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -276,23 +276,10 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : (e) => {
-                    const node = e.target;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    const newWidth = node.width() * scaleX;
-                    const newHeight = node.height() * scaleY;
-
-                    // Appliquer immédiatement les nouvelles dimensions
-                    node.setAttrs({
-                      width: newWidth,
-                      height: newHeight,
-                      scaleX: 1,
-                      scaleY: 1,
-                    });
-                  }
+                : createTransformHandlerWithRatio()
             }
             onTransformEnd={commonProps.onTransformEnd}
+            onDragStart={commonProps.onDragStart}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -330,23 +317,10 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : (e) => {
-                    const node = e.target;
-                    const scaleX = node.scaleX();
-                    const scaleY = node.scaleY();
-                    const newWidth = node.width() * scaleX;
-                    const newHeight = node.height() * scaleY;
-
-                    // Appliquer immédiatement les nouvelles dimensions
-                    node.setAttrs({
-                      width: newWidth,
-                      height: newHeight,
-                      scaleX: 1,
-                      scaleY: 1,
-                    });
-                  }
+                : createTransformHandlerWithRatio()
             }
             onTransformEnd={commonProps.onTransformEnd}
+            onDragStart={commonProps.onDragStart}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -380,6 +354,18 @@ export function KonvaStageRenderer({
       onMouseUp={isPreview ? undefined : handleMouseUp}
     >
       <Layer>
+        {/* Rectangle de fond pour la couleur */}
+        {stageData.attrs.backgroundColor && (
+          <Rect
+            x={0}
+            y={0}
+            width={stageData.attrs.width}
+            height={stageData.attrs.height}
+            fill={stageData.attrs.backgroundColor}
+            listening={false}
+          />
+        )}
+        
         {allShapes}
 
         {/* Transformer pour la sélection */}

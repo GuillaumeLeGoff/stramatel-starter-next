@@ -25,6 +25,7 @@ interface KonvaLiveTextProps {
   draggable?: boolean;
   onTransform?: (e: Konva.KonvaEventObject<Event>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<Event>) => void;
   onDragEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   ref?: (node: Konva.Text | null) => void;
@@ -46,6 +47,7 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
   draggable = true,
   onTransform,
   onTransformEnd,
+  onDragStart,
   onDragEnd,
   onClick,
   ref,
@@ -209,6 +211,7 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
       draggable={draggable}
       onTransform={onTransform}
       onTransformEnd={onTransformEnd}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
     />

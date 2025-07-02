@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppSettingsStore } from '@/store/appSettingsStore';
+import { useAppSettingsStore } from '@/shared/store/appSettingsStore';
 
 export function useAppSettings() {
   const { 

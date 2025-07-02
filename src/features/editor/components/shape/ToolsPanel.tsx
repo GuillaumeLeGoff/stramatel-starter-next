@@ -34,9 +34,7 @@ export function ToolsPanel({
   return (
     <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
       <Card className="h-full rounded-none border-0 shadow-none">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Outils</CardTitle>
-        </CardHeader>
+        
         <CardContent className="p-4 pt-0 h-full flex flex-col">
           <Tabs defaultValue="shapes" className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-3 mb-4">

@@ -1,34 +1,34 @@
-import { useHeaderShapeEditor } from "../../hooks/editor/useHeaderShapeEditor";
-import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
-import { useRef, useEffect } from "react";
-import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import {
-  PaintBucket,
-  PencilLine,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Bold,
   Italic,
-  Type,
   Minus,
+  PaintBucket,
+  PencilLine,
   Plus,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
+  Trash2,
+  Type,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef } from "react";
+import { useHeaderShapeEditor } from "../../hooks/editor/useHeaderShapeEditor";
+import { editorSelectors, useEditorStore } from "../../store/editorStore";
 
 export function HeaderEditorComponents() {
   const {
     // État de base
     hasSelection,
-    isEditingText,
+    // isEditingText, // Non utilisé
     
     // Types de forme
-    isRectangle,
-    isCircle,
-    isText,
-    isData,
+    // isRectangle, // Non utilisé  
+    // isCircle, // Non utilisé
+    // isText, // Non utilisé
+    // isData, // Non utilisé
     primaryType,
     
     // Flags de style
@@ -54,6 +54,7 @@ export function HeaderEditorComponents() {
     toggleBold,
     toggleItalic,
     setTextAlign,
+    deleteShapes,
   } = useHeaderShapeEditor();
 
   // Debug - Observer le cache Konva
@@ -61,15 +62,16 @@ export function HeaderEditorComponents() {
   const currentSlide = useEditorStore(editorSelectors.currentSlide);
   const debugRef = useRef<HTMLDivElement>(null);
 
+  // États pour debug des raccourcis clavier
+  const clipboardLength = useEditorStore((state) => state.clipboard.length);
+
   useEffect(() => {
     if (debugRef.current) {
-      const cachedData = konvaDataCache.get(currentSlide);
+      // const cachedData = konvaDataCache.get(currentSlide); // Non utilisé pour l'instant
+      console.log('Cache updated for slide:', currentSlide);
     }
   }, [konvaDataCache, currentSlide]);
 
- 
-
-  // Reste du code existant...
   return (
     <div className="flex items-center justify-between p-4 bg-background border-b">
       <div className="flex items-center gap-4">
@@ -86,7 +88,6 @@ export function HeaderEditorComponents() {
         {/* Outils de couleur */}
         {hasFill && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Couleur:</label>
             <div className="flex items-center gap-1">
               <PaintBucket className="w-4 h-4" />
               <input
@@ -102,7 +103,6 @@ export function HeaderEditorComponents() {
         {/* Couleur de texte pour les éléments de texte */}
         {canEditText && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Texte:</label>
             <div className="flex items-center gap-1">
               <Type className="w-4 h-4" />
               <input
@@ -117,7 +117,6 @@ export function HeaderEditorComponents() {
 
         {hasStroke && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Contour:</label>
             <div className="flex items-center gap-1">
               <PencilLine className="w-4 h-4" />
               <input
@@ -163,7 +162,6 @@ export function HeaderEditorComponents() {
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Taille:</label>
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
@@ -177,8 +175,7 @@ export function HeaderEditorComponents() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFontSize(Math.min(72, currentFontSize + 2))}
-                  disabled={currentFontSize >= 72}
+                  onClick={() => setFontSize(currentFontSize + 2)}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -210,9 +207,25 @@ export function HeaderEditorComponents() {
             </div>
           </>
         )}
-      </div>
 
     
+
+        {/* Actions générales */}
+        <div className="flex items-center gap-2">
+          {hasSelection && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={deleteShapes}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+     
     </div>
   );
 }

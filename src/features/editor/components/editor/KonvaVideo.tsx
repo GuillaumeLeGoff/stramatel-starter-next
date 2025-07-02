@@ -13,6 +13,7 @@ interface KonvaVideoProps {
   draggable?: boolean;
   onTransform?: (e: Konva.KonvaEventObject<Event>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<Event>) => void;
   onDragEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   ref?: (node: Konva.Image | null) => void;
@@ -29,6 +30,7 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
   draggable = true,
   onTransform,
   onTransformEnd,
+  onDragStart,
   onDragEnd,
   onClick,
   ref,
@@ -41,6 +43,10 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
   const videoRef = useRef<Konva.Image | null>(null);
   const animationRef = useRef<Konva.Animation | null>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
+  
+  // Refs pour éviter les conflits entre transformations locales et props
+  const isTransformingRef = useRef(false);
+  const currentDimensionsRef = useRef({ width, height });
 
   // Transmettre la référence au parent
   useEffect(() => {
@@ -124,6 +130,43 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
     };
   }, [src]);
 
+  // Gestionnaire de transformation personnalisé pour synchroniser les dimensions
+  const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
+    // Marquer qu'une transformation est en cours
+    isTransformingRef.current = true;
+    
+    const node = e.target;
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    
+    // Calculer les nouvelles dimensions avec les scales en utilisant les dimensions courantes
+    const newWidth = currentDimensionsRef.current.width * scaleX;
+    const newHeight = currentDimensionsRef.current.height * scaleY;
+    
+    // Mettre à jour les dimensions courantes
+    currentDimensionsRef.current = { width: newWidth, height: newHeight };
+    
+    // NE PAS réinitialiser les scales ici - laisser le handler parent le faire
+    // Le handler parent va calculer les nouvelles dimensions et sauvegarder
+    
+    // Appeler le handler parent si fourni
+    if (onTransformEnd) {
+      onTransformEnd(e);
+    }
+    
+    // Remettre le flag à false après un délai pour permettre la sauvegarde
+    setTimeout(() => {
+      isTransformingRef.current = false;
+    }, 500);
+  };
+
+  // Mettre à jour les dimensions courantes quand les props changent (sauf si transformation en cours)
+  useEffect(() => {
+    if (!isTransformingRef.current) {
+      currentDimensionsRef.current = { width, height };
+    }
+  }, [width, height]);
+
   if (videoStatus === "loading") {
     // Afficher un placeholder pendant le chargement
     return (
@@ -133,8 +176,8 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
         image={undefined}
         x={x}
         y={y}
-        width={width}
-        height={height}
+        width={currentDimensionsRef.current.width}
+        height={currentDimensionsRef.current.height}
         rotation={rotation}
         id={id}
         draggable={draggable}
@@ -142,7 +185,8 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
         stroke="#d1d5db"
         strokeWidth={2}
         onTransform={onTransform}
-        onTransformEnd={onTransformEnd}
+        onTransformEnd={handleTransformEnd}
+        onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onClick={onClick}
       />
@@ -158,8 +202,8 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
         image={undefined}
         x={x}
         y={y}
-        width={width}
-        height={height}
+        width={currentDimensionsRef.current.width}
+        height={currentDimensionsRef.current.height}
         rotation={rotation}
         id={id}
         draggable={draggable}
@@ -167,7 +211,8 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
         stroke="#f87171"
         strokeWidth={2}
         onTransform={onTransform}
-        onTransformEnd={onTransformEnd}
+        onTransformEnd={handleTransformEnd}
+        onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onClick={onClick}
       />
@@ -181,13 +226,14 @@ export const KonvaVideo: React.FC<KonvaVideoProps> = ({
       image={videoElement}
       x={x}
       y={y}
-      width={width}
-      height={height}
+      width={currentDimensionsRef.current.width}
+      height={currentDimensionsRef.current.height}
       rotation={rotation}
       id={id}
       draggable={draggable}
       onTransform={onTransform}
-      onTransformEnd={onTransformEnd}
+      onTransformEnd={handleTransformEnd}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
     />

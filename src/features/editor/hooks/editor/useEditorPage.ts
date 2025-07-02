@@ -1,14 +1,18 @@
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import { useEditorCore } from "./useEditorCore";
 import { useSlideManager } from "../slide/useSlideManager";
 import { useEditorZoom } from "./useEditorZoom";
 import { useSlideshow } from "@/features/slideshow/hooks";
-import { useAppSettingsStore } from "@/store/appSettingsStore";
+import { useAppSettingsStore } from "@/shared/store/appSettingsStore";
+import { useEditorStore } from "../../store/editorStore";
 
 export function useEditorPage() {
   const { currentSlideshow } = useSlideshow();
   const { currentSlide, currentKonvaData, changeSlide } = useEditorCore();
   const { settings, fetchSettings } = useAppSettingsStore();
+  
+  // Ref pour gérer le timeout de debounce
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Charger les settings au montage si pas déjà chargées
   useEffect(() => {
@@ -30,10 +34,12 @@ export function useEditorPage() {
     stageHeight: dimensions.height,
   });
 
-  const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides } = useSlideManager({
+  const { addSlide, addShape, updateSlideDuration, cleanMediaFromAllSlides, saveCurrentSlideKonvaData } = useSlideManager({
     stageData: konvaData,
     containerRef,
     scale,
+    stageWidth: dimensions.width,
+    stageHeight: dimensions.height,
   });
 
   // Récupérer la slide actuelle
@@ -71,6 +77,51 @@ export function useEditorPage() {
     [currentSlideshow, cleanMediaFromAllSlides]
   );
 
+  // Fonction debouncée pour changer la couleur de fond
+  const handleBackgroundColorChange = useCallback(
+    (color: string) => {
+      if (!konvaData) return;
+      
+      // Créer les données Konva mises à jour
+      const updatedKonvaData = {
+        ...konvaData,
+        attrs: {
+          ...konvaData.attrs,
+          backgroundColor: color
+        }
+      };
+      
+      // Mettre à jour immédiatement le cache pour l'affichage
+      const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
+      const currentSlide = useEditorStore.getState().currentSlide;
+      cacheKonvaData(currentSlide, updatedKonvaData);
+      
+      // Annuler le timeout précédent s'il existe
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      // Programmer la sauvegarde API avec un délai de 500ms
+      debounceTimeoutRef.current = setTimeout(async () => {
+        try {
+          await saveCurrentSlideKonvaData(updatedKonvaData);
+        } catch (error) {
+          console.error('Erreur lors de la sauvegarde de la couleur de fond:', error);
+        }
+      }, 500);
+    },
+    [konvaData, saveCurrentSlideKonvaData]
+  );
+
+  // Nettoyage du timeout au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return {
     // Données
     currentSlideshow,
@@ -102,5 +153,8 @@ export function useEditorPage() {
     
     // Actions durée
     updateSlideDuration,
+    
+    // Actions couleur de fond
+    handleBackgroundColorChange,
   };
 } 

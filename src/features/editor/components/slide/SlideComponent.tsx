@@ -7,6 +7,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Trash2, Clock } from "lucide-react";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
 import { createDefaultKonvaStage } from "../../utils";
+import { useEditorStore, editorSelectors } from "../../store/editorStore";
+import { useSlideshow } from "@/features/slideshow/hooks";
 
 export function SlidePreview({
   slide,
@@ -17,10 +19,33 @@ export function SlidePreview({
   const [isHovered, setIsHovered] = useState(false);
   const { width, height } = useAppSettings();
 
+  // Récupérer les données nécessaires pour le cache
+  const { currentSlideshow } = useSlideshow();
+  const getCachedKonvaData = useEditorStore((state) => state.getCachedKonvaData);
+  const konvaDataCache = useEditorStore((state) => state.konvaDataCache); // Pour déclencher les re-renders
+  
+  // Trouver l'index de cette slide dans le slideshow
+  const slideIndex = currentSlideshow?.slides?.findIndex(s => s.id === slide.id) ?? -1;
+  
   // Convertir le konvaData du slide en KonvaStage
   let stageData: KonvaStage;
 
-  if (slide.konvaData) {
+  // Si on a un index valide, essayer d'utiliser les données du cache en priorité
+  if (slideIndex >= 0) {
+    const cachedData = getCachedKonvaData(slideIndex);
+    
+    if (cachedData) {
+      // Utiliser les données du cache (mises à jour en temps réel)
+      stageData = cachedData;
+    } else if (slide.konvaData) {
+      // Fallback vers les données de la slide
+      stageData = slide.konvaData as unknown as KonvaStage;
+    } else {
+      // Données par défaut
+      stageData = createDefaultKonvaStage();
+    }
+  } else if (slide.konvaData) {
+    // Si pas d'index trouvé, utiliser les données de la slide
     stageData = slide.konvaData as unknown as KonvaStage;
   } else {
     // Créer des données par défaut si aucune donnée Konva n'existe
@@ -31,6 +56,9 @@ export function SlidePreview({
     stageData,
     containerRef,
   });
+
+  // Récupérer la couleur de background de la slide
+  const slideBackgroundColor = stageData?.attrs?.backgroundColor || "#000000";
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Empêcher le déclenchement de onClick sur la Card
@@ -45,9 +73,6 @@ export function SlidePreview({
       }
     }
   };
-
-
-
 
   // Formatage de la durée (en secondes)
   const formatDuration = (duration?: number) => {
@@ -112,7 +137,7 @@ export function SlidePreview({
                 transform: "translate(-50%, -50%)",
                 width: `${width}px`,
                 height: `${height}px`,
-                backgroundColor: "white",
+                backgroundColor: slideBackgroundColor,
               }}
             >
               {viewportStageData && (

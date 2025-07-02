@@ -12,21 +12,21 @@ import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
 import { cleanMediaFromKonvaData, createShape, getStageCenter, calculateImageDimensions, loadImageDimensions, createDefaultKonvaStage } from "../../utils";
-import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 interface UseSlideProps {
   stageData: KonvaStage | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
   scale?: number;
+  stageWidth?: number;
+  stageHeight?: number;
 }
 
-export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
+export function useSlideManager({ stageData, containerRef, stageWidth = 1920, stageHeight = 1080}: UseSlideProps) {
   const [previewScale, setPreviewScale] = useState(0.2);
   const currentSlide = useEditorStore(editorSelectors.currentSlide);
   const setCurrentSlide = useEditorStore((state) => state.setCurrentSlide);
   const setSaveFunction = useEditorStore((state) => state.setSaveFunction);
   const { updateCurrentSlideshow, currentSlideshow } = useSlideshow();
-  const { width, height } = useAppSettings();
   // ===== SAUVEGARDE KONVA =====
 
   // Sauvegarder les données Konva du slide courant
@@ -156,7 +156,7 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
       ];
       
       if (supportedTypes.includes(shapeType)) {
-        newShape = createShape(shapeType as ShapeType, centerX, centerY);
+        newShape = createShape(shapeType as ShapeType, centerX, centerY, stageWidth, stageHeight);
         
         // Pour les types live et données de sécurité, ajuster la position si fournie dans les options
         if ((shapeType.startsWith("live") || shapeType.includes("Days") || shapeType.includes("Accidents") || shapeType.includes("Date")) && options?.x !== undefined && options?.y !== undefined) {
@@ -179,8 +179,8 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
                 const calculatedDimensions = calculateImageDimensions(
                   imageDimensions.width,
                   imageDimensions.height,
-                  width,
-                  height
+                  stageWidth,
+                  stageHeight
                 );
                 imageWidth = calculatedDimensions.width;
                 imageHeight = calculatedDimensions.height;
@@ -188,7 +188,7 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
             } catch (error) {
               console.warn("Impossible de charger les dimensions de l'image, utilisation des dimensions par défaut:", error);
               // Utiliser les dimensions par défaut proportionnelles aux appSettings
-              const defaultDimensions = calculateImageDimensions(200, 150, width, height);
+              const defaultDimensions = calculateImageDimensions(200, 150, stageWidth, stageHeight);
               imageWidth = defaultDimensions.width;
               imageHeight = defaultDimensions.height;
             }
@@ -210,7 +210,7 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
 
           case "video":
             // Pour les vidéos, utiliser des dimensions par défaut proportionnelles aux appSettings
-            const videoDimensions = calculateImageDimensions(200, 150, width, height);
+            const videoDimensions = calculateImageDimensions(200, 150, stageWidth, stageHeight);
             
             newShape = {
               attrs: {
@@ -269,6 +269,10 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
         }
       }
 
+      // Sélectionner automatiquement la nouvelle shape créée
+      const setSelectedShapes = useEditorStore.getState().setSelectedShapes;
+      setSelectedShapes([newShape]);
+
     },
     [currentSlideshow, currentSlide, stageData, saveCurrentSlideKonvaData]
   );
@@ -286,14 +290,14 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
     const containerHeight = container.clientHeight;
 
     // Calculer le ratio pour adapter le canvas au conteneur
-    const scaleX = containerWidth / width;
-    const scaleY = containerHeight / height;
+    const scaleX = containerWidth / stageWidth;
+    const scaleY = containerHeight / stageHeight;
 
     // Utiliser le plus petit ratio pour s'assurer que tout est visible
     const newScale = Math.min(scaleX, scaleY) * 0.9; // 90% pour une petite marge
 
     setPreviewScale(newScale);
-  }, [containerRef, stageData, width, height]);
+  }, [containerRef, stageData, stageWidth, stageHeight]);
 
   // Mettre à jour l'échelle lorsque les dimensions changent
   useEffect(() => {
@@ -317,8 +321,8 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
       height: stageData.attrs.height,
       attrs: {
         // Pour le rendu, on maintient les dimensions du viewport
-        width:width,
-        height: height,
+        width: stageWidth,
+        height: stageHeight,
         x: 0,
         y: 0,
       },
@@ -328,8 +332,8 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
         ...layer,
         attrs: { ...layer.attrs },
         children: layer.children.map((child) => {
-          const centerOffsetX = (stageData.attrs.width - width) / 2;
-          const centerOffsetY = (stageData.attrs.height - height) / 2;
+          const centerOffsetX = (stageData.attrs.width - stageWidth) / 2;
+          const centerOffsetY = (stageData.attrs.height - stageHeight) / 2;
 
           return {
             ...child,
@@ -370,8 +374,9 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
         }));
       }
 
-      // 4. Mettre à jour la slide courante dans le store pour qu'elle soit active
-      setCurrentSlide(currentSlideshow?.slides?.length || 0);
+      // 4. Mettre à jour la slide courante dans le store pour qu'elle soit active et vider la sélection
+      const changeSlide = useEditorStore.getState().changeSlide;
+      changeSlide(currentSlideshow?.slides?.length || 0);
 
       return newSlide;
     } catch (error) {
@@ -398,13 +403,14 @@ export function useSlideManager({ stageData, containerRef}: UseSlideProps) {
           : [],
       }));
 
-      // 3. Si nous avons des slides restantes et que l'index actuel est hors limites, ajustez-le
+      // 3. Si nous avons des slides restantes et que l'index actuel est hors limites, ajustez-le et videz la sélection
       if (currentSlideshow.slides && currentSlideshow.slides.length > 0) {
         const currentIndex = useEditorStore.getState().currentSlide;
         const newLength = currentSlideshow.slides.length - 1;
 
         if (currentIndex >= newLength) {
-          setCurrentSlide(Math.max(0, newLength - 1));
+          const changeSlide = useEditorStore.getState().changeSlide;
+          changeSlide(Math.max(0, newLength - 1));
         }
       }
 

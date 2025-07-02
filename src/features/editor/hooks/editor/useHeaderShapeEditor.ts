@@ -19,6 +19,7 @@ export function useHeaderShapeEditor() {
   // Actions du store (stables)
   const updateSelectedShape = useEditorStore((state) => state.updateSelectedShape);
   const saveShapeChanges = useEditorStore((state) => state.saveShapeChanges);
+  const deleteSelectedShapes = useEditorStore((state) => state.deleteSelectedShapes);
   const cacheKonvaData = useEditorStore((state) => state.cacheKonvaData);
   const getCachedKonvaData = useEditorStore((state) => state.getCachedKonvaData);
 
@@ -32,6 +33,8 @@ export function useHeaderShapeEditor() {
         isCircle: false,
         isText: false,
         isData: false,
+        isDateTime: false,
+        isSecurityIndicator: false,
         hasMultipleTypes: false,
         primaryType: null
       };
@@ -40,11 +43,25 @@ export function useHeaderShapeEditor() {
     const types = new Set(selectedShapes.map(shape => shape.className?.toLowerCase()));
     const typeArray = Array.from(types);
     
+    // Types de date/heure
+    const dateTimeTypes = ['livedate', 'livetime', 'livedatetime'];
+    
+    // Types d'indicateurs de sécurité (basé sur KonvaLiveText.tsx)
+    const securityTypes = [
+      'currentdayswithoutaccident', 'currentdayswithoutaccidentwithstop', 
+      'currentdayswithoutaccidentwithoutstop', 'recorddayswithoutaccident',
+      'yearlyaccidentscount', 'yearlyaccidentswithstopcount', 
+      'yearlyaccidentswithoutstopcount', 'monthlyaccidentscount',
+      'lastaccidentdate', 'monitoringstartdate', 'currentdate'
+    ];
+    
     return {
       isRectangle: typeArray.includes('rect'),
       isCircle: typeArray.includes('circle'),
       isText: typeArray.includes('text') || typeArray.includes('textnode'),
       isData: typeArray.some(type => type?.startsWith('live') || type?.includes('data')),
+      isDateTime: typeArray.some(type => dateTimeTypes.includes(type)),
+      isSecurityIndicator: typeArray.some(type => securityTypes.includes(type)),
       hasMultipleTypes: types.size > 1,
       primaryType: typeArray[0] || null
     };
@@ -83,8 +100,8 @@ export function useHeaderShapeEditor() {
   // États dérivés avec mémoisation ultra-fine
   const styleFlags = useMemo(() => ({
     hasFill: hasSelection && (shapeTypeInfo.isRectangle || shapeTypeInfo.isCircle),
-    hasStroke: hasSelection && !shapeTypeInfo.isText,
-    canEditText: hasSelection && (shapeTypeInfo.isText || shapeTypeInfo.isData),
+    hasStroke: hasSelection && !shapeTypeInfo.isText && !shapeTypeInfo.isData && !shapeTypeInfo.isDateTime && !shapeTypeInfo.isSecurityIndicator,
+    canEditText: hasSelection && (shapeTypeInfo.isText || shapeTypeInfo.isData || shapeTypeInfo.isDateTime || shapeTypeInfo.isSecurityIndicator),
     isBold: commonStyles.fontStyle?.includes('bold') || false,
     isItalic: commonStyles.fontStyle?.includes('italic') || false,
   }), [hasSelection, shapeTypeInfo, commonStyles.fontStyle]);
@@ -203,6 +220,17 @@ export function useHeaderShapeEditor() {
     updateStyle({ fill: color });
   }, [styleFlags.canEditText, updateStyle]);
 
+  const deleteShapes = useCallback(async () => {
+    if (!hasSelection || selectedShapes.length === 0) return;
+    
+    try {
+      await deleteSelectedShapes();
+      console.log('Shapes supprimées avec succès');
+    } catch (error) {
+      console.error('Erreur lors de la suppression des shapes:', error);
+    }
+  }, [hasSelection, selectedShapes.length, deleteSelectedShapes]);
+
   // ===== DONNÉES POUR LE HEADER =====
 
   // Objet optimisé pour le rendu du header
@@ -233,6 +261,7 @@ export function useHeaderShapeEditor() {
     toggleBold,
     toggleItalic,
     setTextAlign,
+    deleteShapes,
   }), [
     hasSelection,
     isEditingText,
@@ -247,6 +276,7 @@ export function useHeaderShapeEditor() {
     toggleBold,
     toggleItalic,
     setTextAlign,
+    deleteShapes,
   ]);
 
   return headerData;
