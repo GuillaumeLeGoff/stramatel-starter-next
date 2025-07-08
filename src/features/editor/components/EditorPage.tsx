@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useCallback } from "react";
 import { useEditorPage } from "@/features/editor/hooks";
 import { ResizableHandle, ResizablePanelGroup, ResizablePanel } from "@/shared/components/ui/resizable";
 import {
@@ -13,6 +13,7 @@ import { SlideManager } from "./slide";
 import { EditorCanvas } from "./editor";
 import { ToolsPanel } from "./shape";
 import { LayersPanel } from "./layers";
+import { useEditorStore } from '../store/editorStore';
 
 export function EditorPage() {
   const {
@@ -50,6 +51,30 @@ export function EditorPage() {
     // Actions couleur de fond
     handleBackgroundColorChange,
   } = useEditorPage();
+
+  // ✅ Récupérer les fonctions stables de Zustand
+  const undo = useEditorStore((s) => s.undo);
+  const redo = useEditorStore((s) => s.redo);
+
+  // ✅ SOLUTION: Stabiliser la fonction avec useCallback
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      console.log('CTRL+Z pressed (undo)');
+      undo();
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+      e.preventDefault();
+      console.log('CTRL+Y or CTRL+SHIFT+Z pressed (redo)');
+      redo();
+    }
+  }, [undo, redo]); // ✅ Dépendances stables des fonctions Zustand
+
+  // ✅ useEffect optimisé avec fonction memoized
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]); // ✅ Dépendance stable grâce à useCallback
 
   // Fonction pour gérer le changement de durée
   const handleDurationChange = async (duration: number) => {

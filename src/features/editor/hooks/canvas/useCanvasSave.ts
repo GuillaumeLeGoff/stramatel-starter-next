@@ -7,7 +7,7 @@ type ExtendedKonvaShape = KonvaShape & {
 
 interface UseKonvaSaveProps {
   stageData: KonvaStage | null;
-  saveCurrentSlideKonvaData: (updatedKonvaData: KonvaStage) => Promise<void>;
+  saveCurrentSlideKonvaData: (updatedKonvaData: KonvaStage, options?: { skipHistory?: boolean }) => Promise<void>;
 }
 
 // Type pour les données de sauvegarde - peut être un seul nœud ou plusieurs
@@ -21,7 +21,7 @@ export function useCanvasSave({
 }: UseKonvaSaveProps) {
   // Fonction unifiée pour sauvegarder un ou plusieurs nœuds
   const saveChanges = useCallback(
-    async (data: SaveData) => {
+    async (data: SaveData, options?: { skipHistory?: boolean }) => {
       if (!stageData) return;
 
       const updatedStageData = JSON.parse(
@@ -58,7 +58,7 @@ export function useCanvasSave({
         updateNodesInTree(updatedStageData.children as ExtendedKonvaShape[]);
       }
 
-      await saveCurrentSlideKonvaData(updatedStageData);
+      await saveCurrentSlideKonvaData(updatedStageData, options);
     },
     [stageData, saveCurrentSlideKonvaData]
   );

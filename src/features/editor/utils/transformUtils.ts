@@ -63,10 +63,11 @@ export function handleTransformWithRatio(
   }
   // Pour les cercles
   else if ('radius' in node) {
-    const scale = Math.max(Math.abs(node.scaleX()), Math.abs(node.scaleY()));
-    const newRadius = (node as any).radius() * scale;
+    const circleNode = node as Konva.Circle;
+    const scale = Math.max(Math.abs(circleNode.scaleX()), Math.abs(circleNode.scaleY()));
+    const newRadius = circleNode.radius() * scale;
 
-    node.setAttrs({
+    circleNode.setAttrs({
       radius: newRadius,
       scaleX: 1,
       scaleY: 1,
@@ -79,11 +80,61 @@ export function handleTransformWithRatio(
  * @param isCtrlPressed - État de la touche Ctrl
  * @param originalRatio - Ratio original optionnel
  */
-export function createTransformHandler(
-  isCtrlPressed: boolean,
-  originalRatio?: number
-) {
-  return (e: Konva.KonvaEventObject<Event>) => {
-    handleTransformWithRatio(e, isCtrlPressed, originalRatio);
+export const createTransformHandler = (
+  handleTransformEnd: (
+    e: Konva.KonvaEventObject<Event>,
+    shapeId: string,
+    className: string
+  ) => Promise<void>,
+  handleTransformContinuous: (
+    e: Konva.KonvaEventObject<Event>,
+    shapeId: string,
+    className: string
+  ) => Promise<void>,
+  isCtrlPressed: boolean
+) => {
+  // ✅ Map pour gérer les timeouts par shape
+  const transformTimeouts = new Map<string, NodeJS.Timeout>();
+  
+  return (node: Konva.Node, className: string) => {
+    const shapeId = node.attrs.id as string;
+    
+    return {
+      onTransformEnd: (e: Konva.KonvaEventObject<Event>) => {
+        // ✅ Nettoyer le timeout de transformation continue s'il existe
+        const existingTimeout = transformTimeouts.get(shapeId);
+        if (existingTimeout) {
+          clearTimeout(existingTimeout);
+          transformTimeouts.delete(shapeId);
+        }
+        
+        // ✅ Sauvegarder définitivement à la fin de la transformation
+        handleTransformEnd(e, shapeId, className);
+      },
+      onTransform: (e: Konva.KonvaEventObject<Event>) => {
+        // ✅ Maintenir le ratio si Ctrl est pressé (instantané, pas de sauvegarde)
+        if (isCtrlPressed && (className === "Rect" || className === "Image" || className === "Video")) {
+          const scaleX = (node as any).scaleX();
+          const scaleY = (node as any).scaleY();
+          const scale = Math.abs(scaleX) > Math.abs(scaleY) ? scaleX : scaleY;
+          (node as any).scaleX(scale);
+          (node as any).scaleY(scale);
+        }
+        
+        // ✅ Throttling amélioré : seulement sauvegarder après 300ms d'inactivité
+        const existingTimeout = transformTimeouts.get(shapeId);
+        if (existingTimeout) {
+          clearTimeout(existingTimeout);
+        }
+        
+        // ✅ Programmer une sauvegarde seulement si l'utilisateur arrête de transformer
+        const timeout = setTimeout(() => {
+          handleTransformContinuous(e, shapeId, className);
+          transformTimeouts.delete(shapeId);
+        }, 300); // ✅ Augmenté de 100ms à 300ms
+        
+        transformTimeouts.set(shapeId, timeout);
+      },
+    };
   };
-} 
+}; 

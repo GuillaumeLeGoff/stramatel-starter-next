@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
   Stage,
   Layer,
@@ -13,7 +13,7 @@ import {
 } from "react-konva";
 import { KonvaStage } from "@/features/editor/types";
 import { PanelLiveText } from "./PanelLiveText";
-import { useAppSettings } from "@/shared/hooks/useAppSettings";
+import { useAppSettingsStore } from "@/shared/store/appSettingsStore";
 
 interface KonvaSlideViewerProps {
   konvaData: KonvaStage;
@@ -103,24 +103,192 @@ const SimpleKonvaImage: React.FC<{
   );
 };
 
+// Composant simple pour charger et afficher les vidéos
+const SimpleKonvaVideo: React.FC<{
+  src: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  id: string;
+  onVideoStatusChange?: (status: string) => void;
+}> = ({ src, x, y, width, height, rotation = 0, id, onVideoStatusChange }) => {
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null);
+  const [videoStatus, setVideoStatus] = useState<
+    "loading" | "ready" | "playing" | "error"
+  >("loading");
+
+  useEffect(() => {
+    const videoElement = document.createElement("video");
+    videoElement.crossOrigin = "anonymous";
+    videoElement.muted = true;
+    videoElement.loop = true;
+    videoElement.preload = "metadata";
+    videoElement.playsInline = true;
+
+    // Convertir l'URL relative en URL absolue
+    const absoluteSrc = src.startsWith('/') 
+      ? `${window.location.origin}${src}`
+      : src;
+    
+    videoElement.src = absoluteSrc;
+
+    const onLoadedMetadata = () => {
+      console.log("✅ Panel - Métadonnées vidéo chargées:", { src, width: videoElement.videoWidth, height: videoElement.videoHeight });
+      setVideo(videoElement);
+      setVideoStatus("ready");
+      onVideoStatusChange?.("ready");
+    };
+
+    const onCanPlay = () => {
+      console.log("🎮 Panel - Vidéo prête à jouer:", src);
+      videoElement.play().then(() => {
+        console.log("▶️ Panel - Lecture vidéo démarrée:", src);
+        setVideoStatus("playing");
+        onVideoStatusChange?.("playing");
+      }).catch((error) => {
+        console.warn("⚠️ Panel - Lecture automatique bloquée:", error);
+        setVideoStatus("ready");
+        onVideoStatusChange?.("ready");
+      });
+    };
+
+    const onError = () => {
+      console.error("❌ Panel - Erreur de chargement vidéo:", src);
+      setVideoStatus("error");
+      onVideoStatusChange?.("error");
+    };
+
+    videoElement.addEventListener("loadedmetadata", onLoadedMetadata);
+    videoElement.addEventListener("canplay", onCanPlay);
+    videoElement.addEventListener("error", onError);
+
+    return () => {
+      console.log("🧹 Panel - Nettoyage élément vidéo:", src);
+      videoElement.removeEventListener("loadedmetadata", onLoadedMetadata);
+      videoElement.removeEventListener("canplay", onCanPlay);
+      videoElement.removeEventListener("error", onError);
+      videoElement.pause();
+      videoElement.src = "";
+      setVideo(null);
+      onVideoStatusChange?.("stopped");
+    };
+  }, [src]); // Enlever onVideoStatusChange des dépendances
+
+  if (videoStatus === "loading") {
+    // Placeholder de chargement
+    return (
+      <Rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rotation={rotation}
+        fill="#f3f4f6"
+        stroke="#d1d5db"
+        strokeWidth={2}
+      />
+    );
+  }
+
+  if (videoStatus === "error" || !video) {
+    // Placeholder d'erreur
+    return (
+      <Rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        rotation={rotation}
+        fill="#fef2f2"
+        stroke="#f87171"
+        strokeWidth={2}
+      />
+    );
+  }
+
+  return (
+    <Image
+      image={video}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rotation={rotation}
+      id={id}
+    />
+  );
+};
+
 export default function KonvaSlideViewerClient({
   konvaData,
 }: KonvaSlideViewerProps) {
-  const { width, height } = useAppSettings();
+  const { settings, fetchSettings } = useAppSettingsStore();
+  const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
+  const animationFrameRef = useRef<number | null>(null);
+  const stageRef = useRef<any>(null);
+  
+  // Charger les settings au montage si pas déjà chargées
+  useEffect(() => {
+    if (!settings) {
+      fetchSettings();
+    }
+  }, [settings, fetchSettings]);
+  
+  // Récupérer les dimensions depuis appSettings avec des valeurs par défaut
+  const dimensions = useMemo(() => ({
+    width: settings?.width || 1920,
+    height: settings?.height || 1080,
+  }), [settings?.width, settings?.height]);
+
+  // Gérer l'animation globale des vidéos
+  useEffect(() => {
+    if (playingVideos.size > 0 && stageRef.current) {
+      const animateVideos = () => {
+        if (stageRef.current && playingVideos.size > 0) {
+          stageRef.current.batchDraw();
+          animationFrameRef.current = requestAnimationFrame(animateVideos);
+        }
+      };
+      
+      animateVideos();
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [playingVideos.size]);
+
+  // Gérer le changement de statut des vidéos
+  const handleVideoStatusChange = useCallback((videoId: string, status: string) => {
+    setPlayingVideos(prev => {
+      const newSet = new Set(prev);
+      if (status === "playing") {
+        newSet.add(videoId);
+      } else {
+        newSet.delete(videoId);
+      }
+      return newSet;
+    });
+  }, []);
   
   if (!konvaData || !konvaData.children) {
     return null;
   }
 
-  // Utiliser les dimensions depuis AppSettings avec fallback par défaut
-  const VIEWPORT_WIDTH = width;
-  const VIEWPORT_HEIGHT = height;
+  // Utiliser les dimensions depuis AppSettings
+  const VIEWPORT_WIDTH = dimensions.width;
+  const VIEWPORT_HEIGHT = dimensions.height;
 
   // Calculer l'offset pour centrer le viewport
   const offsetX = (konvaData.attrs.width - VIEWPORT_WIDTH) / 2;
   const offsetY = (konvaData.attrs.height - VIEWPORT_HEIGHT) / 2;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const renderShape = (
     shape: { className: string; attrs: Record<string, any> },
     index: number
@@ -205,6 +373,24 @@ export default function KonvaSlideViewerClient({
             id={shapeId}
           />
         );
+      case "Video":
+        if (!attrs.src) {
+          console.warn("Video requiert une propriété src", attrs);
+          return null;
+        }
+        return (
+          <SimpleKonvaVideo
+            key={shapeId}
+            src={attrs.src}
+            x={adjustedAttrs.x}
+            y={adjustedAttrs.y}
+            width={attrs.width || 200}
+            height={attrs.height || 150}
+            rotation={attrs.rotation || 0}
+            id={shapeId}
+            onVideoStatusChange={(status) => handleVideoStatusChange(shapeId, status)}
+          />
+        );
       // Gérer tous les nouveaux types de données de sécurité comme des Text
       case "currentDaysWithoutAccident":
       case "currentDaysWithoutAccidentWithStop":
@@ -239,16 +425,30 @@ export default function KonvaSlideViewerClient({
   };
 
   return (
-   
-        <Stage width={VIEWPORT_WIDTH} height={VIEWPORT_HEIGHT}>
-          {konvaData.children.map((layer, layerIndex) => (
-            <Layer key={layerIndex}>
-              {layer.children?.map((shape, shapeIndex) =>
-                renderShape(shape, shapeIndex)
-              )}
-            </Layer>
-          ))}
-        </Stage>
-    
+    <Stage
+      width={VIEWPORT_WIDTH}
+      height={VIEWPORT_HEIGHT}
+      ref={stageRef}
+    >
+      {konvaData.children.map((layer, layerIndex) => (
+        <Layer key={layerIndex}>
+          {/* Rectangle de fond pour la couleur si définie */}
+          {layerIndex === 0 && konvaData.attrs.backgroundColor && (
+            <Rect
+              x={0}
+              y={0}
+              width={VIEWPORT_WIDTH}
+              height={VIEWPORT_HEIGHT}
+              fill={konvaData.attrs.backgroundColor}
+              listening={false}
+            />
+          )}
+          
+          {layer.children?.map((shape, shapeIndex) =>
+            renderShape(shape, shapeIndex)
+          )}
+        </Layer>
+      ))}
+    </Stage>
   );
 }

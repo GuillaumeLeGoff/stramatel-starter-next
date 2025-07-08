@@ -16,8 +16,10 @@ import { KonvaTextEditor } from "./KonvaTextEditor";
 import { KonvaImage } from "./KonvaImage";
 import { KonvaVideo } from "./KonvaVideo";
 import { KonvaLiveText } from "./KonvaLiveText";
+import { ArrowTransformer } from "./ArrowTransformer";
 import Konva from "konva";
 import { fixShapeProperties } from "../../utils";
+import { useEditorStore } from "../../store/editorStore";
 
 interface KonvaStageRendererProps {
   stageData: KonvaStage;
@@ -48,11 +50,15 @@ export function KonvaStageRenderer({
     transformerRef,
     registerNodeRef,
     handleTransformEnd,
+    handleTransformContinuous,
     handleDragStart,
     handleDragEnd,
     handleShapeClick,
     createTransformHandlerWithRatio,
     textEditor,
+    selectedShapes,
+    shapeRefs,
+    saveChanges,
   } = useKonvaStageRenderer({ stageData, isPreview });
 
   // Combiner les gestionnaires de clic du stage
@@ -114,7 +120,9 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
           />
         );
@@ -127,7 +135,9 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
           />
         );
@@ -140,7 +150,9 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
           />
         );
@@ -153,7 +165,9 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
           />
         );
@@ -163,15 +177,23 @@ export function KonvaStageRenderer({
           console.warn("Arrow requiert des points", attrs);
           return null;
         }
+
         shapeElement = (
           <Arrow
             key={shapeId}
             {...commonProps}
             points={attrs.points as number[]}
+            stroke={attrs.stroke as string}
+            strokeWidth={attrs.strokeWidth as number}
+            pointerLength={attrs.pointerLength as number}
+            pointerWidth={attrs.pointerWidth as number}
+            fill={attrs.fill as string}
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
           />
         );
@@ -193,15 +215,69 @@ export function KonvaStageRenderer({
             rotation={attrs.rotation as number}
             id={shapeId}
             draggable={commonProps.draggable}
+            autoResize={attrs.autoResize as boolean}
+            onDimensionsChange={async (newWidth: number, newHeight: number) => {
+              // ✅ OPTIMISATION: Mettre à jour seulement le cache local pour l'autoResize
+              // Pas besoin de sauvegarde backend immédiate pour l'ajustement automatique
+              console.log(`📐 AutoResize Image - nouvelles dimensions:`, { newWidth, newHeight });
+              
+              // Mettre à jour le store local immédiatement
+              const updateSelectedShape = useEditorStore.getState().updateSelectedShape;
+              updateSelectedShape({ 
+                width: newWidth, 
+                height: newHeight, 
+                autoResize: false // Désactiver après usage automatique
+              });
+              
+              // ✅ Mettre à jour le cache Konva local sans sauvegarder en backend
+              const currentKonvaData = useEditorStore.getState().getCachedKonvaData(useEditorStore.getState().currentSlide);
+              if (currentKonvaData) {
+                const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData));
+                
+                // Trouver et mettre à jour la shape dans les données Konva
+                const updateShapeInNodes = (nodes: any[]): any[] => {
+                  return nodes.map(node => {
+                    if (node.attrs?.id === shapeId) {
+                      return {
+                        ...node,
+                        attrs: { 
+                          ...node.attrs, 
+                          width: newWidth, 
+                          height: newHeight, 
+                          autoResize: false 
+                        }
+                      };
+                    }
+                    if (node.children && Array.isArray(node.children)) {
+                      return {
+                        ...node,
+                        children: updateShapeInNodes(node.children)
+                      };
+                    }
+                    return node;
+                  });
+                };
+                
+                if (updatedKonvaData.children && Array.isArray(updatedKonvaData.children)) {
+                  updatedKonvaData.children = updateShapeInNodes(updatedKonvaData.children);
+                }
+                
+                // Mettre à jour le cache immédiatement (sans historique)
+                const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
+                cacheKonvaData(useEditorStore.getState().currentSlide, updatedKonvaData);
+              }
+            }}
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
             onDragEnd={commonProps.onDragEnd}
-            onClick={commonProps.onClick}
+            onClick={(e) => commonProps.onClick && commonProps.onClick(e)}
           />
         );
         break;
@@ -222,10 +298,64 @@ export function KonvaStageRenderer({
             rotation={attrs.rotation as number}
             id={shapeId}
             draggable={commonProps.draggable}
+            autoResize={attrs.autoResize as boolean}
+            onDimensionsChange={async (newWidth: number, newHeight: number) => {
+              // ✅ OPTIMISATION: Mettre à jour seulement le cache local pour l'autoResize
+              // Pas besoin de sauvegarde backend immédiate pour l'ajustement automatique
+              console.log(`📐 AutoResize Video - nouvelles dimensions:`, { newWidth, newHeight });
+              
+              // Mettre à jour le store local immédiatement
+              const updateSelectedShape = useEditorStore.getState().updateSelectedShape;
+              updateSelectedShape({ 
+                width: newWidth, 
+                height: newHeight, 
+                autoResize: false // Désactiver après usage automatique
+              });
+              
+              // ✅ Mettre à jour le cache Konva local sans sauvegarder en backend
+              const currentKonvaData = useEditorStore.getState().getCachedKonvaData(useEditorStore.getState().currentSlide);
+              if (currentKonvaData) {
+                const updatedKonvaData = JSON.parse(JSON.stringify(currentKonvaData));
+                
+                // Trouver et mettre à jour la shape dans les données Konva
+                const updateShapeInNodes = (nodes: any[]): any[] => {
+                  return nodes.map(node => {
+                    if (node.attrs?.id === shapeId) {
+                      return {
+                        ...node,
+                        attrs: { 
+                          ...node.attrs, 
+                          width: newWidth, 
+                          height: newHeight, 
+                          autoResize: false 
+                        }
+                      };
+                    }
+                    if (node.children && Array.isArray(node.children)) {
+                      return {
+                        ...node,
+                        children: updateShapeInNodes(node.children)
+                      };
+                    }
+                    return node;
+                  });
+                };
+                
+                if (updatedKonvaData.children && Array.isArray(updatedKonvaData.children)) {
+                  updatedKonvaData.children = updateShapeInNodes(updatedKonvaData.children);
+                }
+                
+                // Mettre à jour le cache immédiatement (sans historique)
+                const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
+                cacheKonvaData(useEditorStore.getState().currentSlide, updatedKonvaData);
+              }
+            }}
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
@@ -276,7 +406,9 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
@@ -317,7 +449,9 @@ export function KonvaStageRenderer({
             onTransform={
               isPreview
                 ? undefined
-                : createTransformHandlerWithRatio()
+                : (e: Konva.KonvaEventObject<Event>) => {
+                    handleTransformContinuous(e, shapeId, className);
+                  }
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
@@ -369,30 +503,59 @@ export function KonvaStageRenderer({
         {allShapes}
 
         {/* Transformer pour la sélection */}
-        {!isPreview && (
-          <Transformer
-            ref={transformerRef}
-            anchorSize={10 / scale}
-            boundBoxFunc={(oldBox, newBox) => {
-              if (newBox.width < 5 || newBox.height < 5) {
-                return oldBox;
-              }
-              return newBox;
-            }}
-            enabledAnchors={[
-              "top-left",
-              "top-center",
-              "top-right",
-              "middle-left",
-              "middle-right",
-              "bottom-left",
-              "bottom-center",
-              "bottom-right",
-            ]}
-            rotateEnabled={true}
-            keepRatio={false}
-          />
-        )}
+        {!isPreview && (() => {
+          // Déterminer si on a sélectionné uniquement une flèche
+          const isArrowOnly = selectedShapes.length === 1 && 
+                             selectedShapes[0]?.className === 'Arrow';
+          
+          if (isArrowOnly) {
+            // Utiliser le transformer personnalisé pour les flèches
+            const arrowShape = selectedShapes[0];
+            const arrowNode = shapeRefs[arrowShape.attrs.id as string] as Konva.Arrow;
+            
+
+            
+            return (
+              <ArrowTransformer
+                target={arrowNode}
+                scale={scale}
+                onPointsChange={async (newPoints) => {
+                  // Sauvegarder les nouveaux points
+                  await saveChanges({
+                    nodeId: arrowShape.attrs.id as string,
+                    attrs: { points: newPoints },
+                  }, { skipHistory: true });
+                }}
+              />
+            );
+          } else {
+            // Utiliser le transformer standard pour les autres formes
+            return (
+              <Transformer
+                ref={transformerRef}
+                anchorSize={10 / scale}
+                boundBoxFunc={(oldBox, newBox) => {
+                  if (newBox.width < 5 || newBox.height < 5) {
+                    return oldBox;
+                  }
+                  return newBox;
+                }}
+                enabledAnchors={[
+                  "top-left",
+                  "top-center",
+                  "top-right",
+                  "middle-left",
+                  "middle-right",
+                  "bottom-left",
+                  "bottom-center",
+                  "bottom-right",
+                ]}
+                rotateEnabled={true}
+                keepRatio={false}
+              />
+            );
+          }
+        })()}
 
         {/* Rectangle de sélection */}
         {/*  {!isPreview && selectionRect.visible && (

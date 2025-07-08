@@ -40,24 +40,37 @@ export function useShapeMediaManager({
     selectMedia(media);
     onMediaSelect?.(media);
 
+    console.log("🎬 Sélection de média:", {
+      type: media.type,
+      id: media.id,
+      name: media.name,
+      url: media.url,
+      size: media.size
+    });
+
     // Ajouter le média au canvas Konva
     if (addShape) {
       try {
         if (media.type === "image") {
+          console.log("🖼️ Ajout d'image au canvas avec URL:", media.url);
           await addShape("image", {
             src: media.url,
             name: media.name,
             mediaId: media.id,
+            autoResize: true, // Activer le redimensionnement automatique
           });
         } else if (media.type === "video") {
+          console.log("🎥 Ajout de vidéo au canvas avec URL:", media.url);
           await addShape("video", {
             src: media.url,
             name: media.name,
             mediaId: media.id,
+            autoResize: true, // Activer le redimensionnement automatique
           });
         }
+        console.log("✅ Média ajouté avec succès au canvas");
       } catch (error) {
-        console.error(`Erreur lors de l'ajout du ${media.type} au canvas:`, error);
+        console.error(`❌ Erreur lors de l'ajout du ${media.type} au canvas:`, error);
       }
     }
   }, [selectMedia, onMediaSelect, addShape]);

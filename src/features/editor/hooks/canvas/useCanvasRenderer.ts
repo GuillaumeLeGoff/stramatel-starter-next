@@ -203,11 +203,6 @@ export function useCanvasRenderer({
     [isPreview, selectedShapes]
   );
 
-  // Créer le handler de transformation avec support du ratio
-  const createTransformHandlerWithRatio = useCallback(() => {
-    return createTransformHandler(isCtrlPressed);
-  }, [isCtrlPressed]);
-
   // Gestion de la fin de transformation
   const handleTransformEnd = useCallback(
     async (
@@ -217,34 +212,30 @@ export function useCanvasRenderer({
     ) => {
       if (isPreview) return;
 
-      const node = e.target;
-      const scaleX = node.scaleX();
-      const scaleY = node.scaleY();
-      
-      console.log(`🔧 TransformEnd - ${className} (${shapeId}):`, {
-        scaleX,
-        scaleY,
-        currentWidth: (node as any).width?.() || 'N/A',
-        currentHeight: (node as any).height?.() || 'N/A'
-      });
-      
-      const baseAttrs = {
+      const target = e.target;
+      if (!target) return;
+
+      const node = target;
+      const newAttrs: Record<string, unknown> = {
         x: node.x(),
         y: node.y(),
         rotation: node.rotation(),
       };
 
-      let newAttrs: Record<string, unknown> = { ...baseAttrs };
+      console.log(`🎯 Transformation terminée pour ${shapeId}:`, {
+        className,
+        x: newAttrs.x,
+        y: newAttrs.y,
+        rotation: newAttrs.rotation,
+        scaleX: node.scaleX(),
+        scaleY: node.scaleY(),
+      });
 
-      // Calculer les nouvelles dimensions en appliquant les facteurs d'échelle
-      if (className === "Text" || className === "Rect" || className === "Image" || 
-          className === "liveDate" || className === "liveTime" || className === "liveDateTime" ||
-          className === "currentDaysWithoutAccident" || className === "currentDaysWithoutAccidentWithStop" || 
-          className === "currentDaysWithoutAccidentWithoutStop" || className === "recordDaysWithoutAccident" ||
-          className === "yearlyAccidentsCount" || className === "yearlyAccidentsWithStopCount" || 
-          className === "yearlyAccidentsWithoutStopCount" || className === "monthlyAccidentsCount" ||
-          className === "lastAccidentDate" || className === "monitoringStartDate" ||
-          className === "Video") {
+      // Gestion spéciale des scales selon le type de forme
+      const scaleX = node.scaleX();
+      const scaleY = node.scaleY();
+
+      if (className === "Rect" || className === "Text" || className === "Image" || className === "Video") {
         const currentWidth = (node as any).width();
         const currentHeight = (node as any).height();
         
@@ -290,12 +281,73 @@ export function useCanvasRenderer({
 
       console.log(`💾 Sauvegarde des attributs:`, newAttrs);
 
+      // Sauvegarder SANS historique pour la transformation finale (évite l'accumulation)
       await saveHook.saveChanges({
         nodeId: shapeId,
         attrs: newAttrs,
-      });
+      }, { skipHistory: false }); // Garder l'historique pour la transformation finale
     },
     [isPreview, saveHook.saveChanges]
+  );
+
+  // Nouvelle fonction pour les transformations continues (pendant le drag)
+  const handleTransformContinuous = useCallback(
+    async (
+      e: Konva.KonvaEventObject<Event>,
+      shapeId: string,
+      className: string
+    ) => {
+      if (isPreview) return;
+
+      const target = e.target;
+      if (!target) return;
+
+      const node = target;
+      const newAttrs: Record<string, unknown> = {
+        x: node.x(),
+        y: node.y(),
+        rotation: node.rotation(),
+      };
+
+      // Gestion des scales selon le type de forme (même logique que handleTransformEnd)
+      const scaleX = node.scaleX();
+      const scaleY = node.scaleY();
+
+      if (className === "Rect" || className === "Text" || className === "Image" || className === "Video") {
+        const currentWidth = (node as any).width();
+        const currentHeight = (node as any).height();
+        newAttrs.width = currentWidth * scaleX;
+        newAttrs.height = currentHeight * scaleY;
+        newAttrs.scaleX = 1;
+        newAttrs.scaleY = 1;
+        node.scaleX(1);
+        node.scaleY(1);
+        (node as any).width(newAttrs.width);
+        (node as any).height(newAttrs.height);
+      } else if (className === "Circle") {
+        const currentRadius = (node as any).radius();
+        const avgScale = Math.max(scaleX, scaleY);
+        newAttrs.radius = currentRadius * avgScale;
+        newAttrs.scaleX = 1;
+        newAttrs.scaleY = 1;
+        node.scaleX(1);
+        node.scaleY(1);
+        (node as any).radius(newAttrs.radius);
+      } else {
+        newAttrs.scaleX = scaleX;
+        newAttrs.scaleY = scaleY;
+      }
+
+      // ✅ OPTIMISATION: Pendant les transformations continues, 
+      // seulement mettre à jour le store local pour un feedback visuel immédiat
+      // SANS sauvegarder en backend
+      console.log(`🔄 Transformation continue - mise à jour cache local seulement:`, newAttrs);
+      
+      // Mettre à jour uniquement le store d'édition (pour le feedback visuel)
+      const updateSelectedShape = useEditorStore.getState().updateSelectedShape;
+      updateSelectedShape(newAttrs);
+    },
+    [isPreview]
   );
 
   // Gestion du début de drag (sélectionner la shape)
@@ -329,13 +381,20 @@ export function useCanvasRenderer({
       if (isPreview) return;
 
       const node = e.target;
+      
+      console.log(`🎯 Fin de drag pour ${shapeId}:`, {
+        x: node.x(),
+        y: node.y(),
+      });
+
+      // ✅ Sauvegarder seulement la position finale (sans historique car c'est juste un déplacement)
       await saveHook.saveChanges({
         nodeId: shapeId,
         attrs: {
           x: node.x(),
           y: node.y(),
         },
-      });
+      }, { skipHistory: true }); // ✅ Skip history pour les simples déplacements
     },
     [isPreview, saveHook.saveChanges]
   );
@@ -356,6 +415,15 @@ export function useCanvasRenderer({
   React.useEffect(() => {
     updateTransformer();
   }, [updateTransformer]);
+
+  // Créer le handler de transformation avec support du ratio
+  const createTransformHandlerWithRatio = useCallback(() => {
+    return createTransformHandler(
+      handleTransformEnd,
+      handleTransformContinuous,
+      isCtrlPressed
+    );
+  }, [handleTransformEnd, handleTransformContinuous, isCtrlPressed]);
 
   return {
     // Données
@@ -380,6 +448,7 @@ export function useCanvasRenderer({
 
     // Événements des formes
     handleTransformEnd,
+    handleTransformContinuous,
     handleDragStart,
     handleDragEnd,
     handleShapeClick,

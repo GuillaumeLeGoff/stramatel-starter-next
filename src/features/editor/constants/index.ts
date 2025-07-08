@@ -68,6 +68,48 @@ export const SHAPE_TYPES = [
   "video",
 ] as const;
 
+// ===== TYPES DE FLÈCHES =====
+export const ARROW_TYPES = {
+  standard: {
+    name: "Standard",
+    icon: "→",
+    pointerLength: 10,
+    pointerWidth: 10,
+  },
+  large: {
+    name: "Large",
+    icon: "⟶",
+    pointerLength: 15,
+    pointerWidth: 12,
+  },
+  thin: {
+    name: "Fine",
+    icon: "⤷",
+    pointerLength: 8,
+    pointerWidth: 6,
+  },
+  wide: {
+    name: "Épaisse",
+    icon: "⟹",
+    pointerLength: 12,
+    pointerWidth: 16,
+  },
+  sharp: {
+    name: "Pointue",
+    icon: "⤴",
+    pointerLength: 20,
+    pointerWidth: 8,
+  },
+  block: {
+    name: "Bloc",
+    icon: "▶",
+    pointerLength: 12,
+    pointerWidth: 20,
+  },
+} as const;
+
+export type ArrowType = keyof typeof ARROW_TYPES;
+
 // Configuration des panneaux redimensionnables
 export const PANEL_CONFIG = {
   slidePanel: {

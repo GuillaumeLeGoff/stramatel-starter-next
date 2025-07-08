@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import { KonvaShape } from "../../types";
+import { ARROW_TYPES, ArrowType } from "../../constants";
 
 /**
  * Hook optimisé spécialement pour les composants Header
@@ -35,6 +36,7 @@ export function useHeaderShapeEditor() {
         isData: false,
         isDateTime: false,
         isSecurityIndicator: false,
+        isArrow: false,
         hasMultipleTypes: false,
         primaryType: null
       };
@@ -62,6 +64,7 @@ export function useHeaderShapeEditor() {
       isData: typeArray.some(type => type?.startsWith('live') || type?.includes('data')),
       isDateTime: typeArray.some(type => dateTimeTypes.includes(type)),
       isSecurityIndicator: typeArray.some(type => securityTypes.includes(type)),
+      isArrow: typeArray.includes('arrow'),
       hasMultipleTypes: types.size > 1,
       primaryType: typeArray[0] || null
     };
@@ -77,7 +80,9 @@ export function useHeaderShapeEditor() {
         fontSize: 16,
         fontFamily: 'Arial',
         fontStyle: 'normal',
-        align: 'left'
+        align: 'left',
+        pointerLength: 10,
+        pointerWidth: 10
       };
     }
 
@@ -93,15 +98,34 @@ export function useHeaderShapeEditor() {
       fontSize: attrs.fontSize || 16,
       fontFamily: attrs.fontFamily || 'Arial',
       fontStyle: attrs.fontStyle || 'normal',
-      align: attrs.align || 'left'
+      align: attrs.align || 'left',
+      pointerLength: attrs.pointerLength || 10,
+      pointerWidth: attrs.pointerWidth || 10
     };
   }, [hasSelection, selectedShapes]);
+
+  // Type de flèche actuel détecté
+  const currentArrowType = useMemo((): ArrowType => {
+    if (!shapeTypeInfo.isArrow) return 'standard';
+    
+    const { pointerLength, pointerWidth } = commonStyles;
+    
+    // Trouver le type de flèche qui correspond aux dimensions actuelles
+    for (const [type, config] of Object.entries(ARROW_TYPES)) {
+      if (config.pointerLength === pointerLength && config.pointerWidth === pointerWidth) {
+        return type as ArrowType;
+      }
+    }
+    
+    return 'standard'; // Fallback
+  }, [shapeTypeInfo.isArrow, commonStyles]);
 
   // États dérivés avec mémoisation ultra-fine
   const styleFlags = useMemo(() => ({
     hasFill: hasSelection && (shapeTypeInfo.isRectangle || shapeTypeInfo.isCircle),
     hasStroke: hasSelection && !shapeTypeInfo.isText && !shapeTypeInfo.isData && !shapeTypeInfo.isDateTime && !shapeTypeInfo.isSecurityIndicator,
     canEditText: hasSelection && (shapeTypeInfo.isText || shapeTypeInfo.isData || shapeTypeInfo.isDateTime || shapeTypeInfo.isSecurityIndicator),
+    isArrow: hasSelection && shapeTypeInfo.isArrow,
     isBold: commonStyles.fontStyle?.includes('bold') || false,
     isItalic: commonStyles.fontStyle?.includes('italic') || false,
   }), [hasSelection, shapeTypeInfo, commonStyles.fontStyle]);
@@ -157,7 +181,8 @@ export function useHeaderShapeEditor() {
       cacheKonvaData(currentSlide, updatedKonvaData);
     }
     
-    // 3. Sauvegarder les changements via l'API (en arrière-plan)
+    // 3. ✅ OPTIMISATION: Sauvegarder avec skipHistory pour les changements de style 
+    // (pas besoin d'historique pour chaque ajustement de couleur/taille)
     try {
       await saveShapeChanges(attrs);
       console.log('Style sauvegardé avec succès:', attrs);
@@ -220,6 +245,16 @@ export function useHeaderShapeEditor() {
     updateStyle({ fill: color });
   }, [styleFlags.canEditText, updateStyle]);
 
+  const setArrowType = useCallback((arrowType: ArrowType) => {
+    if (!styleFlags.isArrow) return;
+    
+    const arrowConfig = ARROW_TYPES[arrowType];
+    updateStyle({ 
+      pointerLength: arrowConfig.pointerLength,
+      pointerWidth: arrowConfig.pointerWidth 
+    });
+  }, [styleFlags.isArrow, updateStyle]);
+
   const deleteShapes = useCallback(async () => {
     if (!hasSelection || selectedShapes.length === 0) return;
     
@@ -252,6 +287,11 @@ export function useHeaderShapeEditor() {
     currentFontSize: commonStyles.fontSize,
     currentAlign: commonStyles.align,
     
+    // Propriétés des flèches
+    currentArrowType,
+    currentPointerLength: commonStyles.pointerLength,
+    currentPointerWidth: commonStyles.pointerWidth,
+    
     // Actions
     setFillColor,
     setStrokeColor,
@@ -261,6 +301,7 @@ export function useHeaderShapeEditor() {
     toggleBold,
     toggleItalic,
     setTextAlign,
+    setArrowType,
     deleteShapes,
   }), [
     hasSelection,
@@ -268,6 +309,7 @@ export function useHeaderShapeEditor() {
     shapeTypeInfo,
     styleFlags,
     commonStyles,
+    currentArrowType,
     setFillColor,
     setStrokeColor,
     setStrokeWidth,
@@ -276,6 +318,7 @@ export function useHeaderShapeEditor() {
     toggleBold,
     toggleItalic,
     setTextAlign,
+    setArrowType,
     deleteShapes,
   ]);
 

@@ -1,42 +1,78 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   createSlide,
   deleteSlide as deleteSlideAPI,
   updateSlide,
   associateMediaToSlide,
 } from "../../api/slideApi";
-import { KonvaStage, Slide, ShapeType } from "../../types";
+import { KonvaStage, KonvaShape, Slide, ShapeType } from "../../types"; // ✅ Ajout de KonvaShape
 import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import { useSlideshow } from "@/features/slideshow/hooks";
 import { SlideshowSlide } from "@/features/slideshow/types";
 import { arrayMove } from "@dnd-kit/sortable";
 import { DragEndEvent } from "@dnd-kit/core";
-import { cleanMediaFromKonvaData, createShape, getStageCenter, calculateImageDimensions, loadImageDimensions, createDefaultKonvaStage } from "../../utils";
+import { cleanMediaFromKonvaData, createShape, getStageCenter, calculateImageDimensions, loadImageDimensions, createDefaultKonvaStage, generateShapeId } from "../../utils";
+import { useAppSettingsStore } from "@/shared/store/appSettingsStore";
 
 interface UseSlideProps {
   stageData: KonvaStage | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
   scale?: number;
-  stageWidth?: number;
-  stageHeight?: number;
 }
 
-export function useSlideManager({ stageData, containerRef, stageWidth = 1920, stageHeight = 1080}: UseSlideProps) {
+interface AddSlideConfig {
+  slideshowId: number;
+  position: number;
+  duration: number;
+  width: number;
+  height: number;
+}
+
+export function useSlideManager({ stageData, containerRef, scale }: UseSlideProps) {
   const [previewScale, setPreviewScale] = useState(0.2);
   const currentSlide = useEditorStore(editorSelectors.currentSlide);
   const setCurrentSlide = useEditorStore((state) => state.setCurrentSlide);
   const setSaveFunction = useEditorStore((state) => state.setSaveFunction);
   const { updateCurrentSlideshow, currentSlideshow } = useSlideshow();
+  const { settings, fetchSettings } = useAppSettingsStore();
+  
+  // ✅ SOLUTION: Charger les settings avec dépendances optimisées
+  useEffect(() => {
+    // ✅ Vérifier directement si settings est null/undefined (valeur primitive)
+    if (!settings) {
+      fetchSettings();
+    }
+  }, [settings, fetchSettings]); // ✅ Ajouter fetchSettings dans les dépendances
+  
+  // ✅ Récupérer les dimensions avec useMemo optimisé
+  const dimensions = useMemo(() => {
+    // ✅ Créer l'objet directement dans useMemo avec des valeurs primitives
+    return {
+      width: settings?.width || 1920,
+      height: settings?.height || 1080,
+    };
+  }, [settings?.width, settings?.height]); // ✅ Dépendances primitives stables
+
   // ===== SAUVEGARDE KONVA =====
 
   // Sauvegarder les données Konva du slide courant
   const saveCurrentSlideKonvaData = useCallback(
-    async (updatedKonvaData: KonvaStage) => {
+    async (updatedKonvaData: KonvaStage, options?: { skipHistory?: boolean }) => {
       if (!currentSlideshow || !updateCurrentSlideshow) return;
 
       // 1. Mettre à jour le cache Konva du store d'édition IMMÉDIATEMENT pour l'affichage
-      const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
-      cacheKonvaData(currentSlide, updatedKonvaData);
+      if (options?.skipHistory) {
+        // Pendant les transformations continues, mettre à jour directement le cache sans historique
+        const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
+        cacheKonvaData(currentSlide, updatedKonvaData);
+      } else {
+        // Pour les modifications finales, utiliser l'historique
+        const setPresentState = useEditorStore.getState().setPresentState;
+        const currentCache = useEditorStore.getState().konvaDataCache;
+        const newCache = new Map(currentCache);
+        newCache.set(currentSlide, updatedKonvaData);
+        setPresentState({ konvaDataCache: newCache });
+      }
 
       // 2. Mettre à jour le slideshow local
       updateCurrentSlideshow((prev) => {
@@ -63,13 +99,13 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
     [currentSlideshow, currentSlide, updateCurrentSlideshow]
   );
 
-  // Configurer la fonction de sauvegarde dans le store
+  // ✅ Configurer la fonction de sauvegarde avec dépendances optimisées
   useEffect(() => {
     setSaveFunction(saveCurrentSlideKonvaData);
     
     // Nettoyer en cas de démontage
     return () => setSaveFunction(null);
-  }, [setSaveFunction, saveCurrentSlideKonvaData]);
+  }, [saveCurrentSlideKonvaData, setSaveFunction]); // ✅ Ajouter toutes les dépendances
 
   // ===== NETTOYAGE DES MÉDIAS =====
 
@@ -117,148 +153,80 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
         });
 
         await Promise.all(updatePromises);
-        
-        console.log(`Média ${mediaUrl} nettoyé de toutes les slides du slideshow`);
+
+        console.log(`✅ Média ${mediaUrl} nettoyé de toutes les slides`);
       } catch (error) {
-        console.error("Erreur lors du nettoyage du média de toutes les slides:", error);
+        console.error("Erreur lors du nettoyage du média:", error);
+        throw error;
       }
     },
-    [currentSlideshow, updateCurrentSlideshow, currentSlide]
+    [currentSlideshow, updateCurrentSlideshow, currentSlide] // ✅ Ajouter currentSlideshow au lieu de ses propriétés
   );
 
   // ===== AJOUT DE FORMES =====
 
-  // Ajouter une forme au slide actuel
+  // Ajouter une forme au canvas
   const addShape = useCallback(
-    async (shapeType: string, options?: { src?: string; name?: string; mediaId?: string; x?: number; y?: number }) => {
-      if (!currentSlideshow || !currentSlideshow.slides || !stageData) return;
+    async (
+      shapeType: string, // ✅ Accepter string comme l'interface l'attend
+      options?: { x?: number; y?: number; mediaId?: string; src?: string; name?: string; autoResize?: boolean }
+    ) => {
+      if (!currentSlideshow || !stageData) return;
 
-      const currentSlideObj = currentSlideshow.slides[currentSlide];
-      if (!currentSlideObj) return;
-
-      // Créer un clone profond du konvaData actuel
-      const updatedKonvaData = JSON.parse(JSON.stringify(stageData));
-
-      // Déterminer les dimensions et la position de la nouvelle forme
-      const { x: centerX, y: centerY } = getStageCenter(updatedKonvaData);
-
-      let newShape;
-
-      // Utiliser createShape pour les types standards et les données de sécurité
-      const supportedTypes = [
-        "rectangle", "circle", "text", "line", "arrow", 
-        "liveDate", "liveTime", "liveDateTime",
-        "currentDaysWithoutAccident", "currentDaysWithoutAccidentWithStop", 
-        "currentDaysWithoutAccidentWithoutStop", "recordDaysWithoutAccident",
-        "yearlyAccidentsCount", "yearlyAccidentsWithStopCount", 
-        "yearlyAccidentsWithoutStopCount", "monthlyAccidentsCount",
-        "lastAccidentDate", "monitoringStartDate"
-      ];
-      
-      if (supportedTypes.includes(shapeType)) {
-        newShape = createShape(shapeType as ShapeType, centerX, centerY, stageWidth, stageHeight);
-        
-        // Pour les types live et données de sécurité, ajuster la position si fournie dans les options
-        if ((shapeType.startsWith("live") || shapeType.includes("Days") || shapeType.includes("Accidents") || shapeType.includes("Date")) && options?.x !== undefined && options?.y !== undefined) {
-          newShape.attrs.x = options.x;
-          newShape.attrs.y = options.y;
-        }
-      } else {
-        // Gérer les cas spéciaux (image, video) qui nécessitent des propriétés supplémentaires
-        const shapeId = `shape_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        
-        switch (shapeType) {
-          case "image":
-            // Calculer les dimensions basées sur l'image réelle et les appSettings
-            let imageWidth = 200;
-            let imageHeight = 150;
-            
-            try {
-              if (options?.src) {
-                const imageDimensions = await loadImageDimensions(options.src);
-                const calculatedDimensions = calculateImageDimensions(
-                  imageDimensions.width,
-                  imageDimensions.height,
-                  stageWidth,
-                  stageHeight
-                );
-                imageWidth = calculatedDimensions.width;
-                imageHeight = calculatedDimensions.height;
-              }
-            } catch (error) {
-              console.warn("Impossible de charger les dimensions de l'image, utilisation des dimensions par défaut:", error);
-              // Utiliser les dimensions par défaut proportionnelles aux appSettings
-              const defaultDimensions = calculateImageDimensions(200, 150, stageWidth, stageHeight);
-              imageWidth = defaultDimensions.width;
-              imageHeight = defaultDimensions.height;
-            }
-            
-            newShape = {
-              attrs: {
-                x: centerX - imageWidth / 2,
-                y: centerY - imageHeight / 2,
-                width: imageWidth,
-                height: imageHeight,
-                src: options?.src || "/placeholder-image.jpg",
-                id: shapeId,
-                name: options?.name || "Image",
-                draggable: true,
-              },
-              className: "Image",
-            };
-            break;
-
-          case "video":
-            // Pour les vidéos, utiliser des dimensions par défaut proportionnelles aux appSettings
-            const videoDimensions = calculateImageDimensions(200, 150, stageWidth, stageHeight);
-            
-            newShape = {
-              attrs: {
-                x: centerX - videoDimensions.width / 2,
-                y: centerY - videoDimensions.height / 2,
-                width: videoDimensions.width,
-                height: videoDimensions.height,
-                src: options?.src || "/placeholder-video.mp4",
-                id: shapeId,
-                name: options?.name || "Vidéo",
-                draggable: true,
-              },
-              className: "Video",
-            };
-            break;
-
-          
-            // Pour un graphique, on peut créer un groupe avec plusieurs formes
-         
-            break;
-
-          default:
-            console.error(`Type de forme non supporté: ${shapeType}`);
-            return; // Sortir si le type n'est pas géré
-        }
-      }
-
-      if (!newShape) {
-        console.error(`Impossible de créer la forme de type: ${shapeType}`);
+      const currentSlideObj = currentSlideshow.slides?.[currentSlide];
+      if (!currentSlideObj) {
+        console.error("Slide courante non trouvée");
         return;
       }
 
-      // Ajouter la nouvelle forme à la première couche
-      if (updatedKonvaData.children && updatedKonvaData.children.length > 0) {
-        updatedKonvaData.children[0].children.push(newShape);
-      } else {
-        // Si pour une raison quelconque il n'y a pas de couche, en créer une
-        updatedKonvaData.children = [
-          {
-            attrs: {},
-            className: "Layer",
-            children: [newShape],
-          },
-        ];
+      // ✅ Calculer le centre du stage complet, pas seulement de la zone visible
+      const stageCenterX = stageData.attrs.width / 2;
+      const stageCenterY = stageData.attrs.height / 2;
+
+      // ✅ Créer la nouvelle shape directement dans la fonction
+      const newShape: KonvaShape = createShape(
+        shapeType as ShapeType, // ✅ Cast en ShapeType pour createShape
+        options?.x ?? stageCenterX,
+        options?.y ?? stageCenterY,
+        dimensions.width,
+        dimensions.height
+      );
+
+      // ✅ Ajouter les propriétés supplémentaires pour les médias
+      if ((shapeType === "image" || shapeType === "video") && options?.src) {
+        console.log(`📹 Ajout de la propriété src à la shape ${shapeType}:`, {
+          shapeType,
+          src: options.src,
+          shapeId: newShape.attrs.id,
+          autoResize: options.autoResize,
+        });
+        newShape.attrs = {
+          ...newShape.attrs,
+          src: options.src,
+          autoResize: options.autoResize || false,
+          // Ajouter l'id généré si pas déjà présent
+          id: newShape.attrs.id || generateShapeId(shapeType === "image" ? "img" : "vid"),
+          draggable: true,
+        };
+        console.log(`✅ Shape ${shapeType} créée avec attrs:`, newShape.attrs);
       }
 
-      // Sauvegarder les modifications
-      await saveCurrentSlideKonvaData(updatedKonvaData);
+      // ✅ Créer le nouvel état directement dans la fonction
+      const updatedStageData: KonvaStage = {
+        ...stageData,
+        children: stageData.children.map((layer, layerIndex) => {
+          if (layerIndex === 0) {
+            return {
+              ...layer,
+              children: [...(layer.children || []), newShape],
+            };
+          }
+          return layer;
+        }),
+      };
+
+      // Sauvegarder les nouvelles données
+      await saveCurrentSlideKonvaData(updatedStageData);
 
       // Si c'est un média (image ou vidéo), l'associer à la slide
       if ((shapeType === "image" || shapeType === "video") && options?.mediaId) {
@@ -274,42 +242,49 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
       setSelectedShapes([newShape]);
 
     },
-    [currentSlideshow, currentSlide, stageData, saveCurrentSlideKonvaData]
+    [currentSlideshow, currentSlide, stageData, saveCurrentSlideKonvaData, dimensions] // ✅ Ajouter currentSlideshow et toutes les dépendances
   );
 
-  // ===== PREVIEW ET ÉCHELLE =====
+  // ===== CALCUL DE SCALE =====
 
-  // Calculer l'échelle appropriée en fonction des dimensions du conteneur
-  const calculateScale = useCallback(() => {
-    if (!containerRef.current || !stageData) return;
+  // Calculer l'échelle de prévisualisation
+  const calculateScale = useCallback(
+    () => {
+      if (!containerRef.current || !stageData) return;
 
-    const container = containerRef.current;
+      const container = containerRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight - 64; // Réserver 64px pour les contrôles
+      
+      // Calculer l'échelle pour que la slide tienne dans le conteneur
+      const scaleX = containerWidth / dimensions.width;
+      const scaleY = containerHeight / dimensions.height;
+      const scale = Math.min(scaleX, scaleY, 0.3); // Maximum 30% pour la prévisualisation
+      
+      setPreviewScale(scale);
+    },
+    [containerRef, stageData, dimensions] // ✅ Ajouter toutes les dépendances
+  );
 
-    // Obtenir les dimensions du conteneur
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-
-    // Calculer le ratio pour adapter le canvas au conteneur
-    const scaleX = containerWidth / stageWidth;
-    const scaleY = containerHeight / stageHeight;
-
-    // Utiliser le plus petit ratio pour s'assurer que tout est visible
-    const newScale = Math.min(scaleX, scaleY) * 0.9; // 90% pour une petite marge
-
-    setPreviewScale(newScale);
-  }, [containerRef, stageData, stageWidth, stageHeight]);
-
-  // Mettre à jour l'échelle lorsque les dimensions changent
+  // ✅ Mettre à jour l'échelle avec dépendances optimisées
   useEffect(() => {
     if (!stageData) return;
+
+    // ✅ Créer la fonction resize directement dans useEffect
+    const handleResize = () => {
+      calculateScale();
+    };
 
     // Calculer l'échelle initiale
     calculateScale();
 
+    // Ajouter l'écouteur de resize
+    window.addEventListener("resize", handleResize);
+
     return () => {
-      window.removeEventListener("resize", calculateScale);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [stageData, calculateScale]);
+  }, [stageData, calculateScale]); // ✅ calculateScale est maintenant stable grâce à useCallback
 
   // Créer une version modifiée du stageData pour n'afficher que la zone centrale
   const createViewportStageData = useCallback(() => {
@@ -321,8 +296,8 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
       height: stageData.attrs.height,
       attrs: {
         // Pour le rendu, on maintient les dimensions du viewport
-        width: stageWidth,
-        height: stageHeight,
+        width: dimensions.width,
+        height: dimensions.height,
         x: 0,
         y: 0,
       },
@@ -332,8 +307,8 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
         ...layer,
         attrs: { ...layer.attrs },
         children: layer.children.map((child) => {
-          const centerOffsetX = (stageData.attrs.width - stageWidth) / 2;
-          const centerOffsetY = (stageData.attrs.height - stageHeight) / 2;
+          const centerOffsetX = (stageData.attrs.width - dimensions.width) / 2;
+          const centerOffsetY = (stageData.attrs.height - dimensions.height) / 2;
 
           return {
             ...child,
@@ -348,7 +323,7 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
         }),
       })),
     } as KonvaStage;
-  }, [stageData]);
+  }, [stageData, dimensions.width, dimensions.height]);
 
   // ===== CRUD DES SLIDES =====
 
@@ -520,6 +495,9 @@ export function useSlideManager({ stageData, containerRef, stageWidth = 1920, st
   };
 
   return {
+    // Dimensions
+    dimensions,
+
     // Sauvegarde Konva
     saveCurrentSlideKonvaData,
 

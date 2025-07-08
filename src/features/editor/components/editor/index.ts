@@ -9,3 +9,4 @@ export { KonvaImage } from "./KonvaImage";
 export { KonvaVideo } from "./KonvaVideo";
 export { KonvaLiveText } from "./KonvaLiveText";
 export { KonvaTextEditor } from "./KonvaTextEditor";
+export { ArrowTransformer } from "./ArrowTransformer";

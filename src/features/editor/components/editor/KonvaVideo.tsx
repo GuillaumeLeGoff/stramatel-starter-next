@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Image } from "react-konva";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { Image, Text } from "react-konva";
 import Konva from "konva";
+import { calculateImageDimensions } from "../../utils";
+import { useAppSettings } from "@/shared/hooks/useAppSettings";
 
 interface KonvaVideoProps {
   src: string;
@@ -9,233 +11,319 @@ interface KonvaVideoProps {
   width: number;
   height: number;
   rotation?: number;
-  id: string;
+  id?: string;
   draggable?: boolean;
+  autoResize?: boolean; // Nouvelle prop pour redimensionnement automatique
+  onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onTransform?: (e: Konva.KonvaEventObject<Event>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onDragStart?: (e: Konva.KonvaEventObject<Event>) => void;
   onDragEnd?: (e: Konva.KonvaEventObject<Event>) => void;
-  onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDimensionsChange?: (width: number, height: number) => void; // Callback pour signaler le changement de dimensions
   ref?: (node: Konva.Image | null) => void;
 }
 
-export const KonvaVideo: React.FC<KonvaVideoProps> = ({
+// ✅ Fonction de comparaison pour React.memo - évite les re-renders lors du drag/resize
+const arePropsEqual = (prevProps: KonvaVideoProps, nextProps: KonvaVideoProps): boolean => {
+  // ✅ Propriétés critiques qui nécessitent un re-render complet de la vidéo
+  const criticalProps: (keyof KonvaVideoProps)[] = [
+    'src', 'id', 'draggable', 'autoResize'
+  ];
+  
+  // Vérifier les propriétés critiques
+  for (const prop of criticalProps) {
+    if (prevProps[prop] !== nextProps[prop]) {
+      return false; // Re-render nécessaire
+    }
+  }
+  
+  // ✅ width, height, rotation, x, y peuvent changer sans re-render
+  // Car Konva gère ces propriétés directement sans affecter l'élément vidéo HTML
+  
+  // ✅ Les callbacks peuvent changer sans affecter le rendu vidéo
+  // onTransform, onDragStart, etc. sont juste passés à Konva
+  
+  return true; // Pas de re-render nécessaire
+};
+
+const KonvaVideoComponent: React.FC<KonvaVideoProps> = ({
   src,
-  x,
-  y,
-  width,
-  height,
+  x = 0,
+  y = 0,
+  width = 320,
+  height = 240,
   rotation = 0,
   id,
   draggable = true,
+  autoResize = false,
+  onClick,
   onTransform,
   onTransformEnd,
   onDragStart,
   onDragEnd,
-  onClick,
+  onDimensionsChange,
   ref,
 }) => {
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
-  const [videoStatus, setVideoStatus] = useState<
-    "loading" | "loaded" | "error"
-  >("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "playing" | "error">("loading");
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
-  const videoRef = useRef<Konva.Image | null>(null);
   const animationRef = useRef<Konva.Animation | null>(null);
-  const layerRef = useRef<Konva.Layer | null>(null);
+  const imageRef = useRef<Konva.Image | null>(null);
+  const { width: editorWidth, height: editorHeight } = useAppSettings();
   
-  // Refs pour éviter les conflits entre transformations locales et props
-  const isTransformingRef = useRef(false);
-  const currentDimensionsRef = useRef({ width, height });
-
-  // Transmettre la référence au parent
+  // ✅ Refs stables pour éviter les re-créations inutiles
+  const autoResizeRef = useRef(autoResize);
+  const onDimensionsChangeRef = useRef(onDimensionsChange);
+  
+  // ✅ Mettre à jour les refs sans déclencher de re-render
   useEffect(() => {
-    if (ref && videoRef.current) {
-      ref(videoRef.current);
+    autoResizeRef.current = autoResize;
+    onDimensionsChangeRef.current = onDimensionsChange;
+  }, [autoResize, onDimensionsChange]);
+
+  // ✅ Log seulement lors des initialisations importantes (pas à chaque drag/resize)
+  const isInitialRender = useRef(true);
+  useEffect(() => {
+    if (isInitialRender.current) {
+      console.log("🎬 KonvaVideo - Initialisation:", { src, id, width, height, autoResize });
+      isInitialRender.current = false;
+    }
+  }, [src, id]); // Seulement quand src ou id changent
+
+  // ✅ Calculer les dimensions finales directement (sans state local)
+  const finalDimensions = useMemo(() => {
+    // Si autoResize est activé et qu'on a les dimensions de la vidéo, calculer les nouvelles dimensions
+    if (autoResize && videoSize.width > 0 && videoSize.height > 0) {
+      const newDimensions = calculateImageDimensions(
+        videoSize.width,
+        videoSize.height,
+        editorWidth,
+        editorHeight
+      );
+      
+      // Notifier le parent du changement de dimensions
+      if (onDimensionsChangeRef.current) {
+        // Utiliser setTimeout pour éviter les updates pendant le render
+        setTimeout(() => {
+          onDimensionsChangeRef.current?.(newDimensions.width, newDimensions.height);
+        }, 0);
+      }
+      
+      return newDimensions;
+    }
+    
+    // Sinon utiliser les dimensions des props
+    return { width, height };
+  }, [autoResize, videoSize.width, videoSize.height, editorWidth, editorHeight, width, height]);
+
+  // ✅ Callback stable pour le chargement des métadonnées vidéo (pas de dépendances changeantes)
+  const handleLoadedMetadata = useCallback((video: HTMLVideoElement) => {
+    console.log("✅ Métadonnées vidéo chargées:", {
+      src,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      duration: video.duration,
+    });
+    
+    setVideoSize({
+      width: video.videoWidth,
+      height: video.videoHeight,
+    });
+    setStatus("ready");
+  }, [src]);
+
+  // ✅ Créer l'élément vidéo HTML5 (dépendances minimales)
+  useEffect(() => {
+    if (!src) return;
+
+    console.log("🔄 Création de l'élément vidéo pour:", src);
+    
+    const video = document.createElement("video");
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.loop = true;
+    video.preload = "metadata";
+    video.playsInline = true; // ✅ Important pour mobile
+    video.style.display = "none";
+    
+    // ✅ Convertir l'URL relative en URL absolue
+    const absoluteSrc = src.startsWith('/') 
+      ? `${window.location.origin}${src}`
+      : src;
+    
+    video.src = absoluteSrc;
+    
+    // ✅ Event listeners stables
+    const onLoadedMetadata = () => handleLoadedMetadata(video);
+    const onCanPlay = () => {
+      console.log("🎮 Vidéo prête à jouer:", src);
+      video.play().then(() => {
+        console.log("▶️ Lecture vidéo démarrée:", src);
+        setStatus("playing");
+      }).catch((error) => {
+        console.warn("⚠️ Lecture automatique bloquée:", error);
+        setStatus("ready");
+      });
+    };
+    const onPlay = () => setStatus("playing");
+    const onPause = () => setStatus("ready");
+    const onError = () => {
+      console.error("❌ Erreur de chargement vidéo:", src);
+      setStatus("error");
+    };
+    
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+    video.addEventListener("error", onError);
+    
+    setVideoElement(video);
+
+    return () => {
+      console.log("🧹 Nettoyage élément vidéo:", src);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
+      video.removeEventListener("error", onError);
+      video.pause();
+      video.src = "";
+      setVideoElement(null);
+    };
+  }, [src, handleLoadedMetadata]);
+
+  // ✅ Animation Konva optimisée selon les bonnes pratiques de la doc
+  useEffect(() => {
+    if (videoElement && status === "playing" && imageRef.current) {
+      console.log("🎞️ Démarrage de l'animation Konva pour:", src);
+      
+      const layer = imageRef.current.getLayer();
+      if (layer) {
+        // ✅ Optimisation Konva : Animation personnalisée avec contrôle manuel du draw
+        const anim = new Konva.Animation(() => {
+          // L'animation redessine automatiquement le layer
+          // Pas besoin de layer.draw() ici car Konva.Animation le gère
+        }, layer);
+        
+        animationRef.current = anim;
+        anim.start();
+      }
+    }
+
+    return () => {
+      if (animationRef.current) {
+        console.log("⏹️ Arrêt de l'animation Konva pour:", src);
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
+    };
+  }, [videoElement, status, src]);
+
+  // ✅ Callback pour transmettre la référence au parent
+  useEffect(() => {
+    if (ref && imageRef.current) {
+      ref(imageRef.current);
     }
     return () => {
       if (ref) {
         ref(null);
       }
     };
-  }, [ref, videoStatus]);
+  }, [ref, status]); // ✅ Se déclenche quand l'état de la vidéo change
 
-  useEffect(() => {
-    const video = document.createElement("video");
-    video.crossOrigin = "anonymous";
-    video.muted = true; // Nécessaire pour l'autoplay dans certains navigateurs
-    video.loop = true;
-    video.preload = "metadata";
-
-    const handleMetadata = () => {
-      setVideoSize({
-        width: video.videoWidth,
-        height: video.videoHeight,
-      });
-      setVideoStatus("loaded");
-      
-      // Démarrer la lecture automatiquement
-      video.play().catch((error) => {
-        console.warn("Autoplay bloqué:", error);
-      });
-    };
-
-    const handleError = () => {
-      setVideoStatus("error");
-      console.error(`Erreur lors du chargement de la vidéo: ${src}`);
-    };
-
-    const handlePlay = () => {
-      // Démarrer l'animation Konva pour rafraîchir l'image
-      if (videoRef.current) {
-        const layer = videoRef.current.getLayer();
-        if (layer && !animationRef.current) {
-          const anim = new Konva.Animation(() => {
-            // L'animation force le redraw de la layer
-          }, layer);
-          animationRef.current = anim;
-          anim.start();
-        }
+  // ✅ Gestionnaire de clic stable
+  const handleClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    console.log("🖱️ Clic sur vidéo");
+    
+    if (videoElement && status !== "error") {
+      if (status === "playing") {
+        console.log("⏸️ Pause de la vidéo");
+        videoElement.pause();
+      } else {
+        console.log("▶️ Lecture de la vidéo");
+        videoElement.play().catch((error) => {
+          console.error("❌ Erreur de lecture:", error);
+        });
       }
-    };
-
-    const handlePause = () => {
-      // Arrêter l'animation Konva
-      if (animationRef.current) {
-        animationRef.current.stop();
-        animationRef.current = null;
-      }
-    };
-
-    video.addEventListener("loadedmetadata", handleMetadata);
-    video.addEventListener("error", handleError);
-    video.addEventListener("play", handlePlay);
-    video.addEventListener("pause", handlePause);
-
-    video.src = src;
-    setVideoElement(video);
-
-    return () => {
-      video.removeEventListener("loadedmetadata", handleMetadata);
-      video.removeEventListener("error", handleError);
-      video.removeEventListener("play", handlePlay);
-      video.removeEventListener("pause", handlePause);
-      
-      if (animationRef.current) {
-        animationRef.current.stop();
-      }
-      
-      video.pause();
-      video.src = "";
-    };
-  }, [src]);
-
-  // Gestionnaire de transformation personnalisé pour synchroniser les dimensions
-  const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
-    // Marquer qu'une transformation est en cours
-    isTransformingRef.current = true;
-    
-    const node = e.target;
-    const scaleX = node.scaleX();
-    const scaleY = node.scaleY();
-    
-    // Calculer les nouvelles dimensions avec les scales en utilisant les dimensions courantes
-    const newWidth = currentDimensionsRef.current.width * scaleX;
-    const newHeight = currentDimensionsRef.current.height * scaleY;
-    
-    // Mettre à jour les dimensions courantes
-    currentDimensionsRef.current = { width: newWidth, height: newHeight };
-    
-    // NE PAS réinitialiser les scales ici - laisser le handler parent le faire
-    // Le handler parent va calculer les nouvelles dimensions et sauvegarder
-    
-    // Appeler le handler parent si fourni
-    if (onTransformEnd) {
-      onTransformEnd(e);
     }
     
-    // Remettre le flag à false après un délai pour permettre la sauvegarde
-    setTimeout(() => {
-      isTransformingRef.current = false;
-    }, 500);
-  };
-
-  // Mettre à jour les dimensions courantes quand les props changent (sauf si transformation en cours)
-  useEffect(() => {
-    if (!isTransformingRef.current) {
-      currentDimensionsRef.current = { width, height };
+    // Appeler le onClick du parent si fourni
+    if (onClick) {
+      onClick(e);
     }
-  }, [width, height]);
+  }, [videoElement, status, onClick]);
 
-  if (videoStatus === "loading") {
-    // Afficher un placeholder pendant le chargement
+  // ✅ Props communes optimisées selon les bonnes pratiques Konva
+  const commonImageProps = useMemo(() => ({
+    x,
+    y,
+    width: finalDimensions.width,
+    height: finalDimensions.height,
+    rotation,
+    id,
+    draggable,
+    onClick: handleClick,
+    onTransform,
+    onTransformEnd,
+    onDragStart,
+    onDragEnd,
+    // ✅ Optimisations Konva selon la documentation
+    transformsEnabled: 'position' as const, // Limiter aux transformations de position
+    perfectDrawEnabled: false, // Désactiver le pixel perfect drawing coûteux
+    listening: true, // Garder l'interactivité pour le clic
+  }), [x, y, finalDimensions.width, finalDimensions.height, rotation, id, draggable, handleClick, onTransform, onTransformEnd, onDragStart, onDragEnd]);
+
+  // ✅ Rendu conditionnel simplifié avec optimisations Konva
+
+  // État de chargement
+  if (status === "loading") {
     return (
-      <Image
-        alt="Video"
-        ref={videoRef}
-        image={undefined}
-        x={x}
-        y={y}
-        width={currentDimensionsRef.current.width}
-        height={currentDimensionsRef.current.height}
-        rotation={rotation}
-        id={id}
-        draggable={draggable}
-        fill="#f3f4f6"
-        stroke="#d1d5db"
-        strokeWidth={2}
-        onTransform={onTransform}
-        onTransformEnd={handleTransformEnd}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onClick={onClick}
+      <Text
+        {...commonImageProps}
+        text="⏳ Chargement..."
+        fontSize={16}
+        fill="#FFFFFF"
+        align="center"
+        verticalAlign="middle"
+        // ✅ Optimisations pour le texte de placeholder
+        perfectDrawEnabled={false}
+        transformsEnabled="position"
       />
     );
   }
 
-  if (videoStatus === "error" || !videoElement) {
-    // Afficher un placeholder d'erreur
+  // État d'erreur
+  if (status === "error") {
     return (
-      <Image
-        alt="Video"
-        ref={videoRef}
-        image={undefined}
-        x={x}
-        y={y}
-        width={currentDimensionsRef.current.width}
-        height={currentDimensionsRef.current.height}
-        rotation={rotation}
-        id={id}
-        draggable={draggable}
-        fill="#fef2f2"
-        stroke="#f87171"
-        strokeWidth={2}
-        onTransform={onTransform}
-        onTransformEnd={handleTransformEnd}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onClick={onClick}
+      <Text
+        {...commonImageProps}
+        text="❌ Erreur vidéo"
+        fontSize={16}
+        fill="#E53E3E"
+        align="center"
+        verticalAlign="middle"
+        // ✅ Optimisations pour le texte d'erreur
+        perfectDrawEnabled={false}
+        transformsEnabled="position"
       />
     );
   }
 
-  return (
-    <Image
-      alt="Video"
-      ref={videoRef}
-      image={videoElement}
-      x={x}
-      y={y}
-      width={currentDimensionsRef.current.width}
-      height={currentDimensionsRef.current.height}
-      rotation={rotation}
-      id={id}
-      draggable={draggable}
-      onTransform={onTransform}
-      onTransformEnd={handleTransformEnd}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onClick={onClick}
-    />
-  );
-}; 
+  // Vidéo prête ou en lecture
+  if (videoElement && (status === "ready" || status === "playing")) {
+    return (
+      <Image
+        ref={imageRef}
+        image={videoElement}
+        {...commonImageProps}
+      />
+    );
+  }
+
+  // Fallback (ne devrait pas arriver)
+  return null;
+};
+
+// ✅ Export memoized pour éviter les re-renders inutiles
+export const KonvaVideo = React.memo(KonvaVideoComponent, arePropsEqual); 

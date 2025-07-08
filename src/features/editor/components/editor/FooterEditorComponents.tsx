@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -6,7 +8,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Separator } from "@/shared/components/ui/separator";
 import { ZoomIn, ZoomOut, Clock, Minus, Plus, Maximize, Palette } from "lucide-react";
 
-interface FooterEditorComponentsProps {
+type FooterEditorComponentsProps = {
   scale: number;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -17,16 +19,18 @@ interface FooterEditorComponentsProps {
   onBackgroundColorChange?: (color: string) => void;
 }
 
-export function FooterEditorComponents({
-  scale,
-  zoomIn,
-  zoomOut,
-  fitToContainer,
-  currentSlideDuration = 5,
-  onDurationChange,
-  backgroundColor = "#ffffff",
-  onBackgroundColorChange,
-}: FooterEditorComponentsProps) {
+export function FooterEditorComponents(props: FooterEditorComponentsProps) {
+  const {
+    scale,
+    zoomIn,
+    zoomOut,
+    fitToContainer,
+    currentSlideDuration = 5,
+    onDurationChange,
+    backgroundColor = "#ffffff",
+    onBackgroundColorChange,
+  } = props;
+
   const [durationValue, setDurationValue] = useState(
     currentSlideDuration.toString()
   );
@@ -76,7 +80,7 @@ export function FooterEditorComponents({
     }
   };
 
-  const handleZoomDecrease = () => {
+  const handleDurationDecrease = () => {
     const duration = Math.max(0.1, parseFloat(durationValue) - 0.5);
     setDurationValue(duration.toString());
     if (onDurationChange) {
@@ -84,7 +88,7 @@ export function FooterEditorComponents({
     }
   };
 
-  const handleZoomIncrease = () => {
+  const handleDurationIncrease = () => {
     const duration = parseFloat(durationValue) + 0.5;
     setDurationValue(duration.toString());
     if (onDurationChange) {
@@ -172,7 +176,7 @@ export function FooterEditorComponents({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleZoomDecrease}
+                onClick={handleDurationDecrease}
                 className="h-8 w-8 p-0"
                 title="Diminuer la durée"
               >
@@ -190,7 +194,7 @@ export function FooterEditorComponents({
                   value={durationValue}
                   onChange={handleDurationChange}
                   onBlur={handleDurationBlur}
-                  className="w-16 h-8 text-xs text-center font-mono"
+                  className="w-16 h-8 text-xs text-center font-mono no-spinner"
                   title="Durée de la slide en secondes"
                 />
               </form>
@@ -198,7 +202,7 @@ export function FooterEditorComponents({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleZoomIncrease}
+                onClick={handleDurationIncrease}
                 className="h-8 w-8 p-0"
                 title="Augmenter la durée"
               >
@@ -230,17 +234,6 @@ export function FooterEditorComponents({
                 className="w-12 h-8 p-1 border cursor-pointer"
                 title="Couleur de fond de l'éditeur"
               />
-              
-              <Badge 
-                variant="outline" 
-                className="px-2 py-1 text-xs font-mono"
-                style={{ 
-                  backgroundColor: localBackgroundColor, 
-                  color: localBackgroundColor === '#ffffff' ? '#000000' : '#ffffff' 
-                }}
-              >
-                {localBackgroundColor.toUpperCase()}
-              </Badge>
             </div>
           </div>
         </CardContent>

@@ -32,6 +32,24 @@ export const createDefaultKonvaStage = (): KonvaStage => {
 };
 
 /**
+ * Ajoute une fonction utilitaire pour calculer la taille des formes proportionnellement à l'éditeur
+ */
+export const calculateShapeDimensions = (
+  defaultWidth: number,
+  defaultHeight: number,
+  editorWidth: number,
+  editorHeight: number,
+  maxPercent: number = 0.4
+): { width: number; height: number } => {
+  const maxW = editorWidth * maxPercent;
+  const maxH = editorHeight * maxPercent;
+  return {
+    width: Math.min(defaultWidth, maxW),
+    height: Math.min(defaultHeight, maxH),
+  };
+};
+
+/**
  * Crée une nouvelle forme avec les styles par défaut
  */
 export const createShape = (
@@ -41,355 +59,195 @@ export const createShape = (
   stageWidth: number = 1920,
   stageHeight: number = 1080
 ): KonvaShape => {
-  const shapeId = generateShapeId(shapeType);
-
-  // Calculer les tailles de police proportionnelles aux dimensions de l'écran
-  // Utiliser la plus petite dimension comme référence pour éviter les écarts trop importants
-  const baseSize = Math.min(stageWidth, stageHeight);
-  
-  // Tailles de police proportionnelles (plus grosses que l'actuel)
-  const smallFontSize = Math.round(baseSize * 0.05); // ~27px pour 1080p (plus gros que 16px)
-  const mediumFontSize = Math.round(baseSize * 0.08); // ~38px pour 1080p (plus gros que 24px)
-
-  // Dimensions proportionnelles pour les conteneurs de texte
-  const textWidth = Math.round(stageWidth * 0.15); // 15% de la largeur
-  const textHeight = Math.round(stageHeight * 0.05); // 5% de la hauteur
-  const dateTimeWidth = Math.round(stageWidth * 0.2); // 20% pour les dates/heures
-  const largeTextWidth = Math.round(stageWidth * 0.25); // 25% pour les gros textes
-
-  const baseAttrs = {
-    id: shapeId,
-    name: getShapeDisplayName(shapeType),
-    draggable: true,
-  };
-
   switch (shapeType) {
     case "rectangle": {
-      const rectStyle = DEFAULT_SHAPE_STYLES.rectangle;
+      const { width, height } = calculateShapeDimensions(200, 100, stageWidth, stageHeight);
       return {
         attrs: {
-          ...baseAttrs,
-          x: centerX - rectStyle.width / 2,
-          y: centerY - rectStyle.height / 2,
-          ...rectStyle,
+          x: centerX - width / 2,
+          y: centerY - height / 2,
+          width,
+          height,
+          fill: "#3B82F6",
+          stroke: "#2563EB",
+          strokeWidth: 2,
+          id: generateShapeId("rect"),
+          draggable: true,
         },
         className: "Rect",
       };
     }
-
     case "circle": {
-      const circleStyle = DEFAULT_SHAPE_STYLES.circle;
+      const maxRadius = Math.min(stageWidth, stageHeight) * 0.2;
+      const radius = Math.min(50, maxRadius);
       return {
         attrs: {
-          ...baseAttrs,
           x: centerX,
           y: centerY,
-          ...circleStyle,
+          radius,
+          fill: "#10B981",
+          stroke: "#059669",
+          strokeWidth: 2,
+          id: generateShapeId("circle"),
+          draggable: true,
         },
         className: "Circle",
       };
     }
-
     case "text": {
-      const textStyle = DEFAULT_SHAPE_STYLES.text;
+      const { width } = calculateShapeDimensions(200, 50, stageWidth, stageHeight);
+      // Taille de police dynamique (ex: 4% de la plus petite dimension)
+      const fontSize = Math.round(Math.min(stageWidth, stageHeight) * 0.05); // ~43px pour 1080p
+      // Hauteur du bloc texte = fontSize * 1.2 (pour 1 ligne)
+      const height = Math.round(fontSize * 1.2);
       return {
         attrs: {
-          ...baseAttrs,
-          x: centerX - textStyle.width / 2,
-          y: centerY - textStyle.height / 2,
-          ...textStyle,
-          fontSize: smallFontSize,
-          width: textWidth,
-          height: textHeight,
+          x: centerX - width / 2,
+          y: centerY - height / 2,
+          width,
+          height,
+          text: "Nouveau texte",
+          fontSize,
+          fontFamily: "Arial",
+          fill: "#ffffff",
+          align: "center",
+          wrap: "word",
+          id: generateShapeId("text"),
+          draggable: true,
         },
         className: "Text",
       };
     }
-
     case "line": {
-      const lineStyle = DEFAULT_SHAPE_STYLES.line;
+      const lineLength = Math.min(200, stageWidth * 0.4);
       return {
         attrs: {
-          ...baseAttrs,
-          points: [centerX - 100, centerY, centerX + 100, centerY] as number[],
-          ...lineStyle,
+          x: centerX - lineLength / 2,
+          y: centerY,
+          points: [0, 0, lineLength, 0],
+          stroke: "#ffffff",
+          strokeWidth: 4,
+          id: generateShapeId("line"),
+          draggable: true,
         },
         className: "Line",
       };
     }
-
     case "arrow": {
-      const arrowStyle = DEFAULT_SHAPE_STYLES.arrow;
-      return {
+      const arrowLength = Math.min(200, stageWidth * 0.4);
+      const arrowShape = {
         attrs: {
-          ...baseAttrs,
-          points: [centerX - 100, centerY, centerX + 100, centerY] as number[],
-          ...arrowStyle,
+          x: centerX - arrowLength / 2,
+          y: centerY,
+          points: [0, 0, arrowLength, 0],
+          stroke: "#ffffff",
+          strokeWidth: 4,
+          pointerLength: 10,
+          pointerWidth: 10,
+          id: generateShapeId("arrow"),
+          draggable: true,
         },
         className: "Arrow",
       };
+
+      return arrowShape;
     }
 
     case "image": {
-      const imageStyle = DEFAULT_SHAPE_STYLES.image;
+      // Utiliser des dimensions adaptées aux app settings (30% de la taille de l'éditeur)
+      const { width: imgWidth, height: imgHeight } = calculateShapeDimensions(
+        DEFAULT_SHAPE_STYLES.image.width,
+        DEFAULT_SHAPE_STYLES.image.height,
+        stageWidth,
+        stageHeight,
+        0.3 // 30% de la taille de l'éditeur maximum
+      );
       return {
         attrs: {
-          ...baseAttrs,
-          x: centerX - imageStyle.width / 2,
-          y: centerY - imageStyle.height / 2,
-          ...imageStyle,
+          x: centerX - imgWidth / 2,
+          y: centerY - imgHeight / 2,
+          width: imgWidth,
+          height: imgHeight,
+          id: generateShapeId("img"),
+          draggable: true,
         },
         className: "Image",
       };
     }
 
     case "video": {
-      const videoStyle = DEFAULT_SHAPE_STYLES.video;
+      // Utiliser des dimensions adaptées aux app settings (30% de la taille de l'éditeur)
+      const { width: vidWidth, height: vidHeight } = calculateShapeDimensions(
+        DEFAULT_SHAPE_STYLES.video.width,
+        DEFAULT_SHAPE_STYLES.video.height,
+        stageWidth,
+        stageHeight,
+        0.3 // 30% de la taille de l'éditeur maximum
+      );
       return {
         attrs: {
-          ...baseAttrs,
-          x: centerX - videoStyle.width / 2,
-          y: centerY - videoStyle.height / 2,
-          ...videoStyle,
+          x: centerX - vidWidth / 2,
+          y: centerY - vidHeight / 2,
+          width: vidWidth,
+          height: vidHeight,
+          id: generateShapeId("vid"),
+          draggable: true,
         },
         className: "Video",
       };
     }
 
-    case "liveDate": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - dateTimeWidth / 2,
-          y: centerY - textHeight / 2,
-          width: dateTimeWidth,
-          height: textHeight,
-          fontSize: smallFontSize,
-          fontFamily: "Arial",
-          fontStyle: "normal",
-          fill: "#ffffff",
-          align: "left",
-        },
-        className: "liveDate",
-      };
-    }
-
-    case "liveTime": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - dateTimeWidth / 2,
-          y: centerY - textHeight / 2,
-          width: dateTimeWidth,
-          height: textHeight,
-          fontSize: smallFontSize,
-          fontFamily: "Arial",
-          fontStyle: "normal",
-          fill: "#ffffff",
-          align: "left",
-        },
-        className: "liveTime",
-      };
-    }
-
+    case "liveDate":
+    case "liveTime":
     case "liveDateTime": {
+      const { width } = calculateShapeDimensions(250, 60, stageWidth, stageHeight, 0.25);
+      const fontSize = Math.round(Math.min(stageWidth, stageHeight) * 0.04); // 4% de la plus petite dimension
+      const height = Math.round(fontSize * 1.2);
       return {
         attrs: {
-          ...baseAttrs,
-          x: centerX - largeTextWidth / 2,
-          y: centerY - textHeight / 2,
-          width: largeTextWidth,
-          height: textHeight,
-          fontSize: smallFontSize,
+          x: centerX - width / 2,
+          y: centerY - height / 2,
+          width,
+          height,
+          fontSize,
           fontFamily: "Arial",
-          fontStyle: "normal",
           fill: "#ffffff",
-          align: "left",
-        },
-        className: "liveDateTime",
-      };
-    }
-
-    // Données de sécurité - Compteurs de jours
-    case "currentDaysWithoutAccident": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - textWidth / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: textWidth,
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#22c55e",
           align: "center",
+          wrap: "word",
+          id: generateShapeId("live"),
+          draggable: true,
         },
-        className: "currentDaysWithoutAccident",
+        className: shapeType,
       };
     }
-
-    case "currentDaysWithoutAccidentWithStop": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - textWidth / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: textWidth,
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#22c55e",
-          align: "center",
-        },
-        className: "currentDaysWithoutAccidentWithStop",
-      };
-    }
-
-    case "currentDaysWithoutAccidentWithoutStop": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - textWidth / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: textWidth,
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#22c55e",
-          align: "center",
-        },
-        className: "currentDaysWithoutAccidentWithoutStop",
-      };
-    }
-
-    case "recordDaysWithoutAccident": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - textWidth / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: textWidth,
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#f59e0b",
-          align: "center",
-        },
-        className: "recordDaysWithoutAccident",
-      };
-    }
-
-    // Données de sécurité - Compteurs d'accidents
-    case "yearlyAccidentsCount": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - Math.round(textWidth * 0.8) / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: Math.round(textWidth * 0.8),
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#ef4444",
-          align: "center",
-        },
-        className: "yearlyAccidentsCount",
-      };
-    }
-
-    case "yearlyAccidentsWithStopCount": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - Math.round(textWidth * 0.8) / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: Math.round(textWidth * 0.8),
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#ef4444",
-          align: "center",
-        },
-        className: "yearlyAccidentsWithStopCount",
-      };
-    }
-
-    case "yearlyAccidentsWithoutStopCount": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - Math.round(textWidth * 0.8) / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: Math.round(textWidth * 0.8),
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#f97316",
-          align: "center",
-        },
-        className: "yearlyAccidentsWithoutStopCount",
-      };
-    }
-
-    case "monthlyAccidentsCount": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - Math.round(textWidth * 0.8) / 2,
-          y: centerY - Math.round(textHeight * 1.2) / 2,
-          width: Math.round(textWidth * 0.8),
-          height: Math.round(textHeight * 1.2),
-          fontSize: mediumFontSize,
-          fontFamily: "Arial",
-          fontStyle: "bold",
-          fill: "#ef4444",
-          align: "center",
-        },
-        className: "monthlyAccidentsCount",
-      };
-    }
-
-    // Données de sécurité - Dates
-    case "lastAccidentDate": {
-      return {
-        attrs: {
-          ...baseAttrs,
-          x: centerX - textWidth / 2,
-          y: centerY - textHeight / 2,
-          width: textWidth,
-          height: textHeight,
-          fontSize: smallFontSize,
-          fontFamily: "Arial",
-          fontStyle: "normal",
-          fill: "#6b7280",
-          align: "center",
-        },
-        className: "lastAccidentDate",
-      };
-    }
-
+    case "currentDaysWithoutAccident":
+    case "currentDaysWithoutAccidentWithStop":
+    case "currentDaysWithoutAccidentWithoutStop":
+    case "recordDaysWithoutAccident":
+    case "yearlyAccidentsCount":
+    case "yearlyAccidentsWithStopCount":
+    case "yearlyAccidentsWithoutStopCount":
+    case "monthlyAccidentsCount":
+    case "lastAccidentDate":
     case "monitoringStartDate": {
+      const { width } = calculateShapeDimensions(220, 50, stageWidth, stageHeight, 0.22);
+      const fontSize = Math.round(Math.min(stageWidth, stageHeight) * 0.04); // 4% de la plus petite dimension
+      const height = Math.round(fontSize * 1.2);
       return {
         attrs: {
-          ...baseAttrs,
-          x: centerX - textWidth / 2,
-          y: centerY - textHeight / 2,
-          width: textWidth,
-          height: textHeight,
-          fontSize: smallFontSize,
+          x: centerX - width / 2,
+          y: centerY - height / 2,
+          width,
+          height,
+          fontSize,
           fontFamily: "Arial",
-          fontStyle: "normal",
-          fill: "#6b7280",
+          fill: "#ffffff",
           align: "center",
+          wrap: "word",
+          id: generateShapeId("data"),
+          draggable: true,
         },
-        className: "monitoringStartDate",
+        className: shapeType,
       };
     }
 
@@ -490,7 +348,8 @@ export const cleanMediaFromKonvaData = (
       // Supprimer les images et vidéos qui référencent le média supprimé
       if (
         (shape.className === "Image" || shape.className === "Video") &&
-        shape.attrs.src === mediaUrl
+        ('src' in shape.attrs && typeof (shape.attrs as KonvaShapeAttrs).src === 'string') &&
+        (shape.attrs as KonvaShapeAttrs).src === mediaUrl
       ) {
         return false;
       }
@@ -523,9 +382,13 @@ export const findMediasInKonvaData = (konvaData: KonvaStage): string[] => {
     shapes.forEach((shape) => {
       if (
         (shape.className === "Image" || shape.className === "Video") &&
-        shape.attrs.src
+        ('src' in shape.attrs && typeof (shape.attrs as KonvaShapeAttrs).src === 'string') &&
+        (shape.attrs as KonvaShapeAttrs).src
       ) {
-        mediaUrls.push(shape.attrs.src as string);
+        const src = (shape.attrs as KonvaShapeAttrs).src;
+        if (typeof src === 'string') {
+          mediaUrls.push(src);
+        }
       }
 
       // Chercher récursivement dans les enfants

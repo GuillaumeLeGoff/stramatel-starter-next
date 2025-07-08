@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Image } from "react-konva";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { Image, Rect } from "react-konva"; // ✅ Ajouter Rect pour le placeholder
 import Konva from "konva";
 import { calculateImageDimensions } from "../../utils";
 import { useAppSettings } from "@/shared/hooks/useAppSettings";
@@ -51,9 +51,20 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
   
   // Ref pour éviter les conflits entre transformations locales et props
   const isTransformingRef = useRef(false);
-  const lastPropsRef = useRef({ width, height });
 
-  // Transmettre la référence au parent
+  // ✅ SOLUTION: Memoiser les dimensions précédentes pour éviter les boucles
+  const previousDimensions = useRef({ width, height });
+  
+  // ✅ Vérifier si les dimensions ont réellement changé
+  const dimensionsChanged = useMemo(() => {
+    const changed = previousDimensions.current.width !== width || previousDimensions.current.height !== height;
+    if (changed) {
+      previousDimensions.current = { width, height };
+    }
+    return changed;
+  }, [width, height]);
+
+  // ✅ Transmettre la référence au parent avec dépendances optimisées
   useEffect(() => {
     if (ref && imageRef.current) {
       ref(imageRef.current);
@@ -63,47 +74,50 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
         ref(null);
       }
     };
-  }, [ref, imageStatus]); // Déclencher quand l'état de l'image change
+  }, [ref, imageStatus]); // ✅ Déclencher quand l'état de l'image change
 
-  // Synchroniser finalDimensions avec les props width/height (important pour les transformations)
-  // Mais seulement si ce n'est pas une transformation en cours
+  // ✅ Synchroniser finalDimensions avec les props width/height seulement si nécessaire
   useEffect(() => {
-    if (!isTransformingRef.current && (lastPropsRef.current.width !== width || lastPropsRef.current.height !== height)) {
+    if (!isTransformingRef.current && dimensionsChanged) {
       setFinalDimensions({ width, height });
-      lastPropsRef.current = { width, height };
     }
-  }, [width, height]);
+  }, [dimensionsChanged, width, height]); // ✅ Utiliser dimensionsChanged pour éviter les boucles
 
+  // ✅ Callback stable pour le chargement de l'image
+  const handleImageLoad = useCallback((img: HTMLImageElement) => {
+    setImage(img);
+    setImageStatus("loaded");
+    
+    // Si autoResize est activé, recalculer les dimensions seulement si c'est les dimensions par défaut
+    if (autoResize && finalDimensions.width === width && finalDimensions.height === height) {
+      const newDimensions = calculateImageDimensions(
+        img.naturalWidth,
+        img.naturalHeight,
+        editorWidth,
+        editorHeight
+      );
+      setFinalDimensions(newDimensions);
+      
+      // Notifier le parent du changement de dimensions ET désactiver autoResize
+      if (onDimensionsChange) {
+        onDimensionsChange(newDimensions.width, newDimensions.height);
+      }
+    }
+  }, [autoResize, finalDimensions.width, finalDimensions.height, width, height, editorWidth, editorHeight, onDimensionsChange]);
+
+  // ✅ Callback stable pour les erreurs de chargement
+  const handleImageError = useCallback(() => {
+    setImageStatus("error");
+    console.error(`Erreur lors du chargement de l'image: ${src}`);
+  }, [src]);
+
+  // ✅ useEffect optimisé pour le chargement d'image
   useEffect(() => {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
 
-    img.onload = () => {
-      setImage(img);
-      setImageStatus("loaded");
-      
-      // Si autoResize est activé, recalculer les dimensions seulement si c'est les dimensions par défaut
-      // (pour éviter d'écraser les dimensions définies par l'utilisateur via transformation)
-      if (autoResize && finalDimensions.width === width && finalDimensions.height === height) {
-        const newDimensions = calculateImageDimensions(
-          img.naturalWidth,
-          img.naturalHeight,
-          editorWidth,
-          editorHeight
-        );
-        setFinalDimensions(newDimensions);
-        
-        // Notifier le parent du changement de dimensions
-        if (onDimensionsChange) {
-          onDimensionsChange(newDimensions.width, newDimensions.height);
-        }
-      }
-    };
-
-    img.onerror = () => {
-      setImageStatus("error");
-      console.error(`Erreur lors du chargement de l'image: ${src}`);
-    };
+    img.onload = () => handleImageLoad(img);
+    img.onerror = handleImageError;
 
     img.src = src;
 
@@ -111,86 +125,16 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, autoResize, editorWidth, editorHeight, onDimensionsChange]);
+  }, [src, handleImageLoad, handleImageError]); // ✅ Dépendances stables grâce aux callbacks
 
-  // Gestionnaire de transformation personnalisé pour synchroniser les dimensions
-  const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
-    // Marquer qu'une transformation est en cours
-    isTransformingRef.current = true;
-    
-    const node = e.target;
-    const scaleX = node.scaleX();
-    const scaleY = node.scaleY();
-    
-    console.log(`🖼️ KonvaImage handleTransformEnd (${id}):`, {
-      scaleX,
-      scaleY,
-      currentDims: finalDimensions,
-      props: { width, height }
-    });
-    
-    // Calculer les nouvelles dimensions avec les scales
-    const newWidth = finalDimensions.width * scaleX;
-    const newHeight = finalDimensions.height * scaleY;
-    
-    // Mettre à jour immédiatement les dimensions locales
-    setFinalDimensions({
-      width: newWidth,
-      height: newHeight
-    });
-    
-    // Mettre à jour les refs pour éviter les conflits
-    lastPropsRef.current = { width: newWidth, height: newHeight };
-    
-    console.log(`🖼️ Dimensions locales mises à jour:`, { newWidth, newHeight });
-    
-    // NE PAS réinitialiser les scales ici - laisser le handler parent le faire
-    // Le handler parent va calculer les nouvelles dimensions et sauvegarder
-    
-    // Appeler le handler parent si fourni
-    if (onTransformEnd) {
-      onTransformEnd(e);
-    }
-    
-    // Remettre le flag à false après un délai pour permettre la sauvegarde
-    setTimeout(() => {
-      isTransformingRef.current = false;
-    }, 500); // Augmenté à 500ms pour laisser le temps à la sauvegarde
-  };
-
-  if (imageStatus === "loading") {
-    // Afficher un placeholder pendant le chargement
-    return (
-      <Image
-        alt="Image"
-        ref={imageRef}
-        image={undefined}
-        x={x}
-        y={y}
-        width={finalDimensions.width}
-        height={finalDimensions.height}
-        rotation={rotation}
-        id={id}
-        draggable={draggable}
-        fill="#f3f4f6"
-        stroke="#d1d5db"
-        strokeWidth={2}
-        onTransform={onTransform}
-        onTransformEnd={handleTransformEnd}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onClick={onClick}
-      />
-    );
+  if (imageStatus === "error") {
+    return null;
   }
 
-  if (imageStatus === "error" || !image) {
-    // Afficher un placeholder d'erreur
+  if (imageStatus === "loading" || !image) {
+    // ✅ Utiliser Rect au lieu d'Image pour le placeholder
     return (
-      <Image
-        alt="Image"
-        ref={imageRef}
-        image={undefined}
+      <Rect
         x={x}
         y={y}
         width={finalDimensions.width}
@@ -198,22 +142,18 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
         rotation={rotation}
         id={id}
         draggable={draggable}
-        fill="#fef2f2"
-        stroke="#f87171"
-        strokeWidth={2}
+        fill="lightgray"
+        onClick={onClick}
         onTransform={onTransform}
-        onTransformEnd={handleTransformEnd}
+        onTransformEnd={onTransformEnd}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        onClick={onClick}
       />
     );
   }
 
   return (
     <Image
-      alt="Image"
-      ref={imageRef}
       image={image}
       x={x}
       y={y}
@@ -222,11 +162,14 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
       rotation={rotation}
       id={id}
       draggable={draggable}
+      ref={(node) => {
+        imageRef.current = node;
+      }}
+      onClick={onClick}
       onTransform={onTransform}
-      onTransformEnd={handleTransformEnd}
+      onTransformEnd={onTransformEnd}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      onClick={onClick}
     />
   );
 };

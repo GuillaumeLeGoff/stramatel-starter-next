@@ -14,18 +14,22 @@ export function useEditorPage() {
   // Ref pour gérer le timeout de debounce
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Charger les settings au montage si pas déjà chargées
+  // ✅ SOLUTION: Charger les settings avec dépendances optimisées
   useEffect(() => {
+    // ✅ Vérifier directement si settings est null/undefined (valeur primitive)
     if (!settings) {
       fetchSettings();
     }
-  }, [settings, fetchSettings]);
+  }, [settings, fetchSettings]); // ✅ Ajouter fetchSettings dans les dépendances
   
-  // Récupérer les dimensions depuis appSettings avec des valeurs par défaut
-  const dimensions = useMemo(() => ({
-    width: settings?.width || 1920,
-    height: settings?.height || 1080,
-  }), [settings?.width, settings?.height]);
+  // ✅ Récupérer les dimensions avec useMemo optimisé
+  const dimensions = useMemo(() => {
+    // ✅ Créer l'objet directement dans useMemo avec des valeurs primitives
+    return {
+      width: settings?.width || 1920,
+      height: settings?.height || 1080,
+    };
+  }, [settings?.width, settings?.height]); // ✅ Dépendances primitives stables
 
   const konvaData = currentKonvaData;
   
@@ -38,8 +42,6 @@ export function useEditorPage() {
     stageData: konvaData,
     containerRef,
     scale,
-    stageWidth: dimensions.width,
-    stageHeight: dimensions.height,
   });
 
   // Récupérer la slide actuelle
@@ -47,10 +49,11 @@ export function useEditorPage() {
     return currentSlideshow?.slides?.[currentSlide];
   }, [currentSlideshow?.slides, currentSlide]);
 
-  // Fonction optimisée pour gérer l'ajout d'une slide
+  // ✅ Fonction optimisée avec useCallback et dépendances stables
   const handleAddSlide = useCallback(() => {
     if (!currentSlideshow) return;
     
+    // ✅ Créer l'objet directement dans la fonction pour éviter les dépendances d'objet
     addSlide({
       slideshowId: currentSlideshow.id,
       position: currentSlideshow.slides?.length || 0,
@@ -58,7 +61,7 @@ export function useEditorPage() {
       width: dimensions.width,
       height: dimensions.height,
     });
-  }, [currentSlideshow, addSlide, dimensions.width, dimensions.height]);
+  }, [currentSlideshow, addSlide, dimensions]); // ✅ Ajouter currentSlideshow complet
 
   // Fonction pour changer de slide
   const handleChangeSlide = useCallback(
@@ -74,15 +77,19 @@ export function useEditorPage() {
       if (!currentSlideshow) return;
       await cleanMediaFromAllSlides(mediaUrl);
     },
-    [currentSlideshow, cleanMediaFromAllSlides]
+    [currentSlideshow, cleanMediaFromAllSlides] // ✅ Ajouter currentSlideshow complet
   );
 
-  // Fonction debouncée pour changer la couleur de fond
+  // ✅ Fonction debouncée optimisée avec useCallback
   const handleBackgroundColorChange = useCallback(
     (color: string) => {
       if (!konvaData) return;
       
-      // Créer les données Konva mises à jour
+      // ✅ Créer les données Konva mises à jour directement dans la fonction
+      const setPresentState = useEditorStore.getState().setPresentState;
+      const currentCache = useEditorStore.getState().konvaDataCache;
+      const currentSlide = useEditorStore.getState().currentSlide;
+      
       const updatedKonvaData = {
         ...konvaData,
         attrs: {
@@ -91,10 +98,9 @@ export function useEditorPage() {
         }
       };
       
-      // Mettre à jour immédiatement le cache pour l'affichage
-      const cacheKonvaData = useEditorStore.getState().cacheKonvaData;
-      const currentSlide = useEditorStore.getState().currentSlide;
-      cacheKonvaData(currentSlide, updatedKonvaData);
+      const newCache = new Map(currentCache);
+      newCache.set(currentSlide, updatedKonvaData);
+      setPresentState({ konvaDataCache: newCache });
       
       // Annuler le timeout précédent s'il existe
       if (debounceTimeoutRef.current) {
@@ -110,17 +116,17 @@ export function useEditorPage() {
         }
       }, 500);
     },
-    [konvaData, saveCurrentSlideKonvaData]
+    [konvaData, saveCurrentSlideKonvaData] // ✅ Dépendances minimales et stables
   );
 
-  // Nettoyage du timeout au démontage du composant
+  // ✅ Nettoyage du timeout optimisé - useEffect ne dépend de rien
   useEffect(() => {
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, []);
+  }, []); // ✅ Tableau vide - cleanup seulement au démontage
 
   return {
     // Données

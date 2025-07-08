@@ -45,6 +45,7 @@ export interface KonvaShapeAttrs {
   pointerLength?: number;
   pointerWidth?: number;
   src?: string; // Pour les images
+  autoResize?: boolean; // Pour le redimensionnement automatique des images/vidéos
   fontSize?: number; // Pour les éléments live
   fontFamily?: string; // Pour les éléments live
   fontStyle?: string; // Pour les éléments live
