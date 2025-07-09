@@ -32,6 +32,7 @@ export function useHeaderShapeEditor() {
       return {
         isRectangle: false,
         isCircle: false,
+        isTriangle: false,
         isText: false,
         isData: false,
         isDateTime: false,
@@ -57,16 +58,25 @@ export function useHeaderShapeEditor() {
       'lastaccidentdate', 'monitoringstartdate', 'currentdate'
     ];
     
+    // ✅ Détecter les triangles : Line avec closed=true et 6 points
+    const isTriangle = selectedShapes.some(shape => 
+      shape.className?.toLowerCase() === 'line' && 
+      shape.attrs?.closed === true && 
+      shape.attrs?.points && 
+      (shape.attrs.points as number[]).length === 6
+    );
+    
     return {
       isRectangle: typeArray.includes('rect'),
       isCircle: typeArray.includes('circle'),
+      isTriangle: isTriangle,
       isText: typeArray.includes('text') || typeArray.includes('textnode'),
       isData: typeArray.some(type => type?.startsWith('live') || type?.includes('data')),
       isDateTime: typeArray.some(type => dateTimeTypes.includes(type)),
       isSecurityIndicator: typeArray.some(type => securityTypes.includes(type)),
       isArrow: typeArray.includes('arrow'),
       hasMultipleTypes: types.size > 1,
-      primaryType: typeArray[0] || null
+      primaryType: isTriangle ? 'triangle' : (typeArray[0] || null)
     };
   }, [hasSelection, selectedShapes]);
 
@@ -122,7 +132,7 @@ export function useHeaderShapeEditor() {
 
   // États dérivés avec mémoisation ultra-fine
   const styleFlags = useMemo(() => ({
-    hasFill: hasSelection && (shapeTypeInfo.isRectangle || shapeTypeInfo.isCircle),
+    hasFill: hasSelection && (shapeTypeInfo.isRectangle || shapeTypeInfo.isCircle || shapeTypeInfo.isTriangle),
     hasStroke: hasSelection && !shapeTypeInfo.isText && !shapeTypeInfo.isData && !shapeTypeInfo.isDateTime && !shapeTypeInfo.isSecurityIndicator,
     canEditText: hasSelection && (shapeTypeInfo.isText || shapeTypeInfo.isData || shapeTypeInfo.isDateTime || shapeTypeInfo.isSecurityIndicator),
     isArrow: hasSelection && shapeTypeInfo.isArrow,

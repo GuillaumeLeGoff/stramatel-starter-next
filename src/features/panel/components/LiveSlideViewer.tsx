@@ -5,26 +5,17 @@ import { MediaData } from "@/lib/socket";
 import { KonvaSlideViewer } from "./KonvaSlideViewer";
 import { KonvaStage } from "@/features/editor/types";
 import { useMemo, useEffect } from "react";
-import { useAppSettingsStore } from "@/shared/store/appSettingsStore";
 
 // Données Konva d'exemple
 
 export function LiveSlideViewer() {
   const { currentSlide, isLoading, remainingTime } = useCurrentSlide();
-  const { settings, fetchSettings } = useAppSettingsStore();
   
-  // Charger les settings au montage si pas déjà chargées
-  useEffect(() => {
-    if (!settings) {
-      fetchSettings();
-    }
-  }, [settings, fetchSettings]);
-  
-  // Récupérer les dimensions depuis appSettings avec des valeurs par défaut
+  // ✅ Récupérer les dimensions depuis currentSlide (WebSocket) avec des valeurs par défaut
   const dimensions = useMemo(() => ({
-    width: settings?.width || 1920,
-    height: settings?.height || 1080,
-  }), [settings?.width, settings?.height]);
+    width: currentSlide?.dimensions?.width || 1920,
+    height: currentSlide?.dimensions?.height || 1080,
+  }), [currentSlide?.dimensions?.width, currentSlide?.dimensions?.height]);
 
   // Traitement des données Konva et calcul de la couleur de fond avant les retours conditionnels
   const konvaData = useMemo(() => {
@@ -68,7 +59,10 @@ export function LiveSlideViewer() {
      }}
    >
       {konvaData && (
-        <KonvaSlideViewer konvaData={konvaData} />
+        <KonvaSlideViewer 
+          konvaData={konvaData} 
+          dimensions={currentSlide.dimensions} 
+        />
       )}
     </div>
   );

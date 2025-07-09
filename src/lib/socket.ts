@@ -41,6 +41,12 @@ export interface CurrentSlideData {
   }>;
   totalElapsedSeconds: number;
   timeInCurrentSlideshow: number;
+
+  // ✅ Dimensions appSettings depuis WebSocket
+  dimensions: {
+    width: number;
+    height: number;
+  };
 }
 
 class SocketClient {
@@ -63,6 +69,10 @@ class SocketClient {
 
       this.socket.on("currentSlide", (data: CurrentSlideData | null) => {
         this.emit("currentSlide", data);
+      });
+
+      this.socket.on("appSettingsUpdated", (data: any) => {
+        this.emit("appSettingsUpdated", data);
       });
     }
   }
@@ -136,6 +146,8 @@ export function notifyContentChange(type: 'slide' | 'slideshow', id: number, sli
     console.error('Erreur lors de la notification de changement:', error);
   }
 }
+
+
 
 // Fonction pour fermer la connexion socket (utile pour les tests)
 export function closeSocketConnection() {

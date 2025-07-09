@@ -125,7 +125,6 @@ export type ShapeType =
   | "circle"
   | "triangle"
   | "text"
-  | "line"
   | "arrow"
   | "image"
   | "video"

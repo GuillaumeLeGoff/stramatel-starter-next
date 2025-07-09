@@ -8,6 +8,11 @@ interface KonvaSlideViewerProps {
   konvaData: KonvaStage;
   width?: number;
   height?: number;
+  // ✅ Dimensions depuis WebSocket
+  dimensions?: {
+    width: number;
+    height: number;
+  };
 }
 
 // Hook pour détecter si nous sommes côté client

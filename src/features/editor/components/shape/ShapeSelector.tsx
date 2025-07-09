@@ -59,13 +59,6 @@ export function ShapeSelector({ addShape }: ShapeSelectorProps) {
       action: () => addShape("text"),
     },
     {
-      id: "line",
-      name: "Ligne",
-      description: "Ligne droite",
-      icon: <Minus className="h-4 w-4" />,
-      action: () => addShape("line"),
-    },
-    {
       id: "arrow",
       name: "Flèche",
       description: "Flèche directionnelle",

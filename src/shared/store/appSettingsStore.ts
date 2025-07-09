@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { socketClient } from "@/lib/socket";
 
 interface AppSettings {
   id: number;
@@ -19,6 +20,7 @@ interface AppSettingsStore {
   fetchSettings: () => Promise<void>;
   updateSettings: (updatedSettings: Partial<AppSettings>) => Promise<AppSettings>;
   refreshSettings: () => Promise<void>;
+  initializeWebSocketListener: () => void;
 }
 
 export const useAppSettingsStore = create<AppSettingsStore>((set, get) => ({
@@ -77,5 +79,27 @@ export const useAppSettingsStore = create<AppSettingsStore>((set, get) => ({
   refreshSettings: async () => {
     const { fetchSettings } = get();
     await fetchSettings();
+  },
+
+  initializeWebSocketListener: () => {
+    // Écouter les mises à jour d'AppSettings via WebSocket
+    const handleAppSettingsUpdate = async (data: {
+      timestamp: Date;
+      width: number;
+      height: number;
+      settings: AppSettings;
+    }) => {
+      console.log("📡 AppSettings - Mise à jour reçue via WebSocket:", data);
+      
+      // Rafraîchir les settings depuis l'API
+      const { fetchSettings } = get();
+      await fetchSettings();
+    };
+
+    // S'abonner aux événements WebSocket
+    socketClient.on("appSettingsUpdated", handleAppSettingsUpdate);
+    
+    // Connecter le socket si pas déjà fait
+    socketClient.connect();
   },
 })); 

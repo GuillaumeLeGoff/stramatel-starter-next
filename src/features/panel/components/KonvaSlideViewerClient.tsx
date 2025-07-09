@@ -13,12 +13,16 @@ import {
 } from "react-konva";
 import { KonvaStage } from "@/features/editor/types";
 import { PanelLiveText } from "./PanelLiveText";
-import { useAppSettingsStore } from "@/shared/store/appSettingsStore";
 
 interface KonvaSlideViewerProps {
   konvaData: KonvaStage;
   width?: number;
   height?: number;
+  // ✅ Dimensions depuis WebSocket
+  dimensions?: {
+    width: number;
+    height: number;
+  };
 }
 
 // Composant simple pour charger et afficher les images
@@ -223,24 +227,17 @@ const SimpleKonvaVideo: React.FC<{
 
 export default function KonvaSlideViewerClient({
   konvaData,
+  dimensions
 }: KonvaSlideViewerProps) {
-  const { settings, fetchSettings } = useAppSettingsStore();
   const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
   const animationFrameRef = useRef<number | null>(null);
   const stageRef = useRef<any>(null);
   
-  // Charger les settings au montage si pas déjà chargées
-  useEffect(() => {
-    if (!settings) {
-      fetchSettings();
-    }
-  }, [settings, fetchSettings]);
-  
-  // Récupérer les dimensions depuis appSettings avec des valeurs par défaut
-  const dimensions = useMemo(() => ({
-    width: settings?.width || 1920,
-    height: settings?.height || 1080,
-  }), [settings?.width, settings?.height]);
+  // ✅ Utiliser les dimensions depuis WebSocket avec des valeurs par défaut
+  const viewportDimensions = useMemo(() => ({
+    width: dimensions?.width || 1920,
+    height: dimensions?.height || 1080,
+  }), [dimensions?.width, dimensions?.height]);
 
   // Gérer l'animation globale des vidéos
   useEffect(() => {
@@ -281,8 +278,8 @@ export default function KonvaSlideViewerClient({
   }
 
   // Utiliser les dimensions depuis AppSettings
-  const VIEWPORT_WIDTH = dimensions.width;
-  const VIEWPORT_HEIGHT = dimensions.height;
+  const VIEWPORT_WIDTH = viewportDimensions.width;
+  const VIEWPORT_HEIGHT = viewportDimensions.height;
 
   // Calculer l'offset pour centrer le viewport
   const offsetX = (konvaData.attrs.width - VIEWPORT_WIDTH) / 2;
@@ -341,7 +338,28 @@ export default function KonvaSlideViewerClient({
       case "Rect":
         return <Rect key={shapeId} {...adjustedAttrs} draggable={false} />;
       case "Line":
-        return <Line key={shapeId} {...adjustedAttrs} draggable={false} />;
+        // ✅ Gestion spéciale pour les triangles (qui utilisent Line avec closed=true)
+        if (attrs.closed && attrs.points && attrs.points.length === 6) {
+          // C'est un triangle - ajuster les points aussi
+          const adjustedPoints = attrs.points.map((point: number, i: number) =>
+            i % 2 === 0 ? point - offsetX : point - offsetY
+          );
+          return (
+            <Line 
+              key={shapeId} 
+              {...adjustedAttrs}
+              points={adjustedPoints}
+              closed={true}
+              fill={attrs.fill}
+              stroke={attrs.stroke}
+              strokeWidth={attrs.strokeWidth}
+              draggable={false} 
+            />
+          );
+        } else {
+          // Ligne normale
+          return <Line key={shapeId} {...adjustedAttrs} draggable={false} />;
+        }
       case "Arrow":
         if (!attrs.points) {
           return null;

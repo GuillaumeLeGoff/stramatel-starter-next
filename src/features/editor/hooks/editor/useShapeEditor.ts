@@ -31,6 +31,15 @@ export function useShapeEditor() {
     
     return selectedShapes.some(shape => {
       const shapeType = shape.className?.toLowerCase();
+      
+      // ✅ Triangles : Line avec closed=true et 6 points
+      if (shapeType === 'line' && 
+          shape.attrs?.closed === true && 
+          shape.attrs?.points && 
+          (shape.attrs.points as number[]).length === 6) {
+        return true;
+      }
+      
       return shapeType === 'rect' || 
              shapeType === 'circle' || 
              shapeType === 'ellipse' || 
