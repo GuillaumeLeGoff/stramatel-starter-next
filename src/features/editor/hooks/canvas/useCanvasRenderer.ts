@@ -9,6 +9,31 @@ import { createTransformHandler } from "../../utils/transformUtils";
 import { useSnapping } from "../editor/useSnapping";
 import Konva from "konva";
 
+// ✅ ANTI-DÉFORMATION: Types qui utilisent width/height plutôt que scale
+const isWidthHeightBasedShape = (className: string): boolean => {
+  return (
+    className === "Rect" || 
+    className === "Text" || 
+    className === "Image" || 
+    className === "Video" ||
+    // ✅ Données dynamiques de date/heure
+    className === "liveDate" ||
+    className === "liveTime" ||
+    className === "liveDateTime" ||
+    // ✅ Données de sécurité - Compteurs d'accidents
+    className === "currentDaysWithoutAccident" ||
+    className === "currentDaysWithoutAccidentWithStop" ||
+    className === "currentDaysWithoutAccidentWithoutStop" ||
+    className === "recordDaysWithoutAccident" ||
+    className === "yearlyAccidentsCount" ||
+    className === "yearlyAccidentsWithStopCount" ||
+    className === "yearlyAccidentsWithoutStopCount" ||
+    className === "monthlyAccidentsCount" ||
+    className === "lastAccidentDate" ||
+    className === "monitoringStartDate"
+  );
+};
+
 interface SelectionRect {
   visible: boolean;
   x1: number;
@@ -253,7 +278,7 @@ export function useCanvasRenderer({
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
 
-      if (className === "Rect" || className === "Text" || className === "Image" || className === "Video") {
+      if (isWidthHeightBasedShape(className)) {
         const currentWidth = (node as any).width();
         const currentHeight = (node as any).height();
         
@@ -331,7 +356,7 @@ export function useCanvasRenderer({
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
 
-      if (className === "Rect" || className === "Text" || className === "Image" || className === "Video") {
+      if (isWidthHeightBasedShape(className)) {
         const currentWidth = (node as any).width();
         const currentHeight = (node as any).height();
         newAttrs.width = currentWidth * scaleX;

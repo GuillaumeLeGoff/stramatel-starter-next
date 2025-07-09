@@ -94,7 +94,7 @@ export function useHeaderShapeEditor() {
     return {
       fill: attrs.fill || '#000000',
       stroke: attrs.stroke || '#000000',
-      strokeWidth: attrs.strokeWidth || 1,
+      strokeWidth: attrs.strokeWidth ?? 12,
       fontSize: attrs.fontSize || 16,
       fontFamily: attrs.fontFamily || 'Arial',
       fontStyle: attrs.fontStyle || 'normal',

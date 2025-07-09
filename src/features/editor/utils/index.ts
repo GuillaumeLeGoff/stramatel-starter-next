@@ -94,6 +94,31 @@ export const createShape = (
         className: "Circle",
       };
     }
+    case "triangle": {
+      const { width, height } = calculateShapeDimensions(120, 120, stageWidth, stageHeight);
+      // Points d'un triangle équilatéral centré
+      const halfWidth = width / 2;
+      const halfHeight = height / 2;
+      const points = [
+        0, -halfHeight,    // Point du haut (centre horizontal, haut vertical)
+        -halfWidth, halfHeight,  // Point bas gauche
+        halfWidth, halfHeight    // Point bas droit
+      ];
+      return {
+        attrs: {
+          x: centerX,
+          y: centerY,
+          points,
+          fill: "#F59E0B",
+          stroke: "#D97706",
+          strokeWidth: 2,
+          id: generateShapeId("triangle"),
+          draggable: true,
+          closed: true,
+        },
+        className: "Line", // ✅ Utiliser Line car Konva n'a pas de Triangle natif
+      };
+    }
     case "text": {
       const { width } = calculateShapeDimensions(200, 50, stageWidth, stageHeight);
       // Taille de police dynamique (ex: 4% de la plus petite dimension)
@@ -482,7 +507,7 @@ export const fixShapeProperties = (shape: KonvaShape): KonvaShape => {
           ...rectAttrs,
           fill: rectAttrs.fill || defaultRect.fill,
           stroke: rectAttrs.stroke || defaultRect.stroke,
-          strokeWidth: rectAttrs.strokeWidth || defaultRect.strokeWidth,
+          strokeWidth: rectAttrs.strokeWidth ?? defaultRect.strokeWidth,
           width: rectAttrs.width || defaultRect.width,
           height: rectAttrs.height || defaultRect.height,
         },
@@ -498,8 +523,35 @@ export const fixShapeProperties = (shape: KonvaShape): KonvaShape => {
           ...circleAttrs,
           fill: circleAttrs.fill || defaultCircle.fill,
           stroke: circleAttrs.stroke || defaultCircle.stroke,
-          strokeWidth: circleAttrs.strokeWidth || defaultCircle.strokeWidth,
+          strokeWidth: circleAttrs.strokeWidth ?? defaultCircle.strokeWidth,
           radius: circleAttrs.radius || defaultCircle.radius,
+        },
+      };
+    }
+    
+    case "Line": {
+      // Gestion spéciale pour les triangles (Line avec closed=true)
+      if (attrs.closed && attrs.points && (attrs.points as number[]).length === 6) {
+        const defaultTriangle = DEFAULT_SHAPE_STYLES.triangle;
+        return {
+          ...shape,
+          attrs: {
+            ...attrs,
+            fill: attrs.fill || defaultTriangle.fill,
+            stroke: attrs.stroke || defaultTriangle.stroke,
+            strokeWidth: attrs.strokeWidth ?? defaultTriangle.strokeWidth,
+            closed: true,
+          },
+        };
+      }
+      // Ligne normale
+      const defaultLine = DEFAULT_SHAPE_STYLES.line;
+      return {
+        ...shape,
+        attrs: {
+          ...attrs,
+          stroke: attrs.stroke || defaultLine.stroke,
+          strokeWidth: attrs.strokeWidth ?? defaultLine.strokeWidth,
         },
       };
     }

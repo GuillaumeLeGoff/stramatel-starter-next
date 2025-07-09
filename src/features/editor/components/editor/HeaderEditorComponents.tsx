@@ -22,7 +22,7 @@ import {
   Type,
   ArrowRight,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useHeaderShapeEditor } from "../../hooks/editor/useHeaderShapeEditor";
 import { editorSelectors, useEditorStore } from "../../store/editorStore";
 import { ARROW_TYPES, ArrowType } from "../../constants";
@@ -32,6 +32,7 @@ function getTypeDisplayName(type: string | null): string {
   const map: Record<string, string> = {
     rectangle: "Rectangle",
     circle: "Cercle",
+    triangle: "Triangle",
     text: "Texte",
     line: "Ligne",
     arrow: "Flèche",
@@ -100,6 +101,129 @@ export function HeaderEditorComponents() {
     deleteShapes,
   } = useHeaderShapeEditor();
 
+  // ✅ DEBOUNCE: États locaux pour les couleurs et styles
+  const [localFillColor, setLocalFillColor] = useState(currentFillColor);
+  const [localStrokeColor, setLocalStrokeColor] = useState(currentStrokeColor);
+  const [localTextColor, setLocalTextColor] = useState(currentFillColor);
+  const [localStrokeWidth, setLocalStrokeWidth] = useState(currentStrokeWidth);
+  const [localFontSize, setLocalFontSize] = useState(currentFontSize);
+  
+  // ✅ DEBOUNCE: Refs pour les timeouts
+  const fillColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const strokeColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const textColorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const strokeWidthTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fontSizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ Synchroniser les couleurs locales avec les props
+  useEffect(() => {
+    setLocalFillColor(currentFillColor);
+    setLocalTextColor(currentFillColor);
+  }, [currentFillColor]);
+
+  useEffect(() => {
+    setLocalStrokeColor(currentStrokeColor);
+  }, [currentStrokeColor]);
+
+  useEffect(() => {
+    setLocalStrokeWidth(currentStrokeWidth);
+  }, [currentStrokeWidth]);
+
+  useEffect(() => {
+    setLocalFontSize(currentFontSize);
+  }, [currentFontSize]);
+
+  // ✅ Nettoyage des timeouts au démontage
+  useEffect(() => {
+    return () => {
+      if (fillColorTimeoutRef.current) clearTimeout(fillColorTimeoutRef.current);
+      if (strokeColorTimeoutRef.current) clearTimeout(strokeColorTimeoutRef.current);
+      if (textColorTimeoutRef.current) clearTimeout(textColorTimeoutRef.current);
+      if (strokeWidthTimeoutRef.current) clearTimeout(strokeWidthTimeoutRef.current);
+      if (fontSizeTimeoutRef.current) clearTimeout(fontSizeTimeoutRef.current);
+    };
+  }, []);
+
+  // ✅ DEBOUNCE: Gestionnaires de couleur avec debounce
+  const handleFillColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setLocalFillColor(newColor);
+    
+    if (fillColorTimeoutRef.current) {
+      clearTimeout(fillColorTimeoutRef.current);
+    }
+    
+    fillColorTimeoutRef.current = setTimeout(() => {
+      setFillColor(newColor);
+    }, 250); // 250ms de debounce
+  }, [setFillColor]);
+
+  const handleStrokeColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setLocalStrokeColor(newColor);
+    
+    if (strokeColorTimeoutRef.current) {
+      clearTimeout(strokeColorTimeoutRef.current);
+    }
+    
+    strokeColorTimeoutRef.current = setTimeout(() => {
+      setStrokeColor(newColor);
+    }, 250); // 250ms de debounce
+  }, [setStrokeColor]);
+
+  const handleTextColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newColor = e.target.value;
+    setLocalTextColor(newColor);
+    
+    if (textColorTimeoutRef.current) {
+      clearTimeout(textColorTimeoutRef.current);
+    }
+    
+    textColorTimeoutRef.current = setTimeout(() => {
+      setTextColor(newColor);
+    }, 250); // 250ms de debounce
+  }, [setTextColor]);
+
+  const handleStrokeWidthChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newWidth = Number(e.target.value);
+    setLocalStrokeWidth(newWidth);
+    
+    if (strokeWidthTimeoutRef.current) {
+      clearTimeout(strokeWidthTimeoutRef.current);
+    }
+    
+    strokeWidthTimeoutRef.current = setTimeout(() => {
+      setStrokeWidth(newWidth);
+    }, 250); // 250ms de debounce
+  }, [setStrokeWidth]);
+
+  // ✅ DEBOUNCE: Gestionnaires pour la taille de police avec debounce
+  const handleFontSizeDecrease = useCallback(() => {
+    const newSize = Math.max(8, localFontSize - 2);
+    setLocalFontSize(newSize);
+    
+    if (fontSizeTimeoutRef.current) {
+      clearTimeout(fontSizeTimeoutRef.current);
+    }
+    
+    fontSizeTimeoutRef.current = setTimeout(() => {
+      setFontSize(newSize);
+    }, 200); // 200ms de debounce (plus rapide pour les boutons)
+  }, [localFontSize, setFontSize]);
+
+  const handleFontSizeIncrease = useCallback(() => {
+    const newSize = localFontSize + 2;
+    setLocalFontSize(newSize);
+    
+    if (fontSizeTimeoutRef.current) {
+      clearTimeout(fontSizeTimeoutRef.current);
+    }
+    
+    fontSizeTimeoutRef.current = setTimeout(() => {
+      setFontSize(newSize);
+    }, 200); // 200ms de debounce (plus rapide pour les boutons)
+  }, [localFontSize, setFontSize]);
+
   // Debug - Observer le cache Konva
   const konvaDataCache = useEditorStore(editorSelectors.konvaDataCache);
   const currentSlide = useEditorStore(editorSelectors.currentSlide);
@@ -142,8 +266,8 @@ export function HeaderEditorComponents() {
                   <PaintBucket className="w-4 h-4" />
                   <input
                     type="color"
-                    value={currentFillColor}
-                    onChange={(e) => setFillColor(e.target.value)}
+                    value={localFillColor}
+                    onChange={handleFillColorChange}
                     className="w-8 h-8 rounded border"
                   />
                 </div>
@@ -157,8 +281,8 @@ export function HeaderEditorComponents() {
                   <Type className="w-4 h-4" />
                   <input
                     type="color"
-                    value={currentFillColor}
-                    onChange={(e) => setTextColor(e.target.value)}
+                    value={localTextColor}
+                    onChange={handleTextColorChange}
                     className="w-8 h-8 rounded border"
                   />
                 </div>
@@ -171,14 +295,14 @@ export function HeaderEditorComponents() {
                   <PencilLine className="w-4 h-4" />
                   <input
                     type="color"
-                    value={currentStrokeColor}
-                    onChange={(e) => setStrokeColor(e.target.value)}
+                    value={localStrokeColor}
+                    onChange={handleStrokeColorChange}
                     className="w-8 h-8 rounded border"
                   />
                   <input
                     type="number"
-                    value={currentStrokeWidth}
-                    onChange={(e) => setStrokeWidth(Number(e.target.value))}
+                    value={localStrokeWidth}
+                    onChange={handleStrokeWidthChange}
                     min="0"
                     max="20"
                     className="w-16 px-2 py-1 text-sm border rounded no-spinner"
@@ -251,16 +375,16 @@ export function HeaderEditorComponents() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setFontSize(Math.max(8, currentFontSize - 2))}
-                      disabled={currentFontSize <= 8}
+                      onClick={handleFontSizeDecrease}
+                      disabled={localFontSize <= 8}
                     >
                       <Minus className="w-4 h-4" />
                     </Button>
-                    <span className="w-12 text-center text-sm">{currentFontSize}px</span>
+                    <span className="w-12 text-center text-sm">{localFontSize}px</span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setFontSize(currentFontSize + 2)}
+                      onClick={handleFontSizeIncrease}
                     >
                       <Plus className="w-4 h-4" />
                     </Button>

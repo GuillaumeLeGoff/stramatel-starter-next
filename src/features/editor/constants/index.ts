@@ -25,6 +25,13 @@ export const DEFAULT_SHAPE_STYLES = {
     stroke: "#059669",
     strokeWidth: 2,
   },
+  triangle: {
+    width: 120,
+    height: 120,
+    fill: "#F59E0B",
+    stroke: "#D97706",
+    strokeWidth: 2,
+  },
   text: {
     width: 200,
     height: 50,
@@ -61,6 +68,7 @@ export const DEFAULT_SHAPE_STYLES = {
 export const SHAPE_TYPES = [
   "rectangle",
   "circle",
+  "triangle",
   "text",
   "line",
   "arrow",

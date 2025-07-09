@@ -165,19 +165,40 @@ export function KonvaStageRenderer({
         );
         break;
       case "Line":
-        shapeElement = (
-          <Line 
-            key={shapeId} 
-            {...commonProps}
-            onTransform={
-              isPreview
-                ? undefined
-                : (e: Konva.KonvaEventObject<Event>) => {
-                    handleTransformContinuous(e, shapeId, className);
-                  }
-            }
-          />
-        );
+        // ✅ Gestion spéciale pour les triangles (qui utilisent Line avec closed=true)
+        if (attrs.closed && attrs.points && (attrs.points as number[]).length === 6) {
+          // C'est un triangle
+          shapeElement = (
+            <Line 
+              key={shapeId} 
+              {...commonProps}
+              points={attrs.points as number[]}
+              closed={true}
+              onTransform={
+                isPreview
+                  ? undefined
+                  : (e: Konva.KonvaEventObject<Event>) => {
+                      handleTransformContinuous(e, shapeId, className);
+                    }
+              }
+            />
+          );
+        } else {
+          // Ligne normale
+          shapeElement = (
+            <Line 
+              key={shapeId} 
+              {...commonProps}
+              onTransform={
+                isPreview
+                  ? undefined
+                  : (e: Konva.KonvaEventObject<Event>) => {
+                      handleTransformContinuous(e, shapeId, className);
+                    }
+              }
+            />
+          );
+        }
         break;
       case "Arrow":
         if (!attrs.points) {
@@ -573,19 +594,7 @@ export function KonvaStageRenderer({
           }
         })()}
 
-        {/* Rectangle de sélection */}
-        {/*  {!isPreview && selectionRect.visible && (
-          <Rect
-            fill="rgba(0, 0, 255, 0.2)"
-            stroke="rgba(0, 0, 255, 0.8)"
-            strokeWidth={1}
-            x={Math.min(selectionRect.x1, selectionRect.x2)}
-            y={Math.min(selectionRect.y1, selectionRect.y2)}
-            width={Math.abs(selectionRect.x2 - selectionRect.x1)}
-            height={Math.abs(selectionRect.y2 - selectionRect.y1)}
-          />
-        )}
- */}
+       
         {/* Éditeur de texte */}
         {!isPreview &&
           textEditor.isEditing &&

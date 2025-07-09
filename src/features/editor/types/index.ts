@@ -123,6 +123,7 @@ export interface SlidePreviewProps {
 export type ShapeType =
   | "rectangle"
   | "circle"
+  | "triangle"
   | "text"
   | "line"
   | "arrow"

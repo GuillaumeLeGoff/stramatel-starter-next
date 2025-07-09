@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { 
   Square, 
   Circle, 
+  Triangle,
   Type, 
   Minus, 
   ArrowRight
@@ -42,6 +43,13 @@ export function ShapeSelector({ addShape }: ShapeSelectorProps) {
       description: "Forme circulaire",
       icon: <Circle className="h-4 w-4" />,
       action: () => addShape("circle"),
+    },
+    {
+      id: "triangle",
+      name: "Triangle",
+      description: "Forme triangulaire",
+      icon: <Triangle className="h-4 w-4" />,
+      action: () => addShape("triangle"),
     },
     {
       id: "text",
