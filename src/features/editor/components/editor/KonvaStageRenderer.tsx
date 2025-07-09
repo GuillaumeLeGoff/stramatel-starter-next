@@ -174,6 +174,9 @@ export function KonvaStageRenderer({
               {...commonProps}
               points={attrs.points as number[]}
               closed={true}
+              fill={attrs.fill as string}
+              stroke={attrs.stroke as string}
+              strokeWidth={attrs.strokeWidth as number}
               onTransform={
                 isPreview
                   ? undefined
@@ -183,22 +186,7 @@ export function KonvaStageRenderer({
               }
             />
           );
-        } else {
-          // Ligne normale
-          shapeElement = (
-            <Line 
-              key={shapeId} 
-              {...commonProps}
-              onTransform={
-                isPreview
-                  ? undefined
-                  : (e: Konva.KonvaEventObject<Event>) => {
-                      handleTransformContinuous(e, shapeId, className);
-                    }
-              }
-            />
-          );
-        }
+        } 
         break;
       case "Arrow":
         if (!attrs.points) {

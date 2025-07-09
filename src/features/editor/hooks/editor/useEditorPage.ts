@@ -3,33 +3,25 @@ import { useEditorCore } from "./useEditorCore";
 import { useSlideManager } from "../slide/useSlideManager";
 import { useEditorZoom } from "./useEditorZoom";
 import { useSlideshow } from "@/features/slideshow/hooks";
-import { useAppSettingsStore } from "@/shared/store/appSettingsStore";
+import { useAppSettings } from "@/shared/hooks/useAppSettings";
 import { useEditorStore } from "../../store/editorStore";
 
 export function useEditorPage() {
   const { currentSlideshow } = useSlideshow();
   const { currentSlide, currentKonvaData, changeSlide } = useEditorCore();
-  const { settings, fetchSettings } = useAppSettingsStore();
+  const { width, height } = useAppSettings(); // ✅ Utiliser useAppSettings au lieu de useAppSettingsStore
   
   // Ref pour gérer le timeout de debounce
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // ✅ SOLUTION: Charger les settings avec dépendances optimisées
-  useEffect(() => {
-    // ✅ Vérifier directement si settings est null/undefined (valeur primitive)
-    if (!settings) {
-      fetchSettings();
-    }
-  }, [settings, fetchSettings]); // ✅ Ajouter fetchSettings dans les dépendances
   
   // ✅ Récupérer les dimensions avec useMemo optimisé
   const dimensions = useMemo(() => {
     // ✅ Créer l'objet directement dans useMemo avec des valeurs primitives
     return {
-      width: settings?.width || 1920,
-      height: settings?.height || 1080,
+      width: width || 1920,
+      height: height || 1080,
     };
-  }, [settings?.width, settings?.height]); // ✅ Dépendances primitives stables
+  }, [width, height]); // ✅ Dépendances primitives stables
 
   const konvaData = currentKonvaData;
   

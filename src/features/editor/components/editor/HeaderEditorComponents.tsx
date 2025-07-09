@@ -34,7 +34,6 @@ function getTypeDisplayName(type: string | null): string {
     circle: "Cercle",
     triangle: "Triangle",
     text: "Texte",
-    line: "Ligne",
     arrow: "Flèche",
     image: "Image",
     video: "Vidéo",

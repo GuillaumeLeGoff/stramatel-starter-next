@@ -8,7 +8,8 @@ export function useAppSettings() {
     error, 
     fetchSettings, 
     updateSettings,
-    refreshSettings 
+    refreshSettings,
+    initializeWebSocketListener
   } = useAppSettingsStore();
 
   // Charger les settings automatiquement si pas déjà fait
@@ -17,6 +18,11 @@ export function useAppSettings() {
       fetchSettings();
     }
   }, [settings, isLoading, error, fetchSettings]);
+
+  // Initialiser le listener WebSocket une seule fois
+  useEffect(() => {
+    initializeWebSocketListener();
+  }, [initializeWebSocketListener]);
 
   return {
     settings,

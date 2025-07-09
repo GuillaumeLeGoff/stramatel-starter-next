@@ -6,7 +6,6 @@ import { PrismaClient } from "./prisma/generated/client/index.js";
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = 3000;
-const DEBUG_WEBSOCKET = process.env.DEBUG_WEBSOCKET === "true";
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
@@ -17,6 +16,7 @@ let slidesCache = new Map(); // Cache des slides avec leur updatedAt
 let slideshowsCache = new Map(); // Cache des slideshows avec leur updatedAt
 let securityEventsCache = new Map(); // Cache des événements de sécurité avec leur updatedAt
 let securityIndicatorsCache = new Map(); // Cache des indicateurs de sécurité avec leur updatedAt
+let appSettingsCache = new Map(); // Cache des paramètres d'application avec leur updatedAt
 let contentCheckInterval; // Intervalle pour vérifier les changements de contenu
 
 // Fonction pour initialiser les caches
@@ -80,7 +80,25 @@ async function initializeCaches() {
       });
     });
 
-    console.log(`Cache initialisé: ${slides.length} slides, ${slideshows.length} slideshows, ${securityEvents.length} événements de sécurité, ${securityIndicators.length} indicateurs de sécurité`);
+    // Initialiser le cache des paramètres d'application
+    const appSettings = await prisma.appSettings.findMany({
+      select: {
+        id: true,
+        updatedAt: true,
+        width: true,
+        height: true
+      }
+    });
+
+    appSettings.forEach(settings => {
+      appSettingsCache.set(settings.id, {
+        updatedAt: settings.updatedAt,
+        width: settings.width,
+        height: settings.height
+      });
+    });
+
+    console.log(`Cache initialisé: ${slides.length} slides, ${slideshows.length} slideshows, ${securityEvents.length} événements de sécurité, ${securityIndicators.length} indicateurs de sécurité, ${appSettings.length} paramètres d'application`);
   } catch (error) {
     console.error('Erreur lors de l\'initialisation des caches:', error);
   }
@@ -217,6 +235,44 @@ async function checkContentChanges(io) {
       }
     }
 
+    // Vérifier les changements des paramètres d'application (width/height)
+    let appSettingsChanged = false;
+    const currentAppSettings = await prisma.appSettings.findMany({
+      select: {
+        id: true,
+        updatedAt: true,
+        width: true,
+        height: true
+      }
+    });
+
+    // Détecter les paramètres d'application nouveaux ou modifiés
+    for (const settings of currentAppSettings) {
+      const cached = appSettingsCache.get(settings.id);
+      if (!cached || 
+          cached.updatedAt.getTime() !== settings.updatedAt.getTime() ||
+          cached.width !== settings.width ||
+          cached.height !== settings.height) {
+        appSettingsChanged = true;
+        appSettingsCache.set(settings.id, {
+          updatedAt: settings.updatedAt,
+          width: settings.width,
+          height: settings.height
+        });
+        console.log(`Paramètres d'application ${settings.id} modifiés - dimensions: ${settings.width}x${settings.height}`);
+      }
+    }
+
+    // Détecter les paramètres d'application supprimés
+    const currentAppSettingsIds = new Set(currentAppSettings.map(s => s.id));
+    for (const [settingsId] of appSettingsCache) {
+      if (!currentAppSettingsIds.has(settingsId)) {
+        appSettingsChanged = true;
+        appSettingsCache.delete(settingsId);
+        console.log(`Paramètres d'application ${settingsId} supprimés`);
+      }
+    }
+
     // Si des changements sont détectés, recalculer et diffuser la slide actuelle
     if (hasChanges) {
       console.log(`Changements détectés, slideshows affectés: ${Array.from(affectedSlideshowIds).join(', ')}`);
@@ -231,6 +287,24 @@ async function checkContentChanges(io) {
         eventsCount: currentSecurityEvents.length,
         indicatorsCount: currentSecurityIndicators.length
       });
+    }
+
+    // Émettre un événement spécifique pour les changements de dimensions
+    if (appSettingsChanged) {
+      const latestSettings = currentAppSettings[0]; // On assume qu'il n'y a qu'un seul AppSettings
+      io.emit("appSettingsUpdated", {
+        timestamp: new Date(),
+        width: latestSettings?.width || 1920,
+        height: latestSettings?.height || 1080,
+        settings: latestSettings
+      });
+      console.log(`Dimensions mises à jour: ${latestSettings?.width || 1920}x${latestSettings?.height || 1080}`);
+      
+      // ✅ IMMÉDIATEMENT recalculer et envoyer currentSlide avec les nouvelles dimensions
+      console.log("🔄 Recalcul immédiat de currentSlide avec nouvelles dimensions...");
+      const slideData = await getCurrentSlide();
+      io.emit("currentSlide", slideData);
+      console.log("📡 currentSlide mis à jour immédiatement avec nouvelles dimensions");
     }
 
   } catch (error) {
@@ -448,6 +522,13 @@ async function getCurrentSlide() {
     const elapsedInSlide = cyclePosition - slideStartTimeInCycle;
     const remainingInSlide = Math.max(0, currentSlide.duration - elapsedInSlide);
 
+    // ✅ Récupérer les dimensions depuis appSettingsCache
+    const latestSettings = Array.from(appSettingsCache.values())[0];
+    const dimensions = {
+      width: latestSettings?.width || 1920,
+      height: latestSettings?.height || 1080
+    };
+
     return {
       scheduleId: activeSchedule.id,
       scheduleTitle: activeSchedule.title,
@@ -472,7 +553,10 @@ async function getCurrentSlide() {
         duration: s.slideshow.slides.reduce((total, slide) => total + slide.duration, 0)
       })),
       totalElapsedSeconds: totalElapsedSeconds,
-      timeInCurrentSlideshow: timeInCurrentSlideshow
+      timeInCurrentSlideshow: timeInCurrentSlideshow,
+
+      // ✅ Dimensions appSettings
+      dimensions: dimensions
     };
 
   } catch (error) {
@@ -550,6 +634,17 @@ app.prepare().then(async () => {
         slideshowsCount: slideshowsCache.size,
         securityEventsCount: securityEventsCache.size,
         securityIndicatorsCount: securityIndicatorsCache.size,
+        appSettingsCount: appSettingsCache.size,
+        timestamp: new Date()
+      });
+    });
+
+    // Nouveau événement pour demander les dimensions actuelles
+    socket.on("getCurrentDimensions", () => {
+      const latestSettings = Array.from(appSettingsCache.values())[0];
+      socket.emit("currentDimensions", {
+        width: latestSettings?.width || 1920,
+        height: latestSettings?.height || 1080,
         timestamp: new Date()
       });
     });

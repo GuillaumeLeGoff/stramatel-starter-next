@@ -289,7 +289,7 @@ export const getShapeDisplayName = (shapeType: ShapeType): string => {
     rectangle: "Rectangle",
     circle: "Cercle",
     text: "Texte",
-    line: "Ligne",
+
     arrow: "Flèche",
     image: "Image",
     video: "Vidéo",
@@ -544,16 +544,6 @@ export const fixShapeProperties = (shape: KonvaShape): KonvaShape => {
           },
         };
       }
-      // Ligne normale
-      const defaultLine = DEFAULT_SHAPE_STYLES.line;
-      return {
-        ...shape,
-        attrs: {
-          ...attrs,
-          stroke: attrs.stroke || defaultLine.stroke,
-          strokeWidth: attrs.strokeWidth ?? defaultLine.strokeWidth,
-        },
-      };
     }
     
     case "Text": {
