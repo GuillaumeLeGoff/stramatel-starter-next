@@ -141,11 +141,21 @@ export const ArrowTransformer: React.FC<ArrowTransformerProps> = ({
         updateAnchors();
       };
       
+      const handleDragMove = () => {
+        // 🔥 SOLUTION: Mettre à jour les ancres pendant le drag
+        updateAnchors();
+      };
+      
       // Écouter les changements sur la flèche
       target.on('transform transformend', handlePointsChange);
+      // 🔥 SOLUTION: Écouter aussi le drag pour suivre le mouvement
+      target.on('dragmove', handleDragMove);
+      target.on('dragend', handlePointsChange);
       
       return () => {
         target.off('transform transformend', handlePointsChange);
+        target.off('dragmove', handleDragMove);
+        target.off('dragend', handlePointsChange);
       };
     }
   }, [target, updateAnchors]);

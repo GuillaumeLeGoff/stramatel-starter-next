@@ -48,10 +48,13 @@ export function KonvaStageRenderer({
     handleMouseMove,
     handleMouseUp,
     transformerRef,
+    stageRef,
     registerNodeRef,
+    registerStageRef,
     handleTransformEnd,
     handleTransformContinuous,
     handleDragStart,
+    handleDragMove,
     handleDragEnd,
     handleShapeClick,
     createTransformHandlerWithRatio,
@@ -85,6 +88,7 @@ export function KonvaStageRenderer({
     const commonProps = {
       ...attrs,
       id: shapeId,
+      name: "object", // ✅ SNAPPING: Identifier pour le système de snapping
       ref: (node: Konva.Node | null) => registerNodeRef(shapeId, node),
       onTransformEnd: isPreview
         ? undefined
@@ -93,6 +97,9 @@ export function KonvaStageRenderer({
       onDragStart: isPreview
         ? undefined
         : (e: Konva.KonvaEventObject<Event>) => handleDragStart(e, shapeId),
+      onDragMove: isPreview
+        ? undefined
+        : (e: Konva.KonvaEventObject<DragEvent>) => handleDragMove(e, shapeId),
       onDragEnd: isPreview
         ? undefined
         : (e: Konva.KonvaEventObject<Event>) => handleDragEnd(e, shapeId),
@@ -214,6 +221,7 @@ export function KonvaStageRenderer({
             height={attrs.height as number}
             rotation={attrs.rotation as number}
             id={shapeId}
+            name="object"
             draggable={commonProps.draggable}
             autoResize={attrs.autoResize as boolean}
             onDimensionsChange={async (newWidth: number, newHeight: number) => {
@@ -276,6 +284,7 @@ export function KonvaStageRenderer({
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
+            onDragMove={commonProps.onDragMove}
             onDragEnd={commonProps.onDragEnd}
             onClick={(e) => commonProps.onClick && commonProps.onClick(e)}
           />
@@ -297,6 +306,7 @@ export function KonvaStageRenderer({
             height={attrs.height as number}
             rotation={attrs.rotation as number}
             id={shapeId}
+            name="object"
             draggable={commonProps.draggable}
             autoResize={attrs.autoResize as boolean}
             onDimensionsChange={async (newWidth: number, newHeight: number) => {
@@ -359,6 +369,7 @@ export function KonvaStageRenderer({
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
+            onDragMove={commonProps.onDragMove}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -396,6 +407,7 @@ export function KonvaStageRenderer({
             height={attrs.height as number}
             rotation={attrs.rotation as number}
             id={shapeId}
+            name="object"
             type={liveType}
             fontSize={attrs.fontSize as number}
             fontFamily={attrs.fontFamily as string}
@@ -412,6 +424,7 @@ export function KonvaStageRenderer({
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
+            onDragMove={commonProps.onDragMove}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -439,6 +452,7 @@ export function KonvaStageRenderer({
             height={attrs.height as number}
             rotation={attrs.rotation as number}
             id={shapeId}
+            name="object"
             type={className as any}
             fontSize={attrs.fontSize as number}
             fontFamily={attrs.fontFamily as string}
@@ -455,6 +469,7 @@ export function KonvaStageRenderer({
             }
             onTransformEnd={commonProps.onTransformEnd}
             onDragStart={commonProps.onDragStart}
+            onDragMove={commonProps.onDragMove}
             onDragEnd={commonProps.onDragEnd}
             onClick={commonProps.onClick}
           />
@@ -480,6 +495,7 @@ export function KonvaStageRenderer({
 
   return (
     <Stage
+      ref={registerStageRef}
       width={stageData.attrs.width}
       height={stageData.attrs.height}
       onClick={isPreview ? undefined : combinedStageClick}

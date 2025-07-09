@@ -474,6 +474,9 @@ export function useSlideManager({ stageData, containerRef, scale }: UseSlideProp
     if (!currentSlideshow || !updateCurrentSlideshow) return;
 
     try {
+      // 🔍 DEBUG: Log pour vérifier la durée reçue
+      console.log("🔍 updateSlideDuration - Durée reçue:", { slideId, duration, typeDuration: typeof duration });
+      
       // 1. Mettre à jour la slide dans la base de données via l'API
       await updateSlide(slideId, { duration });
 

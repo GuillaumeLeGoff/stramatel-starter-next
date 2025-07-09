@@ -96,6 +96,9 @@ export async function updateSlide(
     konvaData?: KonvaData;
   }>
 ) {
+  // 🔍 DEBUG: Log pour vérifier les données envoyées
+  console.log("🔍 Frontend updateSlide - Données envoyées:", { slideId, slideData });
+  
   const response = await fetch(`/api/slides/${slideId}`, {
     method: "PUT",
     headers: {

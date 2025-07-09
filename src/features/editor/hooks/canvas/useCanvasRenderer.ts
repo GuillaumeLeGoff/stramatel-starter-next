@@ -6,6 +6,7 @@ import { useSlideManager } from "../slide/useSlideManager";
 import { useEditorStore, editorSelectors } from "../../store/editorStore";
 import { useCtrlKeyState } from "../editor/useCtrlKeyState";
 import { createTransformHandler } from "../../utils/transformUtils";
+import { useSnapping } from "../editor/useSnapping";
 import Konva from "konva";
 
 interface SelectionRect {
@@ -35,10 +36,14 @@ export function useCanvasRenderer({
   });
 
   const transformerRef = useRef<Konva.Transformer>(null);
+  const stageRef = useRef<Konva.Stage>(null);
   const shapeRefs = useRef<Record<string, Konva.Node>>({});
   
   // État de la touche Ctrl pour maintenir le ratio
   const isCtrlPressed = useCtrlKeyState();
+  
+  // Hook de snapping
+  const { handleSnapDragMove, handleSnapDragEnd } = useSnapping();
   
   // Utilisation du nouveau store unifié
   const selectedShapes = useEditorStore(editorSelectors.selectedShapes);
@@ -97,6 +102,19 @@ export function useCanvasRenderer({
       shapeRefs.current[id] = node;
     } else {
       delete shapeRefs.current[id];
+    }
+  }, []);
+
+  // Enregistrer la référence du stage pour le snapping
+  const registerStageRef = useCallback((stage: Konva.Stage | null) => {
+    console.log('🎯 Registering stage ref:', stage);
+    if (stage) {
+      stageRef.current = stage;
+      console.log('✅ Stage ref registered successfully:', {
+        width: stage.width(),
+        height: stage.height(),
+        layers: stage.getLayers().length
+      });
     }
   }, []);
 
@@ -375,10 +393,36 @@ export function useCanvasRenderer({
     [isPreview, getAllShapes, selectedShapes, handleSelect]
   );
 
+  // Gestion du drag move avec snapping
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>, shapeId: string) => {
+      if (isPreview) return;
+
+      console.log('🚀 handleDragMove appelé pour:', shapeId);
+      console.log('🎯 Event target:', e.target.className, e.target.id());
+      console.log('📍 Position:', { x: e.target.x(), y: e.target.y() });
+      console.log('🏗️ Stage ref current:', stageRef.current ? 'EXISTS' : 'NULL');
+
+      // Appliquer le snapping
+      console.log('⚡ Calling handleSnapDragMove...');
+      handleSnapDragMove(e);
+      console.log('✅ handleSnapDragMove terminé');
+      
+      console.log(`🔄 Drag move pour ${shapeId}:`, {
+        x: e.target.x(),
+        y: e.target.y(),
+      });
+    },
+    [isPreview, handleSnapDragMove]
+  );
+
   // Gestion de la fin de drag
   const handleDragEnd = useCallback(
     async (e: Konva.KonvaEventObject<Event>, shapeId: string) => {
       if (isPreview) return;
+
+      // Nettoyer les guides de snapping
+      handleSnapDragEnd(e);
 
       const node = e.target;
       
@@ -396,7 +440,7 @@ export function useCanvasRenderer({
         },
       }, { skipHistory: true }); // ✅ Skip history pour les simples déplacements
     },
-    [isPreview, saveHook.saveChanges]
+    [isPreview, handleSnapDragEnd, saveHook.saveChanges]
   );
 
   // Mettre à jour le transformer quand la sélection change
@@ -442,7 +486,9 @@ export function useCanvasRenderer({
 
     // Transformer et références
     transformerRef,
+    stageRef,
     registerNodeRef,
+    registerStageRef,
     updateTransformer,
     shapeRefs: shapeRefs.current,
 
@@ -450,6 +496,7 @@ export function useCanvasRenderer({
     handleTransformEnd,
     handleTransformContinuous,
     handleDragStart,
+    handleDragMove,
     handleDragEnd,
     handleShapeClick,
 

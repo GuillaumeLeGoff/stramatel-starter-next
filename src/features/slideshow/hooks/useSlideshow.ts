@@ -91,7 +91,9 @@ export function useSlideshow() {
     // Déselectionner toutes les formes avant de fermer l'éditeur
     useEditorStore.getState().clearSelection();
     setEditorOpen(false);
-  }, [setEditorOpen]);
+    // Rafraîchir les données des slideshows pour mettre à jour le tableau
+    fetchSlideshows();
+  }, [setEditorOpen, fetchSlideshows]);
 
   // Met à jour le slideshow courant
   const updateCurrentSlideshow = useCallback(
@@ -156,12 +158,17 @@ export function useSlideshow() {
       0
     );
     const minutes = Math.floor(totalDuration / 60);
-    const seconds = totalDuration % 60;
+    const remainingSeconds = totalDuration % 60;
+    
+    // Formater les secondes avec 1 décimale maximum
+    const formattedSeconds = remainingSeconds % 1 === 0 
+      ? remainingSeconds.toString() 
+      : remainingSeconds.toFixed(1);
 
     return {
       totalDuration,
       formattedDuration:
-        minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`,
+        minutes > 0 ? `${minutes}m ${formattedSeconds}s` : `${formattedSeconds}s`,
     };
   };
 

@@ -50,6 +50,9 @@ export async function PUT(
 
     const body = await request.json();
     const { duration, position, mediaId, konvaData } = body;
+    
+    // 🔍 DEBUG: Log pour vérifier les données reçues
+    console.log("🔍 API slides/[id] PUT - Données reçues:", { duration, position, mediaId, typeDuration: typeof duration });
 
     // Mettre à jour la slide
     const slide = await prisma.slide.update({
@@ -109,6 +112,13 @@ export async function PUT(
            },
          },
        },
+     });
+
+     // 🔍 DEBUG: Log pour vérifier la slide retournée
+     console.log("🔍 API slides/[id] PUT - Slide mise à jour:", { 
+       id: updatedSlide?.id, 
+       duration: updatedSlide?.duration, 
+       typeDuration: typeof updatedSlide?.duration 
      });
 
      // Le serveur WebSocket détectera automatiquement le changement via updatedAt

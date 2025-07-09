@@ -12,11 +12,13 @@ interface KonvaImageProps {
   height: number;
   rotation?: number;
   id: string;
+  name?: string; // Pour le système de snapping
   draggable?: boolean;
   autoResize?: boolean; // Nouvelle prop pour redimensionnement automatique
   onTransform?: (e: Konva.KonvaEventObject<Event>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onDragStart?: (e: Konva.KonvaEventObject<Event>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void; // ✅ SNAPPING: Événement de drag pour le snapping
   onDragEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onDimensionsChange?: (width: number, height: number) => void; // Callback pour signaler le changement de dimensions
@@ -31,11 +33,13 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
   height,
   rotation = 0,
   id,
+  name,
   draggable = true,
   autoResize = false,
   onTransform,
   onTransformEnd,
   onDragStart,
+  onDragMove,
   onDragEnd,
   onClick,
   onDimensionsChange,
@@ -141,12 +145,14 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
         height={finalDimensions.height}
         rotation={rotation}
         id={id}
+        name={name}
         draggable={draggable}
         fill="lightgray"
         onClick={onClick}
         onTransform={onTransform}
         onTransformEnd={onTransformEnd}
         onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragEnd={onDragEnd}
       />
     );
@@ -161,6 +167,7 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
       height={finalDimensions.height}
       rotation={rotation}
       id={id}
+      name={name}
       draggable={draggable}
       ref={(node) => {
         imageRef.current = node;
@@ -169,6 +176,7 @@ export const KonvaImage: React.FC<KonvaImageProps> = ({
       onTransform={onTransform}
       onTransformEnd={onTransformEnd}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     />
   );

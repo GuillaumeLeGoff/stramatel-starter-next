@@ -138,7 +138,7 @@ export function EditorPage() {
           {/* Panneau d'accordéons - Panneau de droite */}
           <ResizablePanel defaultSize={25} className="flex flex-col">
             <div className="p-4 h-full">
-              <Accordion type="single" collapsible className="w-full">
+              <Accordion type="single" collapsible defaultValue="shapes" className="w-full">
                 {/* Premier accordéon - Choix des shapes */}
                 <AccordionItem value="shapes">
                   <AccordionTrigger>Formes et outils</AccordionTrigger>

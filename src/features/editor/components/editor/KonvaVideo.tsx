@@ -12,12 +12,14 @@ interface KonvaVideoProps {
   height: number;
   rotation?: number;
   id?: string;
+  name?: string; // Pour le système de snapping
   draggable?: boolean;
   autoResize?: boolean; // Nouvelle prop pour redimensionnement automatique
   onClick?: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onTransform?: (e: Konva.KonvaEventObject<Event>) => void;
   onTransformEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onDragStart?: (e: Konva.KonvaEventObject<Event>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void; // ✅ SNAPPING: Événement de drag pour le snapping
   onDragEnd?: (e: Konva.KonvaEventObject<Event>) => void;
   onDimensionsChange?: (width: number, height: number) => void; // Callback pour signaler le changement de dimensions
   ref?: (node: Konva.Image | null) => void;
@@ -54,12 +56,14 @@ const KonvaVideoComponent: React.FC<KonvaVideoProps> = ({
   height = 240,
   rotation = 0,
   id,
+  name,
   draggable = true,
   autoResize = false,
   onClick,
   onTransform,
   onTransformEnd,
   onDragStart,
+  onDragMove,
   onDragEnd,
   onDimensionsChange,
   ref,
@@ -262,17 +266,19 @@ const KonvaVideoComponent: React.FC<KonvaVideoProps> = ({
     height: finalDimensions.height,
     rotation,
     id,
+    name,
     draggable,
     onClick: handleClick,
     onTransform,
     onTransformEnd,
     onDragStart,
+    onDragMove,
     onDragEnd,
     // ✅ Optimisations Konva selon la documentation
     transformsEnabled: 'position' as const, // Limiter aux transformations de position
     perfectDrawEnabled: false, // Désactiver le pixel perfect drawing coûteux
     listening: true, // Garder l'interactivité pour le clic
-  }), [x, y, finalDimensions.width, finalDimensions.height, rotation, id, draggable, handleClick, onTransform, onTransformEnd, onDragStart, onDragEnd]);
+  }), [x, y, finalDimensions.width, finalDimensions.height, rotation, id, name, draggable, handleClick, onTransform, onTransformEnd, onDragStart, onDragMove, onDragEnd]);
 
   // ✅ Rendu conditionnel simplifié avec optimisations Konva
 

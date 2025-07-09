@@ -197,7 +197,12 @@ export function SlideshowPage() {
                       <TableCell className="line-clamp-2">
                         {slideshow.description || "Aucune description"}
                       </TableCell>
-                      <TableCell>{slideshow.totalDuration}</TableCell>
+                      <TableCell>{
+                        // Formater la durée totale avec 1 décimale maximum
+                        slideshow.totalDuration % 1 === 0 
+                          ? `${slideshow.totalDuration}s`
+                          : `${slideshow.totalDuration.toFixed(1)}s`
+                      }</TableCell>
                       <TableCell>{slideshow._count?.slides || 0}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

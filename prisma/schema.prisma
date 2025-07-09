@@ -64,7 +64,7 @@ model Slide {
   id          Int       @id @default(autoincrement())
   slideshowId Int
   position    Int
-  duration    Int       @default(5)
+  duration    Float     @default(5.0)
   konvaData   Json?
   slideshow   Slideshow @relation(fields: [slideshowId], references: [id], onDelete: Cascade)
   media       Media[]   @relation("SlideMedia")

@@ -22,6 +22,7 @@ type PanelLiveTextType = "date" | "time" | "datetime" |
 
 interface KonvaLiveTextProps {
   id: string;
+  name?: string; // Pour le système de snapping
   x: number;
   y: number;
   width: number;
@@ -37,6 +38,7 @@ interface KonvaLiveTextProps {
   onTransform?: (e: any) => void;
   onTransformEnd?: (e: any) => void;
   onDragStart?: (e: any) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void; // ✅ SNAPPING: Événement de drag pour le snapping
   onDragEnd?: (e: any) => void;
   onClick?: (e: any) => void;
   ref?: (node: Konva.Text | null) => void;
@@ -58,6 +60,7 @@ const mapEditorTypeToPanelType = (editorType: EditorLiveTextType): PanelLiveText
 
 export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
   id,
+  name,
   x,
   y,
   width,
@@ -73,6 +76,7 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
   onTransform,
   onTransformEnd,
   onDragStart,
+  onDragMove,
   onDragEnd,
   onClick,
   ref,
@@ -98,10 +102,12 @@ export const KonvaLiveText: React.FC<KonvaLiveTextProps> = ({
       fill={fill}
       align={align}
       id={id}
+      name={name}
       draggable={draggable}
       onTransform={onTransform}
       onTransformEnd={onTransformEnd}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={onDragEnd}
       onClick={onClick}
     />

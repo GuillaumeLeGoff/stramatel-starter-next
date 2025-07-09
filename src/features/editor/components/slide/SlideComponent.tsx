@@ -77,7 +77,9 @@ export function SlidePreview({
   // Formatage de la durée (en secondes)
   const formatDuration = (duration?: number) => {
     if (!duration) return "0s";
-    return `${duration}s`;
+    // Formater avec 1 décimale maximum, supprimer le .0 si pas nécessaire
+    const formatted = duration % 1 === 0 ? duration.toString() : duration.toFixed(1);
+    return `${formatted}s`;
   };
 
   return (
