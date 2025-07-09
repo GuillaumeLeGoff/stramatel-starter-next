@@ -43,4 +43,9 @@ next-env.d.ts
 # prisma
 prisma/generated
 
-CLAUDE.mdJ
+# md
+CLAUDE.md
+
+# IDE
+.vscode
+.idea
