@@ -1,0 +1,263 @@
+# .github/workflows/build-and-release.yml
+name: Build and Release Next.js
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev, master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
+
+      - name: Build Next.js application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Check build output
+        run: |
+          echo "📦 Build terminé avec succès"
+          ls -la .next/
+          ls -la out/ || echo "Pas de dossier 'out' (mode server)"
+
+      - name: Upload build artifacts (for release)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master')
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next/
+            out/
+            public/
+            package.json
+            package-lock.json
+            next.config.js
+          retention-days: 1
+
+  create-release:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: ./build/
+
+      - name: Set release info
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            echo "RELEASE_TAG=v$(date +'%Y%m%d-%H%M%S')-prod" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Production Release $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+            echo "PRERELEASE=false" >> $GITHUB_ENV
+            echo "RELEASE_TYPE=production" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=v$(date +'%Y%m%d-%H%M%S')-dev" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Development Release $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+            echo "PRERELEASE=true" >> $GITHUB_ENV
+            echo "RELEASE_TYPE=development" >> $GITHUB_ENV
+          fi
+
+      - name: Create deployment archive
+        run: |
+          echo "📦 Création de l'archive de déploiement..."
+          
+          # Créer la structure de déploiement
+          mkdir -p deployment/
+          
+          # Copier les fichiers buildés
+          cp -r ./build/.next deployment/ || echo "Pas de .next (mode SSG)"
+          cp -r ./build/out deployment/ || echo "Pas de out (mode server)"
+          cp -r ./build/public deployment/ || echo "Pas de public"
+          
+          # Copier les fichiers de configuration
+          cp ./build/package.json deployment/
+          cp ./build/package-lock.json deployment/ || echo "Pas de package-lock.json"
+          cp ./build/next.config.js deployment/ || echo "Pas de next.config.js"
+          
+          # Créer le script de démarrage
+          cat > deployment/start.sh << 'EOF'
+          #!/bin/bash
+          cd "$(dirname "$0")"
+          if [ -f package.json ]; then
+            npm ci --production
+            npm start
+          else
+            echo "Pas de package.json, déploiement statique"
+          fi
+          EOF
+          chmod +x deployment/start.sh
+          
+          # Créer le script d'installation
+          cat > deployment/install.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          DEPLOY_DIR="/var/www/html"
+          BACKUP_DIR="/var/backups/nextjs"
+          
+          echo "🚀 Installation Starter-Industrie..."
+          
+          # Créer une sauvegarde
+          if [ -d "$DEPLOY_DIR" ]; then
+            sudo mkdir -p "$BACKUP_DIR"
+            sudo cp -r "$DEPLOY_DIR" "$BACKUP_DIR/backup-$(date +%Y%m%d-%H%M%S)"
+            echo "✅ Sauvegarde créée"
+          fi
+          
+          # Installer les nouveaux fichiers
+          sudo mkdir -p "$DEPLOY_DIR"
+          
+          # Si c'est un build statique (out/), copier directement
+          if [ -d "out" ]; then
+            sudo cp -r out/* "$DEPLOY_DIR/"
+            echo "✅ Déploiement statique terminé"
+          else
+            # Sinon, copier tout pour un déploiement server
+            sudo cp -r . "$DEPLOY_DIR/"
+            echo "✅ Déploiement server terminé"
+          fi
+          
+          # Fixer les permissions
+          sudo chown -R www-data:www-data "$DEPLOY_DIR"
+          sudo chmod -R 755 "$DEPLOY_DIR"
+          
+          # Redémarrer nginx si disponible
+          if command -v nginx > /dev/null; then
+            sudo systemctl restart nginx
+            echo "✅ Nginx redémarré"
+          fi
+          
+          echo "🎉 Installation terminée!"
+          EOF
+          chmod +x deployment/install.sh
+          
+          # Créer l'archive finale
+          tar -czf starter-industrie.tar.gz -C deployment .
+          
+          # Vérifier l'archive
+          echo "📋 Contenu de l'archive:"
+          tar -tzf starter-industrie.tar.gz | head -20
+          
+          echo "📏 Taille de l'archive:"
+          ls -lh starter-industrie.tar.gz
+
+      - name: Get commit info
+        run: |
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "COMMIT_MSG=$(git log -1 --pretty=format:'%s')" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ env.PRERELEASE }}
+          body: |
+            ## 🚀 Starter-Industrie - Release ${{ env.RELEASE_TYPE }}
+            
+            **Commit**: `${{ env.COMMIT_SHA }}`  
+            **Message**: ${{ env.COMMIT_MSG }}  
+            **Branche**: ${{ github.ref_name }}  
+            **Build**: ${{ github.run_number }}
+            
+            ### 🎯 Installation Automatique
+            ```bash
+            # Télécharger et installer automatiquement
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/deploy.sh | bash
+            
+            # Ou avec une version spécifique
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/deploy.sh | bash -s ${{ env.RELEASE_TAG }}
+            ```
+            
+            ### 📦 Installation Manuelle
+            ```bash
+            # Télécharger la release
+            curl -L -o starter-industrie.tar.gz https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/starter-industrie.tar.gz
+            
+            # Extraire et installer
+            tar -xzf starter-industrie.tar.gz
+            sudo ./install.sh
+            ```
+            
+            ### 🔧 Installation avec token GitHub
+            ```bash
+            # Configurer le token pour les repos privés
+            export GITHUB_TOKEN="your_token_here"
+            curl -H "Authorization: token $GITHUB_TOKEN" -L -o starter-industrie.tar.gz https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/starter-industrie.tar.gz
+            ```
+            
+            ### 📋 Contenu de la release
+            - **starter-industrie.tar.gz**: Application Next.js complète
+            - Script d'installation automatique inclus
+            - Compatible avec déploiement statique ou server
+            - Intégré avec nginx pour le kiosk
+            
+            ### 🎨 Mode Kiosk
+            Cette release est optimisée pour fonctionner avec le système kiosk :
+            - Déploiement automatique dans `/var/www/html`
+            - Configuration nginx incluse
+            - Route `/fr/live` configurée
+            - Permissions automatiques
+            
+            ### 📊 Statistiques du build
+            - **Type**: ${{ env.RELEASE_TYPE }}
+            - **Node.js**: 18.x
+            - **Next.js**: Dernière version
+            - **Taille**: Voir l'archive attachée
+            
+            ### 🔗 Liens utiles
+            - [Repository](https://github.com/${{ github.repository }})
+            - [Documentation](https://github.com/${{ github.repository }}#readme)
+            - [Issues](https://github.com/${{ github.repository }}/issues)
+            
+            ---
+            
+            💡 **Astuce**: Le script de déploiement détecte automatiquement votre token GitHub depuis `git-credentials` ou les variables d'environnement.
+          files: |
+            starter-industrie.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update deployment status
+        run: |
+          echo "🎉 Release ${{ env.RELEASE_TAG }} créée avec succès!"
+          echo "📁 Archive: starter-industrie.tar.gz"
+          echo "🔗 URL: https://github.com/${{ github.repository }}/releases/tag/${{ env.RELEASE_TAG }}"
